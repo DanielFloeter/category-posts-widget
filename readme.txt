@@ -66,7 +66,7 @@ A premium version of that free widget available at [tiptoppress.com](https://tip
 
 = Contribute =
 While using this plugin if you find any bug or any conflict, please submit an issue at
-[Github](https://github.com/tiptoppress/category-posts-widget) (If possible with a pull request).
+[Github](https://github.com/DanielFloeter/category-posts-widget) (If possible with a pull request).
 
 == Installation ==
 = Automatic installation =

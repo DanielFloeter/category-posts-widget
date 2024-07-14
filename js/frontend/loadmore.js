@@ -1,6 +1,6 @@
 /**
  * Category Posts Widget
- * https://github.com/tiptoppress/category-posts-widget
+ * https://github.com/DanielFloeter/category-posts-widget
  *
  * JS for the "load more" functionality.
  *
