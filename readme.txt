@@ -3,8 +3,9 @@ Contributors: mark-k, kometschuh, mkrdip
 Donate link: https://wordpress.org/support/plugin/category-posts/reviews/
 Tags: block, category, categories, posts, recent posts
 Requires at least: 2.8
-Tested up to: 6.4
+Tested up to: 6.6
 Stable tag: 4.9.17
+Requires PHP: 5.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -109,15 +110,6 @@ Use the option: 'Disable only font style' in the General panel.
 = I want the title as a link pointing to the selected Categorie page? =
 Is just a single category selected in the Filter panel: Enable the check box "Make widget title link".
 Is 'All categories' selected in the Filter panel: Use the text field 'Title link URL'.
-
-= Parse error: syntax error, unexpected T_FUNCTION in /home/www/blog/wp-content/plugins/category-posts/cat-posts.php on line 58 =
-Some of the features that were used in that version needs PHP 5.3+.
-We apologies for any headache this may cause you, but frankly it is better for you to check with your hosting company how can you upgrade the PHP version that you are using, and not only in order to use this plugin. PHP 5.2 should be considered insecure now, and for your own sake you should upgrade.
-PHP 5.2 is very old and any support for it from the php developers had ended more then 5 years ago [php.net/eol.php](http://php.net/eol.php).
-We know there are peopel how use PHP 5.2 [wordpress.org/about/stats](https://wordpress.org/about/stats/) and we can't imagine this people will have no other problems, if they don't update.
-
-= You check the PHP version with phpversion(), but the widget don't work =
-Check also the .htaccess file, if there is an entry for an older PHP version.
 
 == Screenshots ==
 1. Front end of the widget with SVG font-icon support for post formats, hover effects and the Template text-area.
