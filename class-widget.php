@@ -57,8 +57,8 @@ class Widget extends \WP_Widget {
 					false,
 					array
 					(
-						"data-cat-posts-width" => $this->instance['thumb_w'],
-						"data-cat-posts-height" => $this->instance['thumb_h']
+						"data-cat-posts-width" => intval($this->instance['thumb_w']),
+						"data-cat-posts-height" => intval($this->instance['thumb_h'])
 					)
 				);
 		if ( ! $html ) {
@@ -606,7 +606,7 @@ class Widget extends \WP_Widget {
 				$ret .= '<a ' . $class . ' href="' . get_the_permalink() . '" title="' . the_title_attribute( $title_args ) . '">';
 			}
 
-			$ret .= $this->the_post_thumbnail( array( $this->instance['thumb_w'], $this->instance['thumb_h'] ) );
+			$ret .= $this->the_post_thumbnail( array( intval($this->instance['thumb_w']), intval($this->instance['thumb_h']) ) );
 
 			if ( $no_link ) {
 				$ret .= '</span>';
@@ -1852,9 +1852,9 @@ class Widget extends \WP_Widget {
 						</a>
 					</p>
 						<?php
-						echo $this->get_number_input_block_html( $instance, 'thumb_w', esc_html__( 'Width:', 'category-posts' ), 1, '', '', true );
+						echo $this->get_number_input_block_html( $instance, 'thumb_w', esc_html__( 'Width:', 'category-posts' ), 0, '', '', true );
 						echo $this->get_range_input_block_html( $instance, 'thumb_fluid_width', esc_html__( 'Max-width:', 'category-posts' ), 2, 100, 100, 2, true );
-						echo $this->get_number_input_block_html( $instance, 'thumb_h', esc_html__( 'Height:', 'category-posts' ), 1, '', '', true );
+						echo $this->get_number_input_block_html( $instance, 'thumb_h', esc_html__( 'Height:', 'category-posts' ), 0, '', '', true );
 						?>
 						<div class="cat-post-image-dimensions-help" style="display:none;">
 							<p><?php esc_html_e( 'Set one dimensions to 0 the set dimension will be used with the original image ratio.', 'category-posts' ); ?></p>

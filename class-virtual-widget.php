@@ -309,10 +309,10 @@ class Virtual_Widget {
 		// to make sure cropping is properly done, and they fit the allocated space.
 		if ( isset( $settings['template'] ) && preg_match( '/%thumb%/', $settings['template'], $m, PREG_OFFSET_CAPTURE ) ) {
 			if ( isset( $settings['thumb_h'] ) && 0 !== intval( $settings['thumb_h'] ) ) {
-				$ret['thumb_crop_h'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop img {height: ' . $settings['thumb_h'] . 'px;}';
+				$ret['thumb_crop_h'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop img {height: ' . intval($settings['thumb_h']) . 'px;}';
 			}
 			if ( isset( $settings['thumb_w'] ) && 0 !== intval( $settings['thumb_w'] ) ) {
-				$ret['thumb_crop_w'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop img {width: ' . $settings['thumb_w'] . 'px;}';
+				$ret['thumb_crop_w'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop img {width: ' . intval($settings['thumb_w']) . 'px;}';
 			}
 			$ret['thumb_crop'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop img {object-fit: cover; max-width: 100%; display: block;}';
 			$ret['thumb_crop_not_supported'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop-not-supported img {width: 100%;}';
