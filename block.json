@@ -181,7 +181,7 @@
 		},
 		"loadmoreText": {
 			"type": "string",
-			"default": "Load More (%s/%s)"
+			"default": "Load More (%step%/%all%)"
 		},
 		"loadingText": {
 			"type": "string",

@@ -15,7 +15,8 @@ import {
 	ComboboxControl,
 	TextControl,
 	ToggleControl,
-	PanelBody,
+	SelectControl,
+	TextareaControl,
 	RadioControl,
 	QueryControls,
 	Disabled,
@@ -25,6 +26,8 @@ import {
 	DatePicker,
 	Popover,
 	Button,
+	Panel,
+	PanelBody,
 	PanelRow,
 } from '@wordpress/components';
 import { InspectorControls, RichText, useBlockProps } from '@wordpress/block-editor';
@@ -46,7 +49,8 @@ export default function Edit({ attributes, setAttributes }) {
 	const {
 		hideTitle, title, titleLink, titleLinkUrl, titleLevel,
 		order, orderBy, status, categories, num, offset, dateRange, startDate, endDate, daysAgo, excludeCurrentPost, hideNoThumb, sticky,
-		disableThemeStyles,
+		template,
+		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, loadmore_scroll_to, loadmoreText, loadingText,
 		footerLinkText, footerLink
 	} = attributes;
 	const blockProps = useBlockProps({
@@ -164,252 +168,343 @@ export default function Edit({ attributes, setAttributes }) {
 	return (
 		<>
 			<InspectorControls>
-				<PanelBody title={__('Title', 'category-posts')} initialOpen={ false }>
-					<ToggleControl
-						label={__('Hide title', 'category-posts')}
-						checked={hideTitle}
-						onChange={() =>
-							setAttributes({
-								hideTitle: !hideTitle,
-							})
-						}
-					/>
-					<TextControl
-						label={__('Title', 'category-posts')}
-						value={title}
-						onChange={(title) =>
-							setAttributes({
-								title,
-							})}
-					/>
-					<ToggleControl
-						label={__('Make widget title link', 'category-posts')}
-						checked={titleLink}
-						onChange={() =>
-							setAttributes({
-								titleLink: !titleLink,
-							})
-						}
-					/>
-					<TextControl
-						label={__('Title link URL', 'category-posts')}
-						value={titleLinkUrl}
-						onChange={(titleLinkUrl) =>
-							setAttributes({
-								titleLinkUrl,
-							})}
-					/>
-					<ToggleGroupControl
-						label="Heading level"
-						value={titleLevel}
-						isBlock
-						isAdaptiveWidth
-						help={"Also, try 'Disable Theme's styles' on General tab to avoid rendering commonly used CSS classes such here widget-title, which often used in Themes to write their CSS selectors and may affect the design."}
-						onChange={(titleLevel) =>
-							setAttributes({
-								titleLevel,
-							})}
-					>
-						<ToggleGroupControlOption value="initial" label="Initial" />
-						<ToggleGroupControlOption value="H1" label="H1" />
-						<ToggleGroupControlOption value="H2" label="H2" />
-						<ToggleGroupControlOption value="H3" label="H3" />
-						<ToggleGroupControlOption value="H4" label="H4" />
-						<ToggleGroupControlOption value="H5" label="H5" />
-						<ToggleGroupControlOption value="H6" label="H6" />
-					</ToggleGroupControl>
-				</PanelBody>
-				<PanelBody title={__('Filter', 'category-posts', 'category-posts')} initialOpen={ false }>
-					<QueryControls
-						{...{ order, orderBy }}
-						onOrderChange={(value) =>
-							setAttributes({ order: value })
-						}
-						onOrderByChange={(value) =>
-							setAttributes({ orderBy: value })
-						}
-						categorySuggestions={categorySuggestions}
-						onCategoryChange={selectCategories}
-						selectedCategories={categories}
-					/>
-					<br />
-					<ComboboxControl
-						label={ __( 'Status' ) }
-						options={ statusOptions }
-						value={ status }
-						onChange={( newStatus) =>
-							setAttributes({
-								status: newStatus,
-							})
-						}
-						allowReset={ false }
-					/>
-					<NumberControl
-						label={ __( 'Number of posts to show' ) }
-						onChange={( newNum) =>
-							setAttributes({
-								num: newNum,
-							})
-						}
-						value={ num }
-						min={1}
-						allowReset={ false }
-					/>
-					<NumberControl
-						label={ __( 'Start with post' ) }
-						onChange={( newOffset) =>
-							setAttributes({
-								offset: newOffset,
-							})
-						}
-						value={ offset }
-						min={1}
-						allowReset={ false }
-					/>
-					<ComboboxControl
-						label={ __( 'Date Range' ) }
-						options={ dateRangeOptions }
-						value={ dateRange }
-						onChange={( newDateRange) =>
-							setAttributes({
-								dateRange: newDateRange,
-							})
-						}
-						allowReset={ false }
-					/>
-					{dateRange === 'days_ago' && (
-						<NumberControl
-							label={ __( 'Up to' ) }
-							onChange={( newDaysAgo) =>
+				<Panel>
+					<PanelBody title={__('Title', 'category-posts')} initialOpen={ false }>
+						<ToggleControl
+							label={__('Hide title', 'category-posts')}
+							checked={hideTitle}
+							onChange={() =>
 								setAttributes({
-									daysAgo: newDaysAgo,
+									hideTitle: !hideTitle,
 								})
 							}
-							value={ daysAgo }
+						/>
+						<TextControl
+							label={__('Title', 'category-posts')}
+							value={title}
+							onChange={(title) =>
+								setAttributes({
+									title,
+								})}
+						/>
+						<ToggleControl
+							label={__('Make widget title link', 'category-posts')}
+							checked={titleLink}
+							onChange={() =>
+								setAttributes({
+									titleLink: !titleLink,
+								})
+							}
+						/>
+						<TextControl
+							label={__('Title link URL', 'category-posts')}
+							value={titleLinkUrl}
+							onChange={(titleLinkUrl) =>
+								setAttributes({
+									titleLinkUrl,
+								})}
+						/>
+						<ToggleGroupControl
+							label="Heading level"
+							value={titleLevel}
+							isBlock
+							isAdaptiveWidth
+							help={"Also, try 'Disable Theme's styles' on General tab to avoid rendering commonly used CSS classes such here widget-title, which often used in Themes to write their CSS selectors and may affect the design."}
+							onChange={(titleLevel) =>
+								setAttributes({
+									titleLevel,
+								})}
+						>
+							<ToggleGroupControlOption value="initial" label="Initial" />
+							<ToggleGroupControlOption value="H1" label="H1" />
+							<ToggleGroupControlOption value="H2" label="H2" />
+							<ToggleGroupControlOption value="H3" label="H3" />
+							<ToggleGroupControlOption value="H4" label="H4" />
+							<ToggleGroupControlOption value="H5" label="H5" />
+							<ToggleGroupControlOption value="H6" label="H6" />
+						</ToggleGroupControl>
+					</PanelBody>
+					<PanelBody title={__('Filter', 'category-posts', 'category-posts')} initialOpen={ false }>
+						<QueryControls
+							{...{ order, orderBy }}
+							onOrderChange={(value) =>
+								setAttributes({ order: value })
+							}
+							onOrderByChange={(value) =>
+								setAttributes({ orderBy: value })
+							}
+							categorySuggestions={categorySuggestions}
+							onCategoryChange={selectCategories}
+							selectedCategories={categories}
+						/>
+						<br />
+						<ComboboxControl
+							label={ __( 'Status' ) }
+							options={ statusOptions }
+							value={ status }
+							onChange={( newStatus) =>
+								setAttributes({
+									status: newStatus,
+								})
+							}
+							allowReset={ false }
+						/>
+						<NumberControl
+							label={ __( 'Number of posts to show' ) }
+							onChange={( newNum) =>
+								setAttributes({
+									num: newNum,
+								})
+							}
+							value={ num }
 							min={1}
 							allowReset={ false }
 						/>
-					)}
-					{dateRange === 'between_dates' && (
-						<>
-							<PanelRow>
-								<label>After</label>
-								<Button isLink={true} onClick={() => setOpenStartDatePopup( ! openStartDatePopup )}>
-									{ startDate ? dateI18n( 'j.m.Y', startDate ) : "tt.mm.jjjj" }
-								</Button>
-								{ openStartDatePopup && (
-									<Popover onClose={ setOpenStartDatePopup.bind( null, false )}>
-										<DatePicker
-											onChange={( newStartDate) =>
-												setAttributes({
-													startDate: newStartDate,
-												})
-											}
-											currentDate={ startDate }
-											startOfWeek={1}
-										/>
-									</Popover>
-								) }
-							</PanelRow>
-							<PanelRow>
-								<label>Before</label>
-								<Button isLink={true} onClick={() => setOpenEndDatePopup( ! openEndDatePopup )}>
-									{ endDate ? dateI18n( 'j.m.Y', endDate ) : "tt.mm.jjjj" }
-								</Button>
-								{ openEndDatePopup && (
-									<Popover onClose={ setOpenEndDatePopup.bind( null, false )}>
-										<DatePicker
-											onChange={( newEndDate) =>
-												setAttributes({
-													endDate: newEndDate,
-												})
-											}
-											currentDate={ endDate }
-											startOfWeek={1}
-										/>
-									</Popover>
-								) }
-							</PanelRow>
-						</>
-					)}
-					<br />
-					<ToggleControl
-						label={__('Exclude current post', 'category-posts')}
-						checked={hideNoThumb}
-						onChange={() =>
-							setAttributes({
-								hideNoThumb: !hideNoThumb,
-							})
-						}
-					/>
-					<ToggleControl
-						label={__('Exclude posts which have no thumbnail', 'category-posts')}
-						checked={excludeCurrentPost}
-						onChange={() =>
-							setAttributes({
-								excludeCurrentPost: !excludeCurrentPost,
-							})
-						}
-					/>
-					<ToggleControl
-						label={__('Start with sticky posts', 'category-posts')}
-						checked={sticky}
-						onChange={() =>
-							setAttributes({
-								sticky: !sticky,
-							})
-						}
-					/>
-				</PanelBody>
-				<PanelBody title={__('Post details', 'category-posts')} initialOpen={ false }>
-				</PanelBody>
-				<PanelBody title={__('General', 'category-posts')} initialOpen={ false }>
-					<ToggleControl
-						label={__('Disable the built-in CSS', 'category-posts')}
-						checked={disableThemeStyles}
-						onChange={() =>
-							setAttributes({
-								disableThemeStyles: !disableThemeStyles,
-							})
-						}
-					/>
-					<ToggleControl
-						label={__('Disable only font styles', 'category-posts')}
-						checked={disableThemeStyles}
-						onChange={() =>
-							setAttributes({
-								disableThemeStyles: !disableThemeStyles,
-							})
-						}
-					/>
-					<ToggleControl
-						label={__('Disable Theme\'s styles', 'category-posts')}
-						checked={disableThemeStyles}
-						onChange={() =>
-							setAttributes({
-								disableThemeStyles: !disableThemeStyles,
-							})
-						}
-					/>
-				</PanelBody>
-				<PanelBody title={__('Footer', 'category-posts')} initialOpen={ false }>
-					<TextControl
-						label={__('Footer link text', 'category-posts')}
-						value={footerLinkText}
-						onChange={(footerLinkText) =>
-							setAttributes({
-								footerLinkText,
-							})}
-					/>
-					<TextControl
-						label={__('Footer link URL', 'category-posts')}
-						value={footerLink}
-						onChange={(footerLink) =>
-							setAttributes({
-								footerLink,
-							})}
-					/>
-				</PanelBody>
+						<NumberControl
+							label={ __( 'Start with post' ) }
+							onChange={( newOffset) =>
+								setAttributes({
+									offset: newOffset,
+								})
+							}
+							value={ offset }
+							min={1}
+							allowReset={ false }
+						/>
+						<ComboboxControl
+							label={ __( 'Date Range' ) }
+							options={ dateRangeOptions }
+							value={ dateRange }
+							onChange={( newDateRange) =>
+								setAttributes({
+									dateRange: newDateRange,
+								})
+							}
+							allowReset={ false }
+						/>
+						{dateRange === 'days_ago' && (
+							<NumberControl
+								label={ __( 'Up to' ) }
+								onChange={( newDaysAgo) =>
+									setAttributes({
+										daysAgo: newDaysAgo,
+									})
+								}
+								value={ daysAgo }
+								min={1}
+								allowReset={ false }
+							/>
+						)}
+						{dateRange === 'between_dates' && (
+							<>
+								<PanelRow>
+									<label>After</label>
+									<Button isLink={true} onClick={() => setOpenStartDatePopup( ! openStartDatePopup )}>
+										{ startDate ? dateI18n( 'j.m.Y', startDate ) : "tt.mm.jjjj" }
+									</Button>
+									{ openStartDatePopup && (
+										<Popover onClose={ setOpenStartDatePopup.bind( null, false )}>
+											<DatePicker
+												onChange={( newStartDate) =>
+													setAttributes({
+														startDate: newStartDate,
+													})
+												}
+												currentDate={ startDate }
+												startOfWeek={1}
+											/>
+										</Popover>
+									) }
+								</PanelRow>
+								<PanelRow>
+									<label>Before</label>
+									<Button isLink={true} onClick={() => setOpenEndDatePopup( ! openEndDatePopup )}>
+										{ endDate ? dateI18n( 'j.m.Y', endDate ) : "tt.mm.jjjj" }
+									</Button>
+									{ openEndDatePopup && (
+										<Popover onClose={ setOpenEndDatePopup.bind( null, false )}>
+											<DatePicker
+												onChange={( newEndDate) =>
+													setAttributes({
+														endDate: newEndDate,
+													})
+												}
+												currentDate={ endDate }
+												startOfWeek={1}
+											/>
+										</Popover>
+									) }
+								</PanelRow>
+							</>
+						)}
+						<br />
+						<ToggleControl
+							label={__('Exclude current post', 'category-posts')}
+							checked={hideNoThumb}
+							onChange={() =>
+								setAttributes({
+									hideNoThumb: !hideNoThumb,
+								})
+							}
+						/>
+						<ToggleControl
+							label={__('Exclude posts which have no thumbnail', 'category-posts')}
+							checked={excludeCurrentPost}
+							onChange={() =>
+								setAttributes({
+									excludeCurrentPost: !excludeCurrentPost,
+								})
+							}
+						/>
+						<ToggleControl
+							label={__('Start with sticky posts', 'category-posts')}
+							checked={sticky}
+							onChange={() =>
+								setAttributes({
+									sticky: !sticky,
+								})
+							}
+						/>
+					</PanelBody>
+					<PanelBody title={__('Post details', 'category-posts')} initialOpen={ false }>
+						<PanelRow>Displayed parts</PanelRow>
+						<TextareaControl
+							__nextHasNoMarginBottom
+							label="Template"
+							help={__('The following placeholders will be replaced with the relevant information. In addition you can use text, HTML and Dashicons', 'category-posts')}
+							value={ template }
+							onChange={( template ) => 
+								setAttributes( {
+									template
+								})}
+							rows={ 8 }
+						/>
+						<PanelRow>Title settings</PanelRow>
+						<PanelRow>Excerpt settings</PanelRow>
+						<PanelRow>More Link settings</PanelRow>
+						<PanelRow>Date format settings</PanelRow>
+						<PanelRow>Thumbnail settings</PanelRow>
+					</PanelBody>
+					<PanelBody title={__('General', 'category-posts')} initialOpen={ false }>
+						<PanelRow>Inherited CSS</PanelRow>
+						<ToggleControl
+							label={__('Disable the built-in CSS', 'category-posts')}
+							checked={disableCss}
+							onChange={() =>
+								setAttributes({
+									disableCss: !disableCss,
+								})
+							}
+						/>
+						<ToggleControl
+							label={__('Disable only font styles', 'category-posts')}
+							checked={disableFontStyles}
+							onChange={() =>
+								setAttributes({
+									disableFontStyles: !disableFontStyles,
+								})
+							}
+						/>
+						<ToggleControl
+							label={__('Disable Theme\'s styles', 'category-posts')}
+							checked={disableThemeStyles}
+							onChange={() =>
+								setAttributes({
+									disableThemeStyles: !disableThemeStyles,
+								})
+							}
+						/>
+						<PanelRow>Interim text</PanelRow>
+						<SelectControl
+							label={ __( 'When there are no matches:', 'category-posts' ) }
+							value={ noMatchHandling }
+							onChange={( noMatchHandling ) => 
+								setAttributes( {
+									noMatchHandling
+								} )}
+							options={ [
+								{ value: 'nothing', label: __( 'Display empty widget', 'category-posts' ) },
+								{ value: 'hide', label: __( 'Hide Widget', 'category-posts' ) },
+								{ value: 'text', label: __( 'Show text', 'category-posts' ) },
+							] }
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+						{noMatchHandling === 'text' && (
+							<TextareaControl
+								__nextHasNoMarginBottom
+								label="Text"
+								value={ noMatchText }
+								onChange={( noMatchText ) => 
+									setAttributes( {
+										noMatchText
+									})}
+								rows={ 4 }
+							/>
+						)}
+						<PanelRow>Ajax API</PanelRow>
+						<ToggleControl
+							label={__('Enable Load More', 'category-posts')}
+							checked={enableLoadmore}
+							onChange={() =>
+								setAttributes({
+									enableLoadmore: !enableLoadmore,
+								})
+							}
+						/>
+						{enableLoadmore && (
+							<>
+								<ToggleControl
+									label={__('Scrollbar', 'category-posts')}
+									checked={loadmore_scroll_to}
+									onChange={() =>
+										setAttributes({
+											loadmore_scroll_to: !loadmore_scroll_to,
+										})
+									}
+									
+								/>
+								<TextControl
+									label={__('Button text', 'category-posts')}
+									help={[
+										__('The following placeholders will be replaced with the relevant information: (%step% - Loaded items, %all% - All possible items for the set filter query)', 'category-posts'),
+									]}
+									value={loadmoreText}
+									onChange={(loadmoreText) =>
+										setAttributes({
+											loadmoreText,
+										})}
+								/>
+								<TextControl
+									label={__('Loading text', 'category-posts')}
+									value={loadingText}
+									onChange={(loadingText) =>
+										setAttributes({
+											loadingText,
+										})}
+								/>
+							</>
+						)}
+					</PanelBody>
+					<PanelBody title={__('Footer', 'category-posts')} initialOpen={ false }>
+						<TextControl
+							label={__('Footer link text', 'category-posts')}
+							value={footerLinkText}
+							onChange={(footerLinkText) =>
+								setAttributes({
+									footerLinkText,
+								})}
+						/>
+						<TextControl
+							label={__('Footer link URL', 'category-posts')}
+							value={footerLink}
+							onChange={(footerLink) =>
+								setAttributes({
+									footerLink,
+								})}
+						/>
+					</PanelBody>
+				</Panel>
 			</InspectorControls>
 			<div
 				{...useBlockProps()}
