@@ -3,7 +3,7 @@ Contributors: mark-k, kometschuh, mkrdip
 Donate link: https://wordpress.org/support/plugin/category-posts/reviews/
 Tags: block, category, categories, posts, recent posts
 Requires at least: 2.8
-Tested up to: 6.6
+Tested up to: 6.7
 Stable tag: 4.9.19
 Requires PHP: 5.3
 License: GPLv2 or later
