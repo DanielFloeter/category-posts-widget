@@ -925,6 +925,17 @@ class Widget extends \WP_Widget {
 	 * @since 5.0
 	 */
 	public function xss_strip_js( $out ) {
+
+		// Find all attributs and values of HTML tag
+		// Strip js
+		$out = preg_replace_callback(
+			'/(\s+)(\S+)=["\']?((?:.(?!["\']?\s+(?:\S+)=|[>"\']))+.)["\']?/', 
+			function ($matches) {
+				return preg_match("/[(](.*?)[)]/", $matches[0]) ? "" : $matches[0];
+			},
+			$out
+		);
+
 		return preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', "", $out);
 	}
 
