@@ -59,8 +59,7 @@ if (typeof jQuery !== 'undefined') {
                     _this.text(loadmoreText);
                     _this.data('start', start + number);
                 }
-            }).done(function() {
-
+            }).done(function(data) {
                 // Scrollbar
                 if (useScrollTo) {
                     _ul.stop().animate({
@@ -68,14 +67,16 @@ if (typeof jQuery !== 'undefined') {
                     }, 1000, 'swing');
                 }
 
-                var widget = jQuery('#' + widgetNumber);
-                var widgetImage = jQuery(widget).find('.cat-post-item img').first();
+                if(new RegExp("cat-post-thumbnail|cpwp-excerpt-text").test(data[0])) {
+                    var widget = jQuery('#' + widgetNumber);
+                    var widgetImage = jQuery(widget).find('.cat-post-item img').first();
 
-                // do each time new items are added
-                cat_posts_namespace.layout_wrap_text.preWrap(widget);
-                cat_posts_namespace.layout_wrap_text.setClass(widget);
-                if (0 !== parseInt(widgetImage.data('cat-posts-height')) && 0 !== parseInt(widgetImage.data('cat-posts-width'))) {
-                    cat_posts_namespace.layout_img_size.setHeight(widget);
+                    // do each time new items are added
+                    cat_posts_namespace.layout_wrap_text.preWrap(widget);
+                    cat_posts_namespace.layout_wrap_text.setClass(widget);
+                    if (0 !== parseInt(widgetImage.data('cat-posts-height')) && 0 !== parseInt(widgetImage.data('cat-posts-width'))) {
+                        cat_posts_namespace.layout_img_size.setHeight(widget);
+                    }
                 }
             }).fail(function() {
                 // Revert to original text.
