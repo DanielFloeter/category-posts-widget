@@ -913,30 +913,7 @@ class Widget extends \WP_Widget {
 		}
 
 		$ret .= '</li>';
-		return $this->xss_strip_js( $ret );
-	}
-
-	/**
-	 * Strip output from Javascript tags
-	 *
-	 * @param  string $out Render output
-	 * @return string Striped output
-	 *
-	 * @since 5.0
-	 */
-	public function xss_strip_js( $out ) {
-
-		// Find all attributs and values of HTML tag
-		// Strip js
-		$out = preg_replace_callback(
-			'/(\s+)(\S+)=["\']?((?:.(?!["\']?\s+(?:\S+)=|[>"\']))+.)["\']?/', 
-			function ($matches) {
-				return preg_match("/[(](.*?)[)]/", $matches[0]) ? "" : $matches[0];
-			},
-			$out
-		);
-
-		return preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', "", $out);
+		return wp_kses_post($ret);
 	}
 
 	/**

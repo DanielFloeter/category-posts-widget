@@ -4,7 +4,7 @@ Donate link: https://wordpress.org/support/plugin/category-posts/reviews/
 Tags: block, category, categories, posts, recent posts
 Requires at least: 2.8
 Tested up to: 6.7
-Stable tag: 4.9.19
+Stable tag: 4.9.20
 Requires PHP: 5.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -121,6 +121,10 @@ Is 'All categories' selected in the Filter panel: Use the text field 'Title link
 
 == Changelog ==
 [Read more on our blog ...](https://tiptoppress.com/category/category-posts-widget)
+
+= 4.9.20 - April 2rd 2025 =
+* Fixed Sanitizes content
+* Fixed Error load more
 
 = 4.9.19 - March 10th 2025 =
 * Fixed Escap data
