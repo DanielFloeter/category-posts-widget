@@ -1,7 +1,7 @@
 
 import { __ } from '@wordpress/i18n';
 import { RichText, useBlockProps } from '@wordpress/block-editor';
-import classnames from 'classnames';
+import clsx from 'clsx';
 
 /**
  * The save function defines the way in which the different attributes should
@@ -22,7 +22,7 @@ export default function save(props, className) {
 		order, orderBy,
 		categories 
 	} = props.attributes;
-	const wrapperClasses = classnames( className ); console.log( title );
+	const wrapperClasses = clsx( className ); console.log( title );
 
 	return <div { ...useBlockProps.save( { className: wrapperClasses } ) }>
 			<RichText.Content
