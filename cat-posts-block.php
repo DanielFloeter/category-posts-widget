@@ -90,9 +90,20 @@ function render_category_posts_block( $attributes ) {
 
 	$items = $widget->get_elements_HTML( $instance, $current_post_id, 0, 0 );
 
-	$ret = $widget->titleHTML( $before_title, $after_title, $instance );
+	if ( ( 'nothing' === $instance['no_match_handling'] ) || ! empty( $items ) ) {
+		$ret = $widget->titleHTML( $before_title, $after_title, $instance );
 
-	$ret .= "<ul>" . implode( $items ) . "</ul>";
+		$ret .= "<ul>" . implode( $items ) . "</ul>";
+
+		// Load more only if we think we have more items.
+		if ( count( $items ) === (int) $instance['num'] ) {
+			$ret .= $widget->loadMoreHTML( $instance );
+		}
+	} elseif ( 'text' === $instance['no_match_handling'] ) {
+		echo $widget->titleHTML( $before_title, $after_title, $instance );
+		echo esc_html( $instance['no_match_text'] );
+		echo $widget->footerHTML( $instance );
+	}
 
 	return $ret;
 }
