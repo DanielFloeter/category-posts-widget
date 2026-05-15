@@ -36,8 +36,8 @@
 			"default": []
 		},
 		"categories": {
-			"type": "array",
-			"default": []
+			"type": "string",
+			"default": ""
 		},
 		"num": {
 			"type": "string",
@@ -56,8 +56,8 @@
 			"default": "publish"
 		},
 		"order": {
-			"type": "string",
-			"default": "desc"
+			"type": "boolean",
+			"default": true
 		},
 		"excludeCurrentPost": {
 			"type": "boolean",

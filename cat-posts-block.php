@@ -39,7 +39,7 @@ function render_category_posts_block( $attributes ) {
 	$instance['offset']                 = $attributes['offset'];
 	$instance['sort_by']                = $attributes['orderBy'];
 	$instance['status']                 = $attributes['status'];
-	$instance['asc_sort_order']         = $attributes['order'] === 'desc' ? false : true;
+	$instance['asc_sort_order']         = $attributes['order'];
 	$instance['exclude_current_post']   = $attributes['excludeCurrentPost'];
 	$instance['hide_no_thumb']          = $attributes['hideNoThumb'];
 	$instance['sticky']                 = $attributes['sticky'];

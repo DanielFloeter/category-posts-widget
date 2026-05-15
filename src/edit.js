@@ -1,14 +1,12 @@
 /**
  * External dependencies
  */
-import { includes } from 'lodash';
 
 /**
  * WordPress dependencies
  */
 import { useState, useEffect, useRef } from '@wordpress/element';
-import apiFetch from '@wordpress/api-fetch';
-import { addQueryArgs } from '@wordpress/url';
+import { useSelect } from '@wordpress/data';
 import { __ } from '@wordpress/i18n';
 import {
 	ComboboxControl,
@@ -37,17 +35,10 @@ export const ToggleGroupControl = __experimentalToggleGroupControl || stableTogg
 export const ToggleGroupControlOption = __experimentalToggleGroupControlOption || stableToggleGroupControlOption;
 export const NumberControl = __experimentalNumberControl || stableNumberControl;
 
-/**
- * Module Constants
- */
-const CATEGORIES_LIST_QUERY = {
-	per_page: -1,
-};
-
 export default function Edit({ attributes, setAttributes }) {
 	const {
 		hideTitle, title, titleLink, titleLinkUrl, titleLevel,
-		order, orderBy, status, categories, num, offset, dateRange, startDate, endDate, daysAgo, excludeCurrentPost, hideNoThumb, sticky,
+		order, orderBy, categories, status, num, offset, dateRange, startDate, endDate, daysAgo, excludeCurrentPost, hideNoThumb, sticky,
 		template,
 		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, loadmore_scroll_to, loadmoreText, loadingText,
 		footerLinkText, footerLink
@@ -55,61 +46,27 @@ export default function Edit({ attributes, setAttributes }) {
 	const blockProps = useBlockProps({
 		className: disableThemeStyles ? 'widget-title' : '',
 	});
-	const [categoriesList, setCategoriesList] = useState([]);
-	const categorySuggestions = categoriesList.reduce(
-		(accumulator, category) => ({
-			...accumulator,
-			[category.name]: category,
-		}),
-		{}
-	);
-	const selectCategories = (tokens) => {
-		const hasNoSuggestion = tokens.some(
-			(token) =>
-				typeof token === 'string' && !categorySuggestions[token]
+
+	const categoriesList = useSelect( ( select ) => {
+		return select( 'core' ).getEntityRecords(
+			'taxonomy',
+			'category',
+			{
+				per_page: -1,
+			},
 		);
-		if (hasNoSuggestion) {
-			return;
-		}
-		// Categories that are already will be objects, while new additions will be strings (the name).
-		// allCategories nomalizes the array so that they are all objects.
-		const allCategories = tokens.map((token) => {
-			return typeof token === 'string'
-				? categorySuggestions[token]
-				: token;
-		});
-		// We do nothing if the category is not selected
-		// from suggestions.
-		if (includes(allCategories, null)) {
-			return false;
-		}
-		setAttributes({ categories: allCategories });
-	};
+	}, [] ); 
 
-	// Suggestion list
-	const isStillMounted = useRef();
-
-	useEffect(() => {
-		isStillMounted.current = true;
-
-		apiFetch({
-			path: addQueryArgs(`/wp/v2/categories`, CATEGORIES_LIST_QUERY),
-		})
-			.then((data) => {
-				if (isStillMounted.current) {
-					setCategoriesList(data);
-				}
-			})
-			.catch(() => {
-				if (isStillMounted.current) {
-					setCategoriesList([]);
-				}
-			});
-
-		return () => {
-			isStillMounted.current = false;
-		};
-	}, []);
+	const categoryOptions = [
+		{
+			value: '',
+			label: 'All Categories',
+		},
+		...(categoriesList || []).map( ( category ) => ( {
+			label: category.name,
+			value: String( category.id ),
+		})),
+	];
 
 	const statusOptions = [
 		{
@@ -224,19 +181,37 @@ export default function Edit({ attributes, setAttributes }) {
 						</ToggleGroupControl>
 					</PanelBody>
 					<PanelBody title={__('Filter', 'category-posts', 'category-posts')} initialOpen={ false }>
-						<QueryControls
-							{...{ order, orderBy }}
-							onOrderChange={(value) =>
-								setAttributes({ order: value })
+						<ComboboxControl
+							label={ __( 'Category' ) }
+							options={ categoryOptions }
+							value={ categories }
+							onChange={( newCategory) =>
+								setAttributes({
+									categories: newCategory,
+								})
 							}
-							onOrderByChange={(value) =>
+							allowReset={ false }
+						/>
+						<SelectControl
+							label="Order By"
+							value={ orderBy }
+							options={[
+								{ label: 'Date', value: 'date' },
+								{ label: 'Title', value: 'title' },
+								{ label: 'Number of comments', value: 'comment_count' },
+								{ label: 'Random', value: 'rand' },
+							]}
+							onChange={(value) =>
 								setAttributes({ orderBy: value })
 							}
-							categorySuggestions={categorySuggestions}
-							onCategoryChange={selectCategories}
-							selectedCategories={categories}
 						/>
-						<br />
+						<ToggleControl
+							label="Order"
+							checked={ order }
+							onChange={(value) =>
+								setAttributes({ order: value })
+							}
+						/>
 						<ComboboxControl
 							label={ __( 'Status' ) }
 							options={ statusOptions }
