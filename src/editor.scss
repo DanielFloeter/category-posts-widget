@@ -4,6 +4,19 @@
  * Replace them with your own styles or remove the file completely.
  */
 
+/**
+ * Highlight of a group of related options in the inspector,
+ * the block counterpart of the widget's .cpwp_ident.
+ *
+ * No sub grouping, no left edge, no change to the layout:
+ * the background just extends 5px around the options.
+ */
+.cpwp-block-ident {
+	background: #f6f7f7;
+	margin: 0 -5px;
+	padding: 5px;
+}
+
 
 
 /**

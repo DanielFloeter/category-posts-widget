@@ -276,7 +276,7 @@ export default function Edit({ attributes, setAttributes }) {
 							/>
 						)}
 						{dateRange === 'between_dates' && (
-							<>
+							<div className="cpwp-block-ident">
 								<PanelRow>
 									<label>After</label>
 									<Button isLink={true} onClick={() => setOpenStartDatePopup( ! openStartDatePopup )}>
@@ -315,7 +315,7 @@ export default function Edit({ attributes, setAttributes }) {
 										</Popover>
 									) }
 								</PanelRow>
-							</>
+							</div>
 						)}
 						<br />
 						<ToggleControl
@@ -347,7 +347,6 @@ export default function Edit({ attributes, setAttributes }) {
 						/>
 					</PanelBody>
 					<PanelBody title={__('Post details', 'category-posts')} initialOpen={ false }>
-						<PanelRow>{__('Displayed parts', 'category-posts')}</PanelRow>
 						<TemplateControl
 							label={__('Template', 'category-posts')}
 							help={__('Click a placeholder to insert it at the cursor position, or type % inside the field. In addition you can use text, HTML and Dashicons.', 'category-posts')}
@@ -359,222 +358,236 @@ export default function Edit({ attributes, setAttributes }) {
 							rows={ 8 }
 						/>
 						<PanelRow>{__('Title settings', 'category-posts')}</PanelRow>
-						<ToggleGroupControl
-							label={__('Item title heading level', 'category-posts')}
-							value={itemTitleLevel}
-							isBlock
-							isAdaptiveWidth
-							onChange={(itemTitleLevel) =>
-								setAttributes({
-									itemTitleLevel,
-								})}
-						>
-							<ToggleGroupControlOption value="Inline" label="Inline" />
-							<ToggleGroupControlOption value="H1" label="H1" />
-							<ToggleGroupControlOption value="H2" label="H2" />
-							<ToggleGroupControlOption value="H3" label="H3" />
-							<ToggleGroupControlOption value="H4" label="H4" />
-							<ToggleGroupControlOption value="H5" label="H5" />
-							<ToggleGroupControlOption value="H6" label="H6" />
-						</ToggleGroupControl>
-						<NumberControl
-							label={__('Item title lines', 'category-posts')}
-							value={itemTitleLines}
-							onChange={(itemTitleLines) => setAttributes({ itemTitleLines })}
-							min={1}
-							allowReset={false}
-						/>
+						<div className="cpwp-block-ident">
+							<ToggleGroupControl
+								label={__('Item title heading level', 'category-posts')}
+								value={itemTitleLevel}
+								isBlock
+								isAdaptiveWidth
+								onChange={(itemTitleLevel) =>
+									setAttributes({
+										itemTitleLevel,
+									})}
+							>
+								<ToggleGroupControlOption value="Inline" label="Inline" />
+								<ToggleGroupControlOption value="H1" label="H1" />
+								<ToggleGroupControlOption value="H2" label="H2" />
+								<ToggleGroupControlOption value="H3" label="H3" />
+								<ToggleGroupControlOption value="H4" label="H4" />
+								<ToggleGroupControlOption value="H5" label="H5" />
+								<ToggleGroupControlOption value="H6" label="H6" />
+							</ToggleGroupControl>
+							<NumberControl
+								label={__('Item title lines', 'category-posts')}
+								value={itemTitleLines}
+								onChange={(itemTitleLines) => setAttributes({ itemTitleLines })}
+								min={1}
+								allowReset={false}
+							/>
+						</div>
 						<PanelRow>{__('Excerpt settings', 'category-posts')}</PanelRow>
-						<NumberControl
-							label={__('Excerpt lines', 'category-posts')}
-							value={excerptLines}
-							onChange={(excerptLines) => setAttributes({ excerptLines })}
-							min={1}
-							allowReset={false}
-						/>
-						<TextControl
-							label={__('Read more text', 'category-posts')}
-							value={excerptMoreText}
-							onChange={(excerptMoreText) => setAttributes({ excerptMoreText })}
-						/>
+						<div className="cpwp-block-ident">
+							<NumberControl
+								label={__('Excerpt lines', 'category-posts')}
+								value={excerptLines}
+								onChange={(excerptLines) => setAttributes({ excerptLines })}
+								min={1}
+								allowReset={false}
+							/>
+							<TextControl
+								label={__('Read more text', 'category-posts')}
+								value={excerptMoreText}
+								onChange={(excerptMoreText) => setAttributes({ excerptMoreText })}
+							/>
+						</div>
 						<PanelRow>{__('Date format settings', 'category-posts')}</PanelRow>
-						<SelectControl
-							label={__('Date format', 'category-posts')}
-							value={presetDateFormat}
-							onChange={(presetDateFormat) => setAttributes({ presetDateFormat })}
-							options={[
-								{ label: 'Site date and time', value: 'sitedateandtime' },
-								{ label: 'Site date', value: 'sitedate' },
-								{ label: 'Reader\'s local date and time', value: 'localsitedateandtime' },
-								{ label: 'Reader\'s local date', value: 'localsitedate' },
-								{ label: 'PHP style format', value: 'other' },
-							]}
-						/>
-						<TextControl
-							label={__('PHP style date format', 'category-posts')}
-							value={dateFormat}
-							onChange={(dateFormat) => setAttributes({ dateFormat })}
-						/>
-						<NumberControl
-							label={__('Show past time up to x-days', 'category-posts')}
-							value={datePastTime}
-							onChange={(datePastTime) => setAttributes({ datePastTime })}
-							min={0}
-							allowReset={false}
-						/>
+						<div className="cpwp-block-ident">
+							<SelectControl
+								label={__('Date format', 'category-posts')}
+								value={presetDateFormat}
+								onChange={(presetDateFormat) => setAttributes({ presetDateFormat })}
+								options={[
+									{ label: 'Site date and time', value: 'sitedateandtime' },
+									{ label: 'Site date', value: 'sitedate' },
+									{ label: 'Reader\'s local date and time', value: 'localsitedateandtime' },
+									{ label: 'Reader\'s local date', value: 'localsitedate' },
+									{ label: 'PHP style format', value: 'other' },
+								]}
+							/>
+							<TextControl
+								label={__('PHP style date format', 'category-posts')}
+								value={dateFormat}
+								onChange={(dateFormat) => setAttributes({ dateFormat })}
+							/>
+							<NumberControl
+								label={__('Show past time up to x-days', 'category-posts')}
+								value={datePastTime}
+								onChange={(datePastTime) => setAttributes({ datePastTime })}
+								min={0}
+								allowReset={false}
+							/>
+						</div>
 						<PanelRow>{__('Thumbnail settings', 'category-posts')}</PanelRow>
-						<NumberControl
-							label={__('Thumbnail width', 'category-posts')}
-							value={thumbW}
-							onChange={(thumbW) => setAttributes({ thumbW })}
-							min={0}
-							allowReset={false}
-						/>
-						<NumberControl
-							label={__('Thumbnail height', 'category-posts')}
-							value={thumbH}
-							onChange={(thumbH) => setAttributes({ thumbH })}
-							min={0}
-							allowReset={false}
-						/>
-						<SelectControl
-							label={__('Hover effect', 'category-posts')}
-							value={thumbHover}
-							onChange={(thumbHover) => setAttributes({ thumbHover })}
-							options={[
-								{ label: 'None', value: 'none' },
-								{ label: 'Darker', value: 'dark' },
-								{ label: 'Brighter', value: 'white' },
-								{ label: 'Zoom in', value: 'scale' },
-								{ label: 'Blur', value: 'blur' },
-								{ label: 'Icon', value: 'icon' },
-							]}
-						/>
-						<SelectControl
-							label={__('Post format indicator', 'category-posts')}
-							value={showPostFormat}
-							onChange={(showPostFormat) => setAttributes({ showPostFormat })}
-							options={[
-								{ label: 'None', value: 'none' },
-								{ label: 'Top left', value: 'topleft' },
-								{ label: 'Bottom left', value: 'bottomleft' },
-								{ label: 'Center', value: 'ceter' },
-								{ label: 'Top right', value: 'topright' },
-								{ label: 'Bottom right', value: 'bottomright' },
-								{ label: 'HTML without styling', value: 'nocss' },
-							]}
-						/>
-						<ToggleControl
-							label={__('Do not wrap thumbnail with text', 'category-posts')}
-							checked={textDoNotWrapThumb}
-							onChange={() => setAttributes({ textDoNotWrapThumb: !textDoNotWrapThumb })}
-						/>
-						<ToggleControl
-							label={__('Everything is a link', 'category-posts')}
-							checked={everythingIsLink}
-							onChange={() => setAttributes({ everythingIsLink: !everythingIsLink })}
-						/>
+						<div className="cpwp-block-ident">
+							<NumberControl
+								label={__('Thumbnail width', 'category-posts')}
+								value={thumbW}
+								onChange={(thumbW) => setAttributes({ thumbW })}
+								min={0}
+								allowReset={false}
+							/>
+							<NumberControl
+								label={__('Thumbnail height', 'category-posts')}
+								value={thumbH}
+								onChange={(thumbH) => setAttributes({ thumbH })}
+								min={0}
+								allowReset={false}
+							/>
+							<SelectControl
+								label={__('Hover effect', 'category-posts')}
+								value={thumbHover}
+								onChange={(thumbHover) => setAttributes({ thumbHover })}
+								options={[
+									{ label: 'None', value: 'none' },
+									{ label: 'Darker', value: 'dark' },
+									{ label: 'Brighter', value: 'white' },
+									{ label: 'Zoom in', value: 'scale' },
+									{ label: 'Blur', value: 'blur' },
+									{ label: 'Icon', value: 'icon' },
+								]}
+							/>
+							<SelectControl
+								label={__('Post format indicator', 'category-posts')}
+								value={showPostFormat}
+								onChange={(showPostFormat) => setAttributes({ showPostFormat })}
+								options={[
+									{ label: 'None', value: 'none' },
+									{ label: 'Top left', value: 'topleft' },
+									{ label: 'Bottom left', value: 'bottomleft' },
+									{ label: 'Center', value: 'ceter' },
+									{ label: 'Top right', value: 'topright' },
+									{ label: 'Bottom right', value: 'bottomright' },
+									{ label: 'HTML without styling', value: 'nocss' },
+								]}
+							/>
+							<ToggleControl
+								label={__('Do not wrap thumbnail with text', 'category-posts')}
+								checked={textDoNotWrapThumb}
+								onChange={() => setAttributes({ textDoNotWrapThumb: !textDoNotWrapThumb })}
+							/>
+							<ToggleControl
+								label={__('Everything is a link', 'category-posts')}
+								checked={everythingIsLink}
+								onChange={() => setAttributes({ everythingIsLink: !everythingIsLink })}
+							/>
+						</div>
 					</PanelBody>
 					<PanelBody title={__('General', 'category-posts')} initialOpen={ false }>
 						<PanelRow>Inherited CSS</PanelRow>
-						<ToggleControl
-							label={__('Disable the built-in CSS', 'category-posts')}
-							checked={disableCss}
-							onChange={() =>
-								setAttributes({
-									disableCss: !disableCss,
-								})
-							}
-						/>
-						<ToggleControl
-							label={__('Disable only font styles', 'category-posts')}
-							checked={disableFontStyles}
-							onChange={() =>
-								setAttributes({
-									disableFontStyles: !disableFontStyles,
-								})
-							}
-						/>
-						<ToggleControl
-							label={__('Disable Theme\'s styles', 'category-posts')}
-							checked={disableThemeStyles}
-							onChange={() =>
-								setAttributes({
-									disableThemeStyles: !disableThemeStyles,
-								})
-							}
-						/>
-						<PanelRow>Interim text</PanelRow>
-						<SelectControl
-							label={ __( 'When there are no matches:', 'category-posts' ) }
-							value={ noMatchHandling }
-							onChange={( noMatchHandling ) => 
-								setAttributes( {
-									noMatchHandling
-								} )}
-							options={ [
-								{ value: 'nothing', label: __( 'Display empty widget', 'category-posts' ) },
-								{ value: 'hide', label: __( 'Hide Widget', 'category-posts' ) },
-								{ value: 'text', label: __( 'Show text', 'category-posts' ) },
-							] }
-							__next40pxDefaultSize
-							__nextHasNoMarginBottom
-						/>
-						{noMatchHandling === 'text' && (
-							<TextareaControl
-								__nextHasNoMarginBottom
-								label="Text"
-								value={ noMatchText }
-								onChange={( noMatchText ) => 
-									setAttributes( {
-										noMatchText
-									})}
-								rows={ 4 }
+						<div className="cpwp-block-ident">
+							<ToggleControl
+								label={__('Disable the built-in CSS', 'category-posts')}
+								checked={disableCss}
+								onChange={() =>
+									setAttributes({
+										disableCss: !disableCss,
+									})
+								}
 							/>
-						)}
+							<ToggleControl
+								label={__('Disable only font styles', 'category-posts')}
+								checked={disableFontStyles}
+								onChange={() =>
+									setAttributes({
+										disableFontStyles: !disableFontStyles,
+									})
+								}
+							/>
+							<ToggleControl
+								label={__('Disable Theme\'s styles', 'category-posts')}
+								checked={disableThemeStyles}
+								onChange={() =>
+									setAttributes({
+										disableThemeStyles: !disableThemeStyles,
+									})
+								}
+							/>
+						</div>
+						<PanelRow>Interim text</PanelRow>
+						<div className="cpwp-block-ident">
+							<SelectControl
+								label={ __( 'When there are no matches:', 'category-posts' ) }
+								value={ noMatchHandling }
+								onChange={( noMatchHandling ) => 
+									setAttributes( {
+										noMatchHandling
+									} )}
+								options={ [
+									{ value: 'nothing', label: __( 'Display empty widget', 'category-posts' ) },
+									{ value: 'hide', label: __( 'Hide Widget', 'category-posts' ) },
+									{ value: 'text', label: __( 'Show text', 'category-posts' ) },
+								] }
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+							/>
+							{noMatchHandling === 'text' && (
+								<TextareaControl
+									__nextHasNoMarginBottom
+									label="Text"
+									value={ noMatchText }
+									onChange={( noMatchText ) => 
+										setAttributes( {
+											noMatchText
+										})}
+									rows={ 4 }
+								/>
+							)}
+						</div>
 						<PanelRow>Ajax API</PanelRow>
-						<ToggleControl
-							label={__('Enable Load More', 'category-posts')}
-							checked={enableLoadmore}
-							onChange={() =>
-								setAttributes({
-									enableLoadmore: !enableLoadmore,
-								})
-							}
-						/>
-						{enableLoadmore && (
-							<>
-								<ToggleControl
-									label={__('Scroll to the loaded items', 'category-posts')}
-									checked={loadmoreScrollTo}
-									onChange={() =>
-										setAttributes({
-											loadmoreScrollTo: !loadmoreScrollTo,
-										})
-									}
+						<div className="cpwp-block-ident">
+							<ToggleControl
+								label={__('Enable Load More', 'category-posts')}
+								checked={enableLoadmore}
+								onChange={() =>
+									setAttributes({
+										enableLoadmore: !enableLoadmore,
+									})
+								}
+							/>
+							{enableLoadmore && (
+								<>
+									<ToggleControl
+										label={__('Scroll to the loaded items', 'category-posts')}
+										checked={loadmoreScrollTo}
+										onChange={() =>
+											setAttributes({
+												loadmoreScrollTo: !loadmoreScrollTo,
+											})
+										}
 									
-								/>
-								<TextControl
-									label={__('Button text', 'category-posts')}
-									help={[
-										__('The following placeholders will be replaced with the relevant information: (%step% - Loaded items, %all% - All possible items for the set filter query)', 'category-posts'),
-									]}
-									value={loadmoreText}
-									onChange={(loadmoreText) =>
-										setAttributes({
-											loadmoreText,
-										})}
-								/>
-								<TextControl
-									label={__('Loading text', 'category-posts')}
-									value={loadingText}
-									onChange={(loadingText) =>
-										setAttributes({
-											loadingText,
-										})}
-								/>
-							</>
-						)}
+									/>
+									<TextControl
+										label={__('Button text', 'category-posts')}
+										help={[
+											__('The following placeholders will be replaced with the relevant information: (%step% - Loaded items, %all% - All possible items for the set filter query)', 'category-posts'),
+										]}
+										value={loadmoreText}
+										onChange={(loadmoreText) =>
+											setAttributes({
+												loadmoreText,
+											})}
+									/>
+									<TextControl
+										label={__('Loading text', 'category-posts')}
+										value={loadingText}
+										onChange={(loadingText) =>
+											setAttributes({
+												loadingText,
+											})}
+									/>
+								</>
+							)}
+						</div>
 					</PanelBody>
 					<PanelBody title={__('Footer', 'category-posts')} initialOpen={ false }>
 						<TextControl
