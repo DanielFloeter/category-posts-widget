@@ -32,6 +32,22 @@ function embed_loadmore_scripts() {
 }
 
 /**
+ * Normalize a block load-more ID so stored block settings can be resolved
+ * consistently for both the prefixed and unprefixed form.
+ *
+ * @param string $id The load-more identifier.
+ *
+ * @return string The normalized block ID.
+ */
+function normalize_block_loadmore_id( $id ) {
+	if ( empty( $id ) ) {
+		return '';
+	}
+
+	return 0 === strpos( $id, 'block-' ) ? $id : 'block-' . $id;
+}
+
+/**
  * Generate the JSON response which includes additional element as a response
  * to a "load more" request.
  *
@@ -68,6 +84,17 @@ function get_next_elements( \WP_REST_Request $request ) {
 					if ( isset( $allsettings[ $id ] ) ) {
 						$virtual_widget = new Virtual_Widget( '', '', $allsettings[ $id ] );
 						$ret = $virtual_widget->get_elements_HTML( $start, $number, $context );
+					}
+				}
+				break;
+			case 'block':
+				if ( 2 === count( $id_components ) ) {
+					$block_id = normalize_block_loadmore_id( $id_components[1] );
+					$settings = get_block_loadmore_settings( $block_id );
+					if ( false !== $settings ) {
+						$instance = build_block_instance( $settings );
+						$widget = new Widget();
+						$ret = $widget->get_elements_HTML( $instance, $context, $start, $number );
 					}
 				}
 				break;

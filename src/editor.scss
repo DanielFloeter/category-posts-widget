@@ -4,6 +4,107 @@
  * Replace them with your own styles or remove the file completely.
  */
 
-.wp-block-tiptip-category-posts-block {
-	border: 1px dotted #f00;
+
+
+/**
+ * Template control – "Add Placeholder" chips and autocomplete.
+ */
+.cpwp-template-control {
+
+	.cpwp-template-control__field {
+		position: relative;
+	}
+
+	textarea.components-textarea-control__input {
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		font-size: 13px;
+		line-height: 1.6;
+	}
+
+	// Chip row below the textarea.
+	.cpwp-template-control__placeholders {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-top: 8px;
+	}
+
+	.components-button.cpwp-template-control__chip {
+		height: 26px;
+		padding: 0 8px;
+		border-radius: 13px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		font-size: 12px;
+		line-height: 1;
+
+		&.is-meta {
+			font-family: inherit;
+			color: #757575;
+		}
+
+		&:hover:not(:disabled) {
+			color: var(--wp-admin-theme-color, #3858e9);
+		}
+	}
+
+	// Autocomplete list, anchored below the textarea.
+	.cpwp-template-control__suggestions {
+		position: absolute;
+		z-index: 10;
+		top: 100%;
+		left: 0;
+		right: 0;
+		margin: 2px 0 0;
+		padding: 4px;
+		max-height: 200px;
+		overflow-y: auto;
+		list-style: none;
+		background: #fff;
+		border: 1px solid #1e1e1e;
+		border-radius: 2px;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
+
+		li {
+			margin: 0;
+		}
+	}
+
+	.cpwp-template-control__suggestion {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		width: 100%;
+		padding: 5px 8px;
+		border: 0;
+		border-radius: 2px;
+		background: none;
+		font: inherit;
+		font-size: 13px;
+		text-align: left;
+		cursor: pointer;
+
+		&:hover,
+		&.is-active {
+			background: var(--wp-admin-theme-color, #3858e9);
+			color: #fff;
+
+			.cpwp-template-control__description {
+				color: #fff;
+				opacity: 0.85;
+			}
+		}
+	}
+
+	.cpwp-template-control__tag {
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		font-size: 12px;
+		white-space: nowrap;
+	}
+
+	.cpwp-template-control__description {
+		margin-left: auto;
+		color: #757575;
+		font-size: 11px;
+		text-align: right;
+	}
 }

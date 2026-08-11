@@ -85,6 +85,19 @@ class testWidgetFront extends WP_UnitTestCase {
 	}
 
 	/**
+	 *  Ensure block load-more IDs resolve to the stored block settings.
+	 */
+	public function testBlockLoadMoreIdNormalization() {
+		$attributes = array( 'enableLoadmore' => true, 'num' => 2 );
+		$block_id   = 'block-test-block-id';
+
+		\categoryPosts\store_block_loadmore_settings( $block_id, $attributes );
+
+		$this->assertSame( $attributes, \categoryPosts\get_block_loadmore_settings( $block_id ) );
+		$this->assertSame( $attributes, \categoryPosts\get_block_loadmore_settings( \categoryPosts\normalize_block_loadmore_id( $block_id ) ) );
+	}
+
+	/**
 	 *  Test the titleHTML method of the widget
 	 */
 	function testtitleHTML() {

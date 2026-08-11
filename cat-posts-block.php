@@ -10,6 +10,119 @@
 namespace categoryPosts;
 
 /**
+ * Build the widget instance data from block attributes.
+ *
+ * @param array $attributes The block attributes.
+ *
+ * @return array The widget instance data.
+ */
+function build_block_instance( $attributes ) {
+	$instance = array();
+
+	if ( ! is_array( $attributes ) ) {
+		return $instance;
+	}
+
+	$instance['title']                  = isset( $attributes['title'] ) ? $attributes['title'] : '';
+	$instance['title_link']             = isset( $attributes['titleLink'] ) ? $attributes['titleLink'] : false;
+	$instance['title_level']            = isset( $attributes['titleLevel'] ) ? $attributes['titleLevel'] : 'Initial';
+	$instance['title_link_url']         = isset( $attributes['titleLinkUrl'] ) ? $attributes['titleLinkUrl'] : '';
+	$instance['hide_title']             = isset( $attributes['hideTitle'] ) ? $attributes['hideTitle'] : false;
+	$instance['category_suggestions']   = isset( $attributes['categorySuggestions'] ) ? $attributes['categorySuggestions'] : array();
+	$instance['select_categories']      = isset( $attributes['selectCategories'] ) ? $attributes['selectCategories'] : array();
+	$instance['cat']                    = isset( $attributes['categories'] ) ? $attributes['categories'] : '';
+	$instance['num']                    = isset( $attributes['num'] ) ? $attributes['num'] : 10;
+	$instance['offset']                 = isset( $attributes['offset'] ) ? $attributes['offset'] : 1;
+	$instance['sort_by']                = isset( $attributes['orderBy'] ) ? $attributes['orderBy'] : 'date';
+	$instance['status']                 = isset( $attributes['status'] ) ? $attributes['status'] : 'publish';
+	$instance['asc_sort_order']         = isset( $attributes['order'] ) ? $attributes['order'] : true;
+	$instance['exclude_current_post']   = isset( $attributes['excludeCurrentPost'] ) ? $attributes['excludeCurrentPost'] : false;
+	$instance['hide_no_thumb']          = isset( $attributes['hideNoThumb'] ) ? $attributes['hideNoThumb'] : false;
+	$instance['sticky']                 = isset( $attributes['sticky'] ) ? $attributes['sticky'] : false;
+	$instance['footer_link_text']       = isset( $attributes['footerLinkText'] ) ? $attributes['footerLinkText'] : '';
+	$instance['footer_link']            = isset( $attributes['footerLink'] ) ? $attributes['footerLink'] : '';
+	$instance['item_title_level']       = isset( $attributes['itemTitleLevel'] ) ? $attributes['itemTitleLevel'] : 'Inline';
+	$instance['item_title_lines']       = isset( $attributes['itemTitleLines'] ) ? $attributes['itemTitleLines'] : 2;
+	$instance['thumb_w']                = isset( $attributes['thumbW'] ) ? $attributes['thumbW'] : 150;
+	$instance['thumb_fluid_width']      = isset( $attributes['thumbFluidWidth'] ) ? $attributes['thumbFluidWidth'] : 100;
+	$instance['thumb_h']                = isset( $attributes['thumbH'] ) ? $attributes['thumbH'] : 150;
+	$instance['thumb_hover']            = isset( $attributes['thumbHover'] ) ? $attributes['thumbHover'] : 'none';
+	$instance['hide_post_titles']       = isset( $attributes['hidePostTitles'] ) ? $attributes['hidePostTitles'] : false;
+	$instance['excerpt_lines']          = isset( $attributes['excerptLines'] ) ? $attributes['excerptLines'] : 4;
+	$instance['excerpt_length']         = isset( $attributes['excerptLength'] ) ? $attributes['excerptLength'] : 0;
+	$instance['excerpt_more_text']      = isset( $attributes['excerptMoreText'] ) ? $attributes['excerptMoreText'] : '';
+	$instance['excerpt_filters']        = isset( $attributes['excerptFilters'] ) ? $attributes['excerptFilters'] : false;
+	$instance['comment_num']            = isset( $attributes['commentNum'] ) ? $attributes['commentNum'] : false;
+	$instance['disable_css']            = isset( $attributes['disableCss'] ) ? $attributes['disableCss'] : false;
+	$instance['disable_font_styles']    = isset( $attributes['disableFontStyles'] ) ? $attributes['disableFontStyles'] : false;
+	$instance['disable_theme_styles']   = isset( $attributes['disableThemeStyles'] ) ? $attributes['disableThemeStyles'] : false;
+	$instance['show_post_format']       = isset( $attributes['showPostFormat'] ) ? $attributes['showPostFormat'] : 'none';
+	$instance['no_cat_childs']          = isset( $attributes['noCatChilds'] ) ? $attributes['noCatChilds'] : false;
+	$instance['everything_is_link']     = isset( $attributes['everythingIsLink'] ) ? $attributes['everythingIsLink'] : false;
+	$instance['preset_date_format']     = isset( $attributes['presetDateFormat'] ) ? $attributes['presetDateFormat'] : 'sitedate';
+	$instance['date_format']            = isset( $attributes['dateFormat'] ) ? $attributes['dateFormat'] : '';
+	$instance['date_past_time']         = isset( $attributes['datePastTime'] ) ? $attributes['datePastTime'] : '0';
+	$instance['template']               = isset( $attributes['template'] ) ? $attributes['template'] : "%title%\n\n%thumb%";
+	$instance['text_do_not_wrap_thumb'] = isset( $attributes['textDoNotWrapThumb'] ) ? $attributes['textDoNotWrapThumb'] : false;
+	$instance['enable_loadmore']        = isset( $attributes['enableLoadmore'] ) ? $attributes['enableLoadmore'] : false;
+	$instance['loadmore_scrollTo']      = isset( $attributes['loadmoreScrollTo'] ) ? $attributes['loadmoreScrollTo'] : false;
+	$instance['loadmore_text']          = isset( $attributes['loadmoreText'] ) ? $attributes['loadmoreText'] : 'Load More (%step%/%all%)';
+	$instance['loading_text']           = isset( $attributes['loadingText'] ) ? $attributes['loadingText'] : 'Loading...';
+	$instance['date_range']             = isset( $attributes['dateRange'] ) ? $attributes['dateRange'] : 'off';
+	$instance['start_date']             = isset( $attributes['startDate'] ) ? $attributes['startDate'] : '';
+	$instance['end_date']               = isset( $attributes['endDate'] ) ? $attributes['endDate'] : '';
+	$instance['days_ago']               = isset( $attributes['daysAgo'] ) ? $attributes['daysAgo'] : 30;
+	$instance['no_match_handling']      = isset( $attributes['noMatchHandling'] ) ? $attributes['noMatchHandling'] : 'nothing';
+	$instance['no_match_text']          = isset( $attributes['noMatchText'] ) ? $attributes['noMatchText'] : '';
+	$instance['default_thunmbnail']     = isset( $attributes['defaultThunmbnail'] ) ? $attributes['defaultThunmbnail'] : 0;
+	$instance['ver']                    = isset( $attributes['ver'] ) ? $attributes['ver'] : '4.9.22';
+
+	return $instance;
+}
+
+/**
+ * Get a stable ID for a block-based load-more request.
+ *
+ * @param array $attributes The block attributes.
+ *
+ * @return string The block load-more ID.
+ */
+function get_block_loadmore_id( $attributes ) {
+	$hash = md5( wp_json_encode( $attributes ) );
+	return 'block-' . substr( $hash, 0, 12 );
+}
+
+/**
+ * Store block settings for load-more requests.
+ *
+ * @param string $id The block load-more ID.
+ * @param array  $attributes The block attributes.
+ *
+ * @return void
+ */
+function store_block_loadmore_settings( $id, $attributes ) {
+	if ( empty( $id ) || ! is_array( $attributes ) ) {
+		return;
+	}
+	set_transient( 'cat_posts_block_' . $id, $attributes, HOUR_IN_SECONDS );
+}
+
+/**
+ * Retrieve stored block settings for load-more requests.
+ *
+ * @param string $id The block load-more ID.
+ *
+ * @return array|false Stored attributes or false.
+ */
+function get_block_loadmore_settings( $id ) {
+	if ( empty( $id ) ) {
+		return false;
+	}
+	$settings = get_transient( 'cat_posts_block_' . $id );
+	return is_array( $settings ) ? $settings : false;
+}
+
+/**
  * Renders the `tiptip/category-posts-block` on server.
  *
  * @see WP_Widget_Archives
@@ -25,84 +138,35 @@ function render_category_posts_block( $attributes ) {
 
 	// Get HTML
 	$widget = new Widget();
-	$instance = array();
-
-	$instance['title']                  = $attributes['title'];
-	$instance['title_link']             = $attributes['titleLink'];
-	$instance['title_level']            = $attributes['titleLevel'];
-	$instance['title_link_url']         = $attributes['titleLinkUrl'];
-	$instance['hide_title']             = $attributes['hideTitle'];
-	$instance['category_suggestions']   = $attributes['categorySuggestions'];
-	$instance['select_categories']      = $attributes['selectCategories'];
-	$instance['cat']                    = $attributes['categories'];
-	$instance['num']                    = $attributes['num'];
-	$instance['offset']                 = $attributes['offset'];
-	$instance['sort_by']                = $attributes['orderBy'];
-	$instance['status']                 = $attributes['status'];
-	$instance['asc_sort_order']         = $attributes['order'];
-	$instance['exclude_current_post']   = $attributes['excludeCurrentPost'];
-	$instance['hide_no_thumb']          = $attributes['hideNoThumb'];
-	$instance['sticky']                 = $attributes['sticky'];
-	$instance['footer_link_text']       = $attributes['footerLinkText'];
-	$instance['footer_link']            = $attributes['footerLink'];
-	$instance['item_title_level']       = $attributes['itemTitleLevel'];
-	$instance['item_title_lines']       = $attributes['itemTitleLines'];
-	$instance['thumb_w']                = $attributes['thumbW'];
-	$instance['thumb_fluid_width']      = $attributes['thumbFluidWidth'];
-	$instance['thumb_h']                = $attributes['thumbH'];
-	$instance['thumb_hover']            = $attributes['thumbHover'];
-	$instance['hide_post_titles']       = $attributes['hidePostTitles'];
-	$instance['excerpt_lines']          = $attributes['excerptLines'];
-	$instance['excerpt_length']         = $attributes['excerptLength'];
-	$instance['excerpt_more_text']      = $attributes['excerptMoreText'];
-	$instance['excerpt_filters']        = $attributes['excerptFilters'];
-	$instance['comment_num']            = $attributes['commentNum'];
-	$instance['disable_css']            = $attributes['disableCss'];
-	$instance['disable_font_styles']    = $attributes['disableFontStyles'];
-	$instance['disable_theme_styles']   = $attributes['disableThemeStyles'];
-	$instance['show_post_format']       = $attributes['showPostFormat'];
-	$instance['no_cat_childs']           = $attributes['noCatChilds'];
-	$instance['everything_is_link']     = $attributes['everythingIsLink'];
-	$instance['preset_date_format']     = $attributes['presetDateFormat'];
-	$instance['date_format']            = $attributes['dateFormat'];
-	$instance['date_past_time']         = $attributes['datePastTime'];
-	$instance['template']               = $attributes['template'];
-	$instance['text_do_not_wrap_thumb'] = $attributes['textDoNotWrapThumb'];
-	$instance['enable_loadmore']        = $attributes['enableLoadmore'];
-	$instance['loadmore_scroll_to']     = $attributes['loadmoreScrollTo'];
-	$instance['loadmore_text']          = $attributes['loadmoreText'];
-	$instance['loading_text']           = $attributes['loadingText'];
-	$instance['date_range']             = $attributes['dateRange'];
-	$instance['start_date']             = $attributes['startDate'];
-	$instance['end_date']               = $attributes['endDate'];
-	$instance['days_ago']               = $attributes['daysAgo'];
-	$instance['no_match_handling']      = $attributes['noMatchHandling'];
-	$instance['no_match_text']          = $attributes['noMatchText'];
-	$instance['default_thunmbnail']     = $attributes['defaultThunmbnail'];
-	$instance['ver']                    = $attributes['ver'];
-
+	$instance = build_block_instance( $attributes );
 	$instance = upgrade_settings( $instance );
-	
+
+	$block_id = get_block_loadmore_id( $attributes );
+	store_block_loadmore_settings( $block_id, $attributes );
+	$widget->number = $block_id;
+
+
 	$current_post_id = '';
 	if ( is_singular() ) {
 		$current_post_id = get_the_ID();
 	}
 
 	$items = $widget->get_elements_HTML( $instance, $current_post_id, 0, 0 );
+	$ret   = '';
 
 	if ( ( 'nothing' === $instance['no_match_handling'] ) || ! empty( $items ) ) {
 		$ret = $widget->titleHTML( $before_title, $after_title, $instance );
 
-		$ret .= "<ul>" . implode( $items ) . "</ul>";
+		$ret .= '<ul>' . implode( $items ) . '</ul>';
 
 		// Load more only if we think we have more items.
 		if ( count( $items ) === (int) $instance['num'] ) {
 			$ret .= $widget->loadMoreHTML( $instance );
 		}
 	} elseif ( 'text' === $instance['no_match_handling'] ) {
-		echo $widget->titleHTML( $before_title, $after_title, $instance );
-		echo esc_html( $instance['no_match_text'] );
-		echo $widget->footerHTML( $instance );
+		$ret = $widget->titleHTML( $before_title, $after_title, $instance );
+		$ret .= esc_html( $instance['no_match_text'] );
+		$ret .= $widget->footerHTML( $instance );
 	}
 
 	return $ret;

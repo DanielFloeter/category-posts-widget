@@ -461,6 +461,9 @@ class Widget extends \WP_Widget {
 		} else {
 			$id = str_replace( WIDGET_BASE_ID . '-', '', $this->number );
 		}
+		if ( 0 === strpos( $this->number, 'block-' ) ) {
+			$id = 'block-' . substr( $this->number, 6 );
+		}
 
 		// Placeholder
 		$placeholder_text = $instance['loadmore_text'] !== '' ? $instance['loadmore_text'] : sprintf( esc_attr__( 'Load More (%s/%s)', 'category-posts' ), '%step%', '%all%');
