@@ -24,6 +24,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Virtual_Widget {
 
 	/**
+	 * The rendering contexts a virtual widget can be used in.
+	 *
+	 * They decide how the CSS selectors are built:
+	 *  - widget:    id on the outer element, '-internal' id on the ul.
+	 *  - shortcode: id on the outer element, plus theme specific workarounds.
+	 *  - block:     id on the wrapper element only.
+	 *
+	 * @since 4.9.23
+	 */
+	const CONTEXT_WIDGET    = 'widget';
+	const CONTEXT_SHORTCODE = 'shortcode';
+	const CONTEXT_BLOCK     = 'block';
+
+	/**
 	 * A container for all the "active" objects
 	 *
 	 * @var Array
@@ -148,18 +162,27 @@ class Virtual_Widget {
 	/**
 	 *  Calculate the CSS rules required for the widget as is generated based on the settings passed at construction time
 	 *
-	 *  @param bool  $is_shortcode Indicated if rules are generated for a shortcode.
-	 *  @param array $rules "returned" Collection of CSS rules.
+	 *  @param string $context One of the CONTEXT_* constants. For backward compatibility
+	 *                         a bool is accepted as well, true being a shortcode and
+	 *                         false a widget.
+	 *  @param array  $rules   "returned" Collection of CSS rules.
 	 *
 	 *  @since 4.7
 	 */
-	public function getCSSRules( $is_shortcode, &$rules ) {
+	public function getCSSRules( $context, &$rules ) {
+
+		if ( is_bool( $context ) ) { // Signature used before 4.9.23.
+			$context = $context ? self::CONTEXT_SHORTCODE : self::CONTEXT_WIDGET;
+		}
+
+		$is_shortcode = ( self::CONTEXT_SHORTCODE === $context );
+
 		$ret = array();
 		$settings = self::$collection[ $this->id ];
 		$everything_is_link = isset( $settings['everything_is_link'] ) && $settings['everything_is_link'];
 
 		$widget_id = $this->id;
-		if ( ! $is_shortcode ) {
+		if ( self::CONTEXT_WIDGET === $context ) {
 			$widget_id .= '-internal';
 		}
 		$disable_css = isset( $settings['disable_css'] ) && $settings['disable_css'];
@@ -381,15 +404,17 @@ class Virtual_Widget {
 	 *
 	 *  Just a wrapper that output getCSSRules
 	 *
-	 * @param bool $is_shortcode Indicates if we are in the context os a shortcode.
+	 * @param string $context One of the CONTEXT_* constants, see getCSSRules().
 	 *
 	 *  @since 4.7
 	 */
-	public function outputCSS( $is_shortcode ) {
+	public function outputCSS( $context ) {
 		$rules = array();
-		getCSSRules( $is_shortcode, $rules );
-		foreach ( $rules as $rule ) {
-			echo "$rule\n";  // Xss off - raw css can not be html escaped.
+		$this->getCSSRules( $context, $rules );
+		foreach ( $rules as $group ) {
+			foreach ( $group as $rule ) {
+				echo "$rule\n";  // Xss off - raw css can not be html escaped.
+			}
 		}
 	}
 

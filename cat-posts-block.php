@@ -154,6 +154,10 @@ function render_category_posts_block( $attributes ) {
 	$items = $widget->get_elements_HTML( $instance, $current_post_id, 0, 0 );
 	$ret   = '';
 
+	// Id of the wrapper element. $widget->number has to keep its 'block-' prefix
+	// because loadMoreHTML() relies on it, so use a separate variable for the DOM id.
+	$dom_id = WIDGET_BASE_ID . '-' . $block_id;
+
 	if ( ( 'nothing' === $instance['no_match_handling'] ) || ! empty( $items ) ) {
 		$ret = $widget->titleHTML( $before_title, $after_title, $instance );
 
@@ -169,7 +173,30 @@ function render_category_posts_block( $attributes ) {
 		$ret .= $widget->footerHTML( $instance );
 	}
 
-	return $ret;
+	if ( '' === $ret ) {
+		return ''; // Nothing to show, so no style island either.
+	}
+
+	// The CSS rules depend on the settings of this specific block, so they can not be
+	// part of the static stylesheet. wp_head has long been sent by the time a block is
+	// rendered, so the rules are emitted as a style island right here.
+	$css = '';
+
+	static $styled = array(); // Identical attributes produce an identical id, emit once.
+	if ( ! isset( $styled[ $dom_id ] ) ) {
+		$styled[ $dom_id ] = true;
+
+		$virtual = new Virtual_Widget( $dom_id, WIDGET_BASE_ID . '-block', $instance );
+		$rules   = array();
+		$virtual->getCSSRules( Virtual_Widget::CONTEXT_BLOCK, $rules );
+
+		foreach ( $rules as $group ) {
+			$css .= implode( "\n", $group ) . "\n";
+		}
+	}
+
+	return ( '' !== $css ? '<style>' . $css . '</style>' : '' ) .
+		'<div id="' . esc_attr( $dom_id ) . '" class="' . WIDGET_BASE_ID . '-block">' . $ret . '</div>';
 }
 
 /**

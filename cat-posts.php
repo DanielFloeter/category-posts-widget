@@ -93,11 +93,11 @@ function wp_head() {
 	$styles = array();
 
 	foreach ( $widget_repository->getShortcodes() as $widget ) {
-		$widget->getCSSRules( true, $styles );
+		$widget->getCSSRules( Virtual_Widget::CONTEXT_SHORTCODE, $styles );
 	}
 
 	foreach ( $widget_repository->getWidgets() as $widget ) {
-		$widget->getCSSRules( false, $styles );
+		$widget->getCSSRules( Virtual_Widget::CONTEXT_WIDGET, $styles );
 	}
 
 	if ( ! empty( $styles ) ) {
