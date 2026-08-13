@@ -792,7 +792,11 @@ class Widget extends \WP_Widget {
 				$excerpt = shortcode_unautop( wpautop( convert_chars( convert_smilies( wptexturize( $excerpt ) ) ) ) );
 			}
 		}
-		$excerpt = str_replace('<p>', '<p class="cpwp-excerpt-text">', $excerpt);
+		// 'cpwp-wrap-text' is what the excerpt-lines CSS hooks on. It is normally set by
+		// equal_cover_content_height(), but that script never runs in the block editor
+		// preview (REST request, no wp_footer), so set it server side as the baseline.
+		// The script still moves it to the stage wrapper later when the text wraps.
+		$excerpt = str_replace( '<p>', '<p class="cpwp-excerpt-text cpwp-wrap-text">', $excerpt );
 		$ret = apply_filters( 'cpw_excerpt', $excerpt, $this );
 		return $ret;
 	}
@@ -924,9 +928,19 @@ class Widget extends \WP_Widget {
 		// Replace empty line with closing and opening DIV.
 		$template_res = trim( $template_res );
 
-		$template_res = str_replace( "\n\r", '</div><div>', $template_res ); // in widget areas.
-		$template_res = str_replace( "\n\n", '</div><div>', $template_res ); // as shortcode.
-		$template_res = '<div>' . $template_res . '</div>';
+		// An empty line in the template starts a new DIV. The DIV holding the excerpt is
+		// additionally wrapped in the 'cpwp-wrap-text-stage' element the excerpt lines CSS
+		// needs, so that it is part of the markup right away -- also for items delivered by
+		// the load more REST route and for the block editor preview, where no script runs.
+		$blocks       = preg_split( '/\n\r|\n\n/', $template_res ); // "\n\r" in widget areas, "\n\n" as shortcode.
+		$template_res = '';
+		foreach ( $blocks as $block ) {
+			$div = '<div>' . $block . '</div>';
+			if ( false !== strpos( $block, 'cpwp-excerpt-text' ) ) {
+				$div = '<div class="cpwp-wrap-text-stage">' . $div . '</div>';
+			}
+			$template_res .= $div;
+		}
 
 		// replace new lines with spaces.
 		$template_res = str_replace( "\n\r", ' ', $template_res ); // in widget areas.

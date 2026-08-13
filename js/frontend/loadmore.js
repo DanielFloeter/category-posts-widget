@@ -69,7 +69,6 @@ if (typeof jQuery !== 'undefined') {
                     var widgetImage = jQuery(widget).find('.cat-post-item img').first();
 
                     if (typeof cat_posts_namespace !== 'undefined' && cat_posts_namespace.layout_wrap_text && cat_posts_namespace.layout_img_size) {
-                        cat_posts_namespace.layout_wrap_text.preWrap(widget);
                         cat_posts_namespace.layout_wrap_text.setClass(widget);
                         if (0 !== parseInt(widgetImage.data('cat-posts-height'), 10) && 0 !== parseInt(widgetImage.data('cat-posts-width'), 10)) {
                             cat_posts_namespace.layout_img_size.setHeight(widget);

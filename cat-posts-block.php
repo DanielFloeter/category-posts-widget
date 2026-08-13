@@ -167,6 +167,20 @@ function render_category_posts_block( $attributes ) {
 		if ( count( $items ) === (int) $instance['num'] ) {
 			$ret .= $widget->loadMoreHTML( $instance );
 		}
+
+		// The 'cpwp-wrap-text' class the excerpt-lines CSS relies on, and the
+		// 'cpwp-wrap-text-stage' wrapper, are added by this script at runtime.
+		// Without it the excerpt lines and image ratio settings have no effect.
+		if ( isset( $instance['template'] ) && preg_match( '/%thumb%|%excerpt%/', $instance['template'] ) ) {
+			wp_enqueue_script( 'jquery' ); // Just in case the theme or other plugins did not enqueue it.
+			add_action(
+				'wp_footer',
+				function () use ( $dom_id, $instance ) {
+					equal_cover_content_height( $dom_id, $instance );
+				},
+				100
+			);
+		}
 	} elseif ( 'text' === $instance['no_match_handling'] ) {
 		$ret = $widget->titleHTML( $before_title, $after_title, $instance );
 		$ret .= '<span class="cat-post-no-match">' . wp_kses_post( $instance['no_match_text'] ) . '</span>';

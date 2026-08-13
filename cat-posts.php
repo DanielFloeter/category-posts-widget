@@ -460,15 +460,6 @@ function equal_cover_content_height( $number, $widgetsettings ) {
 				cat_posts_namespace.layout_img_size  = cat_posts_namespace.layout_img_size || {};
 
 				cat_posts_namespace.layout_wrap_text = {
-					<?php	/* Handle item */ echo "\r\n"; ?>
-					preWrap : function (widget) {
-						jQuery(widget).find('.cat-post-item').each(function(){
-							var _that = jQuery(this);
-							_that.find('p.cpwp-excerpt-text').addClass('cpwp-wrap-text');
-							_that.find('p.cpwp-excerpt-text').closest('div').wrap('<div class="cpwp-wrap-text-stage"></div>');
-						});
-						return;
-					},
 					<?php	/* Handle add class */ echo "\r\n"; ?>
 					add : function(_this){
 						var _that = jQuery(_this);
@@ -561,7 +552,6 @@ function equal_cover_content_height( $number, $widgetsettings ) {
 				});
 
 				// low-end mobile 
-				cat_posts_namespace.layout_wrap_text.preWrap(widget);
 				cat_posts_namespace.layout_wrap_text.setClass(widget);
 				<?php	/* No ratio calculation if one or more dimensions is set to 0 */ echo "\r\n"; ?>
 				<?php	if ( isset( $widgetsettings['thumb_w'] ) && 0 !== intval( $widgetsettings['thumb_w'] ) &&

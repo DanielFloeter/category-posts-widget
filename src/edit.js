@@ -244,7 +244,7 @@ export default function Edit({ attributes, setAttributes }) {
 							label={ __( 'Start with post' ) }
 							onChange={( newOffset) =>
 								setAttributes({
-									offset: newOffset,
+									offset: parseInt( newOffset ),
 								})
 							}
 							value={ offset }
@@ -267,7 +267,7 @@ export default function Edit({ attributes, setAttributes }) {
 								label={ __( 'Up to' ) }
 								onChange={( newDaysAgo) =>
 									setAttributes({
-										daysAgo: newDaysAgo,
+										daysAgo: parseInt( newDaysAgo ),
 									})
 								}
 								value={ daysAgo }
@@ -380,7 +380,7 @@ export default function Edit({ attributes, setAttributes }) {
 							<NumberControl
 								label={__('Item title lines', 'category-posts')}
 								value={itemTitleLines}
-								onChange={(itemTitleLines) => setAttributes({ itemTitleLines })}
+								onChange={(itemTitleLines) => setAttributes({ itemTitleLines: parseInt(itemTitleLines) })}
 								min={1}
 								allowReset={false}
 							/>
@@ -390,7 +390,7 @@ export default function Edit({ attributes, setAttributes }) {
 							<NumberControl
 								label={__('Excerpt lines', 'category-posts')}
 								value={excerptLines}
-								onChange={(excerptLines) => setAttributes({ excerptLines })}
+								onChange={(excerptLines) => setAttributes({ excerptLines: parseInt(excerptLines) })}
 								min={1}
 								allowReset={false}
 							/>
@@ -432,14 +432,14 @@ export default function Edit({ attributes, setAttributes }) {
 							<NumberControl
 								label={__('Thumbnail width', 'category-posts')}
 								value={thumbW}
-								onChange={(thumbW) => setAttributes({ thumbW })}
+								onChange={(thumbW) => setAttributes({ thumbW: parseInt(thumbW) })}
 								min={0}
 								allowReset={false}
 							/>
 							<NumberControl
 								label={__('Thumbnail height', 'category-posts')}
 								value={thumbH}
-								onChange={(thumbH) => setAttributes({ thumbH })}
+								onChange={(thumbH) => setAttributes({ thumbH: parseInt(thumbH) })}
 								min={0}
 								allowReset={false}
 							/>

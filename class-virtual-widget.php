@@ -217,7 +217,7 @@ class Virtual_Widget {
 			// title height in lines.
 			if ( isset( $settings['template'] ) && preg_match( '/%title%/', $settings['template'] ) ) {
 				$styles['item_title_lines'] = '.cat-post-item .cat-post-title {overflow: hidden;text-overflow: ellipsis;white-space: initial;' .
-					'display: -webkit-box;-webkit-line-clamp: ' . $settings['item_title_lines'] . ';-webkit-box-orient: vertical;padding-bottom: 0 !important;}';
+					'display: -webkit-box;-webkit-line-clamp: ' . intval( $settings['item_title_lines'] ) . ';-webkit-box-orient: vertical;padding-bottom: 0 !important;}';
 			}
 
 			// wrap text around image.
@@ -230,7 +230,7 @@ class Virtual_Widget {
 					$selector_wrap_text = '.cpwp-wrap-text';
 				}
 				$styles['excerpt_lines'] = '.cat-post-item ' . $selector_wrap_text . ' {overflow: hidden;text-overflow: ellipsis;white-space: initial;' .
-					'display: -webkit-box;-webkit-line-clamp: ' . $settings['excerpt_lines'] . ';-webkit-box-orient: vertical;padding-bottom: 0 !important;}';
+					'display: -webkit-box;-webkit-line-clamp: ' . intval( $settings['excerpt_lines'] ) . ';-webkit-box-orient: vertical;padding-bottom: 0 !important;}';
 				// float text instead wrap and don't hide the excerpt if there is no space
 				$styles['float_min_nowrap'] = 'p.cpwp-excerpt-text {min-width: 120px;}';
 			}
@@ -339,7 +339,7 @@ class Virtual_Widget {
 			}
 			$ret['thumb_crop'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop img {object-fit: cover; max-width: 100%; display: block;}';
 			$ret['thumb_crop_not_supported'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop-not-supported img {width: 100%;}';
-			$ret['thumb_fluid_width'] = '#' . $widget_id . ' .cat-post-thumbnail {max-width:' . $settings['thumb_fluid_width'] . '%;}';
+			$ret['thumb_fluid_width'] = '#' . $widget_id . ' .cat-post-thumbnail {max-width:' . intval( $settings['thumb_fluid_width'] ) . '%;}';
 			$ret['thumb_styling'] = '#' . $widget_id . ' .cat-post-item img {margin: initial;}';
 		}
 
