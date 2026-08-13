@@ -325,7 +325,7 @@ class Widget extends \WP_Widget {
 	public function titleHTML( $before_title, $after_title, $instance ) {
 		$ret = '';
 
-		if( in_array( $instance['title_level'], array( 'H1','H2', 'H3', 'H6', 'H5', 'H6') ) ) {
+		if( in_array( $instance['title_level'], array( 'H1','H2', 'H3', 'H5', 'H6') ) ) {
 			$before_title = '';
 			$after_title  = '';
 		}
@@ -1097,7 +1097,7 @@ class Widget extends \WP_Widget {
 		} elseif ( 'text' === $instance['no_match_handling'] ) {
 			echo $before_widget; // Xss ok. This is how widget actually expected to behave.
 			echo $this->titleHTML( $before_title, $after_title, $instance );
-			echo esc_html( $instance['no_match_text'] );
+			echo wp_kses_post( $instance['no_match_text'] );
 			echo $this->footerHTML( $instance );
 			echo $after_widget; // Xss ok. This is how widget actually expected to behave.
 		}

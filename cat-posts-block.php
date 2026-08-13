@@ -165,7 +165,7 @@ function render_category_posts_block( $attributes ) {
 		}
 	} elseif ( 'text' === $instance['no_match_handling'] ) {
 		$ret = $widget->titleHTML( $before_title, $after_title, $instance );
-		$ret .= esc_html( $instance['no_match_text'] );
+		$ret .= '<span class="cat-post-no-match">' . wp_kses_post( $instance['no_match_text'] ) . '</span>';
 		$ret .= $widget->footerHTML( $instance );
 	}
 
