@@ -17,6 +17,19 @@
 	padding: 5px;
 }
 
+/**
+ * The block icon in the block list and the block toolbar.
+ * The icon is a dashicon, so we can color it with CSS.
+ */
+.editor-block-list-item-tiptip-term-category-posts-block .dashicon,
+.block-editor-block-icon .dashicon.dashicons-admin-post {
+    color: var(--wp-admin-theme-color,#3858e9);
+}
+
+.is-selected .editor-block-list-item-tiptip-term-category-posts-block .dashicon,
+.is-selected .block-editor-block-icon .dashicon.dashicons-admin-post {
+    color: #72aee6;
+}
 
 
 /**
