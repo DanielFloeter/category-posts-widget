@@ -107,6 +107,10 @@
 			"type": "boolean",
 			"default": false
 		},
+		"excerptRadio": {
+			"type": "string",
+			"default": "excerpt"
+		},
 		"excerptLines": {
 			"type": "integer",
 			"default": 4

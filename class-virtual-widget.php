@@ -24,20 +24,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Virtual_Widget {
 
 	/**
-	 * The rendering contexts a virtual widget can be used in.
-	 *
-	 * They decide how the CSS selectors are built:
-	 *  - widget:    id on the outer element, '-internal' id on the ul.
-	 *  - shortcode: id on the outer element, plus theme specific workarounds.
-	 *  - block:     id on the wrapper element only.
-	 *
-	 * @since 4.9.23
-	 */
-	const CONTEXT_WIDGET    = 'widget';
-	const CONTEXT_SHORTCODE = 'shortcode';
-	const CONTEXT_BLOCK     = 'block';
-
-	/**
 	 * A container for all the "active" objects
 	 *
 	 * @var Array
@@ -172,17 +158,17 @@ class Virtual_Widget {
 	public function getCSSRules( $context, &$rules ) {
 
 		if ( is_bool( $context ) ) { // Signature used before 4.9.23.
-			$context = $context ? self::CONTEXT_SHORTCODE : self::CONTEXT_WIDGET;
+			$context = $context ? CONTEXT_SHORTCODE : CONTEXT_WIDGET;
 		}
 
-		$is_shortcode = ( self::CONTEXT_SHORTCODE === $context );
+		$is_shortcode = ( CONTEXT_SHORTCODE === $context );
 
 		$ret = array();
 		$settings = self::$collection[ $this->id ];
 		$everything_is_link = isset( $settings['everything_is_link'] ) && $settings['everything_is_link'];
 
 		$widget_id = $this->id;
-		if ( self::CONTEXT_WIDGET === $context ) {
+		if ( CONTEXT_WIDGET === $context ) {
 			$widget_id .= '-internal';
 		}
 		$disable_css = isset( $settings['disable_css'] ) && $settings['disable_css'];

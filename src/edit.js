@@ -45,7 +45,7 @@ export default function Edit({ attributes, setAttributes }) {
 	const {
 		hideTitle, title, titleLink, titleLinkUrl, titleLevel,
 		order, orderBy, categories, status, num, offset, dateRange, startDate, endDate, daysAgo, excludeCurrentPost, hideNoThumb, sticky,
-		template, itemTitleLevel, itemTitleLines, excerptLines, excerptMoreText,
+		template, itemTitleLevel, itemTitleLines, excerptRadio, excerptLines, excerptMoreText,
 		thumbW, thumbH, thumbHover, showPostFormat, textDoNotWrapThumb, everythingIsLink, presetDateFormat, dateFormat, datePastTime,
 		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, loadmoreScrollTo, loadmoreText, loadingText,
 		footerLinkText, footerLink
@@ -394,6 +394,25 @@ export default function Edit({ attributes, setAttributes }) {
 								min={1}
 								allowReset={false}
 							/>
+							<RadioControl
+								label={ __( 'Intent', 'category-posts' ) }
+								selected={ excerptRadio }
+								options={ [
+									{ label: __( 'Excerpt', 'category-posts' ), value: 'excerpt' },
+									{
+										label: __( 'Full Post', 'category-posts' ),
+										value: 'full_post',
+									},
+								] }
+								onChange={ ( value ) =>
+									setAttributes( {
+										excerptRadio: value,
+									} )
+								}
+							/>
+						</div>
+						<PanelRow>{__('More Link settings', 'category-posts')}</PanelRow>
+						<div className="cpwp-block-ident">
 							<TextControl
 								label={__('Read more text', 'category-posts')}
 								value={excerptMoreText}

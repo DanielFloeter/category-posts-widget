@@ -325,7 +325,7 @@ class Widget extends \WP_Widget {
 	public function titleHTML( $before_title, $after_title, $instance ) {
 		$ret = '';
 
-		if( in_array( $instance['title_level'], array( 'H1','H2', 'H3', 'H5', 'H6') ) ) {
+		if( in_array( $instance['title_level'], array( 'H1','H2', 'H3', 'H4', 'H5', 'H6') ) ) {
 			$before_title = '';
 			$after_title  = '';
 		}
@@ -758,40 +758,56 @@ class Widget extends \WP_Widget {
 	public function itemExcerpt( $instance, $everything_is_link ) {
 		global $post;
 
-		// use the_excerpt filter to get the "normal" excerpt of the post
-		// then apply our filter to let users customize excerpts in their own way.
-		if ( isset( $instance['excerpt_length'] ) && ( $instance['excerpt_length'] > 0 ) ) {
-			$length = (int) $instance['excerpt_length'];
-		} else {
-			$length = 999; // Use the wordpress default.
-		}
+		$context = isset( $instance['context'] ) ? $instance['context'] : CONTEXT_WIDGET;
+		$excerpt = '';
 
-		if ( ! isset( $instance['excerpt_filters'] ) || $instance['excerpt_filters'] ) { // pre 4.7 widgets has filters on.
-			$excerpt = apply_filters( 'the_excerpt', \get_the_excerpt() );
-		} else { // if filters off replicate functionality of core generating excerpt.
-			$more_text = '[&hellip;]';
-			if ( isset( $instance['excerpt_more_text'] ) && $instance['excerpt_more_text'] ) {
-				$more_text = ltrim( $instance['excerpt_more_text'] );
+		if ( CONTEXT_BLOCK === $context ) {
+			if ( isset( $instance['excerpt_radio'] ) && 'excerpt' === $instance['excerpt_radio'] ) {
+				$excerpt = wpautop(get_the_excerpt());
 			}
-
-			if ( $everything_is_link ) {
-				$excerpt_more_text = ' <span class="cat-post-excerpt-more">' . $more_text . '</span>';
-			} else {
-				$excerpt_more_text = ' <a class="cat-post-excerpt-more" href="' . get_permalink() . '" title="' . sprintf( __( 'Continue reading %s' ), get_the_title() ) . '">' . $more_text . '</a>';
-			}
-			if ( '' === $post->post_excerpt ) {
-				$text = get_the_content( '' );
-				$text = strip_shortcodes( $text );
-				$excerpt = \wp_trim_words( $text, $length, $excerpt_more_text );
-				// adjust html output same way as for the normal excerpt,
-				// just force all functions depending on the_excerpt hook.
-				$excerpt = shortcode_unautop( wpautop( convert_chars( convert_smilies( wptexturize( $excerpt ) ) ) ) );
-			} else {
-				$text = $post->post_excerpt;
-				$excerpt = \wp_trim_words( $text, $length, $excerpt_more_text );
-				$excerpt = shortcode_unautop( wpautop( convert_chars( convert_smilies( wptexturize( $excerpt ) ) ) ) );
+			
+			if ( isset( $instance['excerpt_radio'] ) && 'full_post' === $instance['excerpt_radio'] ) {
+				$excerpt = get_the_content();
 			}
 		}
+		
+		if ( CONTEXT_WIDGET === $context || CONTEXT_SHORTCODE === $context ) {
+			// use the_excerpt filter to get the "normal" excerpt of the post
+			// then apply our filter to let users customize excerpts in their own way.
+			if ( isset( $instance['excerpt_length'] ) && ( $instance['excerpt_length'] > 0 ) ) {
+				$length = (int) $instance['excerpt_length'];
+			} else {
+				$length = 999; // Use the wordpress default.
+			}
+
+			if ( ! isset( $instance['excerpt_filters'] ) || $instance['excerpt_filters'] ) { // pre 4.7 widgets has filters on.
+				$excerpt = apply_filters( 'the_excerpt', \get_the_excerpt() );
+			} else { // if filters off replicate functionality of core generating excerpt.
+				$more_text = '[&hellip;]';
+				if ( isset( $instance['excerpt_more_text'] ) && $instance['excerpt_more_text'] ) {
+					$more_text = ltrim( $instance['excerpt_more_text'] );
+				}
+
+				if ( $everything_is_link ) {
+					$excerpt_more_text = ' <span class="cat-post-excerpt-more">' . $more_text . '</span>';
+				} else {
+					$excerpt_more_text = ' <a class="cat-post-excerpt-more" href="' . get_permalink() . '" title="' . sprintf( __( 'Continue reading %s' ), get_the_title() ) . '">' . $more_text . '</a>';
+				}
+				if ( '' === $post->post_excerpt ) {
+					$text = get_the_content( '' );
+					$text = strip_shortcodes( $text );
+					$excerpt = \wp_trim_words( $text, $length, $excerpt_more_text );
+					// adjust html output same way as for the normal excerpt,
+					// just force all functions depending on the_excerpt hook.
+					$excerpt = shortcode_unautop( wpautop( convert_chars( convert_smilies( wptexturize( $excerpt ) ) ) ) );
+				} else {
+					$text = $post->post_excerpt;
+					$excerpt = \wp_trim_words( $text, $length, $excerpt_more_text );
+					$excerpt = shortcode_unautop( wpautop( convert_chars( convert_smilies( wptexturize( $excerpt ) ) ) ) );
+				}
+			}
+		}
+
 		// 'cpwp-wrap-text' is what the excerpt-lines CSS hooks on. It is normally set by
 		// equal_cover_content_height(), but that script never runs in the block editor
 		// preview (REST request, no wp_footer), so set it server side as the baseline.
@@ -1027,6 +1043,12 @@ class Widget extends \WP_Widget {
 		global $before_title, $after_title;
 
 		$instance = upgrade_settings( $instance );
+
+		// A shortcode is rendered through this method as well, in that case the context
+		// was already set by Virtual_Widget::getHTML(), so do not overwrite it.
+		if ( ! isset( $instance['context'] ) ) {
+			$instance['context'] = CONTEXT_WIDGET;
+		}
 
 		extract( $args );
 

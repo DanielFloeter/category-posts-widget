@@ -48,6 +48,7 @@ function build_block_instance( $attributes ) {
 	$instance['thumb_h']                = isset( $attributes['thumbH'] ) ? $attributes['thumbH'] : 150;
 	$instance['thumb_hover']            = isset( $attributes['thumbHover'] ) ? $attributes['thumbHover'] : 'none';
 	$instance['hide_post_titles']       = isset( $attributes['hidePostTitles'] ) ? $attributes['hidePostTitles'] : false;
+	$instance['excerpt_radio']          = isset( $attributes['excerptRadio'] ) ? $attributes['excerptRadio'] : 'excerpt';
 	$instance['excerpt_lines']          = isset( $attributes['excerptLines'] ) ? $attributes['excerptLines'] : 4;
 	$instance['excerpt_length']         = isset( $attributes['excerptLength'] ) ? $attributes['excerptLength'] : 0;
 	$instance['excerpt_more_text']      = isset( $attributes['excerptMoreText'] ) ? $attributes['excerptMoreText'] : '';
@@ -76,6 +77,7 @@ function build_block_instance( $attributes ) {
 	$instance['no_match_text']          = isset( $attributes['noMatchText'] ) ? $attributes['noMatchText'] : '';
 	$instance['default_thunmbnail']     = isset( $attributes['defaultThunmbnail'] ) ? $attributes['defaultThunmbnail'] : 0;
 	$instance['ver']                    = isset( $attributes['ver'] ) ? $attributes['ver'] : '4.9.22';
+	$instance['context']                = CONTEXT_BLOCK;
 
 	return $instance;
 }
@@ -202,7 +204,7 @@ function render_category_posts_block( $attributes ) {
 
 		$virtual = new Virtual_Widget( $dom_id, WIDGET_BASE_ID . '-block', $instance );
 		$rules   = array();
-		$virtual->getCSSRules( Virtual_Widget::CONTEXT_BLOCK, $rules );
+		$virtual->getCSSRules( CONTEXT_BLOCK, $rules );
 
 		foreach ( $rules as $group ) {
 			$css .= implode( "\n", $group ) . "\n";

@@ -32,6 +32,9 @@ const SUPPORT_URL    = 'https://wordpress.org/support/plugin/category-posts/';
 const SHORTCODE_NAME = 'catposts';
 const SHORTCODE_META = 'categoryPosts-shorcode';
 const WIDGET_BASE_ID = 'category-posts';
+const CONTEXT_WIDGET    = 'widget';
+const CONTEXT_SHORTCODE = 'shortcode';
+const CONTEXT_BLOCK     = 'block';
 
 require_once __DIR__ . '/class-virtual-widget.php';
 require_once __DIR__ . '/class-virtual-widgets-repository.php';
@@ -93,11 +96,11 @@ function wp_head() {
 	$styles = array();
 
 	foreach ( $widget_repository->getShortcodes() as $widget ) {
-		$widget->getCSSRules( Virtual_Widget::CONTEXT_SHORTCODE, $styles );
+		$widget->getCSSRules( CONTEXT_SHORTCODE, $styles );
 	}
 
 	foreach ( $widget_repository->getWidgets() as $widget ) {
-		$widget->getCSSRules( Virtual_Widget::CONTEXT_WIDGET, $styles );
+		$widget->getCSSRules( CONTEXT_WIDGET, $styles );
 	}
 
 	if ( ! empty( $styles ) ) {
@@ -705,6 +708,7 @@ function default_settings() {
 		'thumb_h'                => get_option( 'thumbnail_size_h', 150 ),
 		'thumb_hover'            => 'none',
 		'hide_post_titles'       => false,
+		'excerpt_radio'          => __( 'excerpt', 'category-posts' ),
 		'excerpt_lines'          => 4,
 		'excerpt_length'         => 0,
 		'excerpt_more_text'      => __( '', 'category-posts' ),

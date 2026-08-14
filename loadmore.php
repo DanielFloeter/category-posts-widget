@@ -70,6 +70,7 @@ function get_next_elements( \WP_REST_Request $request ) {
 					$name = isset( $id_components[2] ) ? $id_components[2] : ''; // The shortcode "name".
 					$settings = shortcode_settings( $pid, $name );
 					if ( ! empty( $settings ) ) {
+						$settings['context'] = CONTEXT_SHORTCODE;
 						$virtual_widget = new Virtual_Widget( '', '', $settings );
 						$ret = $virtual_widget->get_elements_HTML( $start, $number, $context );
 					}
@@ -82,6 +83,7 @@ function get_next_elements( \WP_REST_Request $request ) {
 					$widgetclass = new $class();
 					$allsettings = $widgetclass->get_settings();
 					if ( isset( $allsettings[ $id ] ) ) {
+						$allsettings[ $id ]['context'] = CONTEXT_WIDGET;
 						$virtual_widget = new Virtual_Widget( '', '', $allsettings[ $id ] );
 						$ret = $virtual_widget->get_elements_HTML( $start, $number, $context );
 					}
