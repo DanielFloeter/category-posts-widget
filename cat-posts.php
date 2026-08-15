@@ -25,13 +25,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const VERSION        = '4.9.22';
-const DOC_URL        = 'https://tiptoppress.com/category-posts-widget/documentation-4-9/';
-const PRO_URL        = 'https://tiptoppress.com/term-and-category-based-posts-widget/';
-const SUPPORT_URL    = 'https://wordpress.org/support/plugin/category-posts/';
-const SHORTCODE_NAME = 'catposts';
-const SHORTCODE_META = 'categoryPosts-shorcode';
-const WIDGET_BASE_ID = 'category-posts';
+const VERSION        	= '4.9.22';
+const DOC_URL        	= 'https://tiptoppress.com/category-posts-widget/documentation-4-9/';
+const PRO_URL        	= 'https://tiptoppress.com/term-and-category-based-posts-widget/';
+const SUPPORT_URL    	= 'https://wordpress.org/support/plugin/category-posts/';
+const SHORTCODE_NAME 	= 'catposts';
+const SHORTCODE_META 	= 'categoryPosts-shorcode';
+const WIDGET_BASE_ID 	= 'category-posts';
 const CONTEXT_WIDGET    = 'widget';
 const CONTEXT_SHORTCODE = 'shortcode';
 const CONTEXT_BLOCK     = 'block';

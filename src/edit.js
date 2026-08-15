@@ -16,7 +16,6 @@ import {
 	TextareaControl,
 	RadioControl,
 	QueryControls,
-	Disabled,
 	__experimentalToggleGroupControl, ToggleGroupControl as stableToggleGroupControl,
 	__experimentalToggleGroupControlOption, ToggleGroupControlOption as stableToggleGroupControlOption,
 	__experimentalNumberControl, NumberControl as stableNumberControl,
@@ -631,12 +630,21 @@ export default function Edit({ attributes, setAttributes }) {
 			<div
 				{...blockProps}
 			>
-				<Disabled>
+				{/*
+				  * The preview must not be interactive, but the <Disabled> component does
+				  * that with the inert attribute and pointer-events:none, which switches
+				  * off :hover as well, so the thumbnail hover effect could not be seen in
+				  * the editor. Keep the pointer events and just swallow the clicks instead.
+				  */}
+				<div
+					className="cpwp-block-preview"
+					onClickCapture={(event) => event.preventDefault()}
+				>
 					<ServerSideRender
 						block="tiptip/category-posts-block"
 						attributes={attributes}
 					/>
-				</Disabled>
+				</div>
 			</div>
 		</>
 	);
