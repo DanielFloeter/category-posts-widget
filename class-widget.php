@@ -233,6 +233,12 @@ class Widget extends \WP_Widget {
 			'no_found_rows'       => true, // Do not count the total numbers of rows by default.
 		);
 
+		if ( isset( $instance['post_type'] ) && ! empty( $instance['post_type'] ) ) {
+			$args['post_type'] = sanitize_text_field( $instance['post_type'] );
+		} else {
+			$args['post_type'] = 'post'; // Default to posts
+		}
+
 		$non_default_valid_status = array(
 			'publish',
 			'future',
@@ -1226,7 +1232,9 @@ class Widget extends \WP_Widget {
 		} else {
 			$instance['text'] = wp_kses_post( $new_instance['template'] );
 		}
-
+		if ( isset( $new_instance['post_type'] ) ) {
+			$new_instance['post_type'] = sanitize_text_field( $new_instance['post_type'] );
+		}
 		// Set the version of the DB structure.
 		$new_instance['ver'] = VERSION;
 		return $new_instance;
@@ -1292,6 +1300,15 @@ class Widget extends \WP_Widget {
 							'selected'        => $instance['cat'],
 							'class'           => 'categoryposts-data-panel-filter-cat',
 						)
+					);
+
+					echo $this->get_select_block_html(
+						$instance,
+						'post_type',
+						esc_html__( 'Post Type', 'category-posts' ),
+						$this->get_post_types_list(),
+						'post',
+						true
 					);
 				?>
 			</label>
@@ -2080,4 +2097,25 @@ class Widget extends \WP_Widget {
 		</div>
 		<?php
 	}
+
+	/**
+	 * Get list of public post types
+	 *
+	 * @return array Array of post type names for select dropdown
+	 */
+	private function get_post_types_list() {
+		$post_types = get_post_types(
+			array(
+				'public' => true,
+			),
+			'objects'
+		);
+		
+		$list = array();
+		foreach ( $post_types as $post_type ) {
+			$list[ $post_type->name ] = $post_type->label;
+		}
+		
+		return $list;
+	}	
 }
