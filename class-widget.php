@@ -952,13 +952,7 @@ class Widget extends \WP_Widget {
 		foreach ( $blocks as $block ) {
 			$div = '<div>' . $block . '</div>';
 			if ( false !== strpos( $block, 'cpwp-excerpt-text' ) ) {
-				$stage_class = 'cpwp-wrap-text-stage';
-				if ( ! $no_wrap ) {
-					// Text wraps the thumbnail, so the line clamp has to sit on the stage,
-					// see the 'cpwp-wrap-text' comment in itemExcerpt().
-					$stage_class .= ' cpwp-wrap-text';
-				}
-				$div = '<div class="' . $stage_class . '">' . $div . '</div>';
+				$div = '<div class="cpwp-wrap-text-stage">' . $div . '</div>';
 			}
 			$template_res .= $div;
 		}
