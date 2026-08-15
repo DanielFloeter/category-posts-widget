@@ -808,11 +808,18 @@ class Widget extends \WP_Widget {
 			}
 		}
 
-		// 'cpwp-wrap-text' is what the excerpt-lines CSS hooks on. It is normally set by
+		// 'cpwp-wrap-text' is what the excerpt-lines CSS hooks on. It is normally placed by
 		// equal_cover_content_height(), but that script never runs in the block editor
 		// preview (REST request, no wp_footer), so set it server side as the baseline.
-		// The script still moves it to the stage wrapper later when the text wraps.
-		$excerpt = str_replace( '<p>', '<p class="cpwp-excerpt-text cpwp-wrap-text">', $excerpt );
+		// It belongs on the paragraph only when the text must not wrap the thumbnail, for
+		// wrapping text the CSS hack needs it on the 'cpwp-wrap-text-stage' wrapper added
+		// in itemHTML. The script still moves it between the two later on.
+		$no_wrap = isset( $instance['text_do_not_wrap_thumb'] ) && $instance['text_do_not_wrap_thumb'];
+		$p_class = 'cpwp-excerpt-text';
+		if ( $no_wrap ) {
+			$p_class .= ' cpwp-wrap-text';
+		}
+		$excerpt = str_replace( '<p>', '<p class="' . $p_class . '">', $excerpt );
 		$ret = apply_filters( 'cpw_excerpt', $excerpt, $this );
 		return $ret;
 	}
@@ -953,7 +960,13 @@ class Widget extends \WP_Widget {
 		foreach ( $blocks as $block ) {
 			$div = '<div>' . $block . '</div>';
 			if ( false !== strpos( $block, 'cpwp-excerpt-text' ) ) {
-				$div = '<div class="cpwp-wrap-text-stage">' . $div . '</div>';
+				$stage_class = 'cpwp-wrap-text-stage';
+				if ( ! $no_wrap ) {
+					// Text wraps the thumbnail, so the line clamp has to sit on the stage,
+					// see the 'cpwp-wrap-text' comment in itemExcerpt().
+					$stage_class .= ' cpwp-wrap-text';
+				}
+				$div = '<div class="' . $stage_class . '">' . $div . '</div>';
 			}
 			$template_res .= $div;
 		}
