@@ -763,7 +763,10 @@ class Widget extends \WP_Widget {
 
 		if ( CONTEXT_BLOCK === $context ) {
 			if ( isset( $instance['excerpt_radio'] ) && 'excerpt' === $instance['excerpt_radio'] ) {
+				$cpw_excerpt_length = function() { return 999; };
+				add_filter( 'excerpt_length', $cpw_excerpt_length, 20 );
 				$excerpt = wpautop(get_the_excerpt());
+				remove_filter( 'excerpt_length', $cpw_excerpt_length, 20 );
 			}
 			
 			if ( isset( $instance['excerpt_radio'] ) && 'full_post' === $instance['excerpt_radio'] ) {
@@ -808,18 +811,7 @@ class Widget extends \WP_Widget {
 			}
 		}
 
-		// 'cpwp-wrap-text' is what the excerpt-lines CSS hooks on. It is normally placed by
-		// equal_cover_content_height(), but that script never runs in the block editor
-		// preview (REST request, no wp_footer), so set it server side as the baseline.
-		// It belongs on the paragraph only when the text must not wrap the thumbnail, for
-		// wrapping text the CSS hack needs it on the 'cpwp-wrap-text-stage' wrapper added
-		// in itemHTML. The script still moves it between the two later on.
-		$no_wrap = isset( $instance['text_do_not_wrap_thumb'] ) && $instance['text_do_not_wrap_thumb'];
-		$p_class = 'cpwp-excerpt-text';
-		if ( $no_wrap ) {
-			$p_class .= ' cpwp-wrap-text';
-		}
-		$excerpt = str_replace( '<p>', '<p class="' . $p_class . '">', $excerpt );
+		$excerpt = str_replace('<p>', '<p class="cpwp-excerpt-text">', $excerpt);
 		$ret = apply_filters( 'cpw_excerpt', $excerpt, $this );
 		return $ret;
 	}

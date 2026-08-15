@@ -380,7 +380,7 @@ export default function Edit({ attributes, setAttributes }) {
 								label={__('Item title lines', 'category-posts')}
 								value={itemTitleLines}
 								onChange={(itemTitleLines) => setAttributes({ itemTitleLines: parseInt(itemTitleLines) })}
-								min={1}
+								min={0}
 								allowReset={false}
 							/>
 						</div>
@@ -390,7 +390,7 @@ export default function Edit({ attributes, setAttributes }) {
 								label={__('Excerpt lines', 'category-posts')}
 								value={excerptLines}
 								onChange={(excerptLines) => setAttributes({ excerptLines: parseInt(excerptLines) })}
-								min={1}
+								min={0}
 								allowReset={false}
 							/>
 							<RadioControl
