@@ -539,7 +539,7 @@ function equal_cover_content_height( $number, $widgetsettings ) {
 				<?php	/* Gutenberg Editor load or change (DOM changes) */ echo "\r\n"; ?>
 				const observer = new MutationObserver(function () {
 					let widget = jQuery('#<?php echo esc_attr( $number ); ?>');
-					if (widget.length) {console.log(widget);
+					if (widget.length) {
 						cat_posts_namespace.layout_wrap_text.setClass(widget);
 					}
 				});
