@@ -222,6 +222,9 @@
 		"ver": {
 			"type": "string",
 			"default": "4.9.13"
+		},
+		"instanceId": {
+			"type": "number"
 		}
 	},
 	"supports": {

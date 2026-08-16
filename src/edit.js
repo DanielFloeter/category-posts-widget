@@ -7,6 +7,7 @@
  */
 import { useState, useEffect, useRef } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
+import { useInstanceId } from '@wordpress/compose';
 import { __ } from '@wordpress/i18n';
 import {
 	ComboboxControl,
@@ -47,11 +48,26 @@ export default function Edit({ attributes, setAttributes }) {
 		template, itemTitleLevel, itemTitleLines, excerptRadio, excerptLines, excerptMoreText,
 		thumbW, thumbH, thumbHover, showPostFormat, textDoNotWrapThumb, everythingIsLink, presetDateFormat, dateFormat, datePastTime,
 		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, loadmoreScrollTo, loadmoreText, loadingText,
-		footerLinkText, footerLink
+		footerLinkText, footerLink, instanceId
 	} = attributes;
 	const blockProps = useBlockProps({
 		className: disableThemeStyles ? 'widget-title' : '',
 	});
+
+	// Give every instance of this block a stable ID that is persisted into the
+	// block's attributes (and therefore into the post content) the first time
+	// it is inserted. wp_unique_id() on the PHP side is only unique within a
+	// single request, so it collides between multiple instances of this block
+	// when each is rendered via its own ServerSideRender/REST request in the
+	// editor, or when the same instance is rendered more than once per request
+	// (excerpts, REST API output, page caching, etc). Reading a value that was
+	// frozen in at insert time avoids all of that.
+	const generatedInstanceId = useInstanceId( Edit, '', instanceId );
+	useEffect( () => {
+		if ( instanceId !== generatedInstanceId ) {
+			setAttributes( { instanceId: generatedInstanceId } );
+		}
+	}, [ instanceId, generatedInstanceId ] );
 
 	const categoriesList = useSelect( ( select ) => {
 		return select( 'core' ).getEntityRecords(

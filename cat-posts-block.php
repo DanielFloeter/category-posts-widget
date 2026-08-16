@@ -83,11 +83,26 @@ function build_block_instance( $attributes ) {
 }
 
 /**
- * Get a unique ID for a block-based load-more request.
+ * Get a stable ID for a block instance's load-more requests.
+ *
+ * Uses the `instanceId` block attribute (frozen in by the editor the first
+ * time the block is inserted, see src/edit.js) instead of wp_unique_id().
+ * wp_unique_id() only counts up within a single PHP request, so it produces
+ * colliding or diverging IDs when a block is rendered more than once per
+ * request or when several instances are each rendered via their own request
+ * (e.g. ServerSideRender previews in the block editor, excerpt generation,
+ * REST API output, full-page caching). Falling back to wp_unique_id() keeps
+ * older content saved before this attribute existed working.
+ *
+ * @param array $attributes The block attributes.
  *
  * @return string The block load-more ID.
  */
-function get_block_loadmore_id() {
+function get_block_loadmore_id( $attributes ) {
+	if ( is_array( $attributes ) && isset( $attributes['instanceId'] ) && '' !== $attributes['instanceId'] ) {
+		return 'block-' . $attributes['instanceId'];
+	}
+
 	return wp_unique_id( 'block-' );
 }
 
@@ -140,7 +155,7 @@ function render_category_posts_block( $attributes ) {
 	$instance = build_block_instance( $attributes );
 	$instance = upgrade_settings( $instance );
 
-	$block_id = get_block_loadmore_id();
+	$block_id = get_block_loadmore_id( $attributes );
 	store_block_loadmore_settings( $block_id, $attributes );
 	$widget->number = $block_id;
 
