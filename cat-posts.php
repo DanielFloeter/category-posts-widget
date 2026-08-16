@@ -536,6 +536,21 @@ function equal_cover_content_height( $number, $widgetsettings ) {
 
 				let widget = jQuery('#<?php echo esc_attr( $number ); ?>');
 
+				<?php	/* Gutenberg Editor load or change (DOM changes) */ echo "\r\n"; ?>
+				const observer = new MutationObserver(function () {
+					let widget = jQuery('#<?php echo esc_attr( $number ); ?>');
+					if (widget.length) {console.log(widget);
+						cat_posts_namespace.layout_wrap_text.setClass(widget);
+					}
+				});
+
+				observer.observe(document.body, {
+					childList: true,
+					subtree: true,
+					characterData: true
+				});
+
+				<?php	/* DOM ready */ echo "\r\n"; ?>
 				jQuery( document ).ready(function () {
 					cat_posts_namespace.layout_wrap_text.setClass(widget);
 					<?php	/* No ratio calculation if one or more dimensions is set to 0 */ echo "\r\n"; ?>

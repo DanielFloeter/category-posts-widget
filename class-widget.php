@@ -767,6 +767,7 @@ class Widget extends \WP_Widget {
 				add_filter( 'excerpt_length', $cpw_excerpt_length, 20 );
 				$excerpt = wpautop(get_the_excerpt());
 				remove_filter( 'excerpt_length', $cpw_excerpt_length, 20 );
+
 			}
 			
 			if ( isset( $instance['excerpt_radio'] ) && 'full_post' === $instance['excerpt_radio'] ) {
@@ -811,7 +812,11 @@ class Widget extends \WP_Widget {
 			}
 		}
 
-		$excerpt = str_replace('<p>', '<p class="cpwp-excerpt-text">', $excerpt);
+		// 'cpwp-wrap-text' is what the excerpt-lines CSS hooks on. It is normally set by
+		// equal_cover_content_height(), but that script never runs in the block editor
+		// preview (REST request, no wp_footer), so set it server side as the baseline.
+		// The script still moves it to the stage wrapper later when the text wraps.
+		$excerpt = str_replace( '<p>', '<p class="cpwp-excerpt-text cpwp-wrap-text">', $excerpt );
 		$ret = apply_filters( 'cpw_excerpt', $excerpt, $this );
 		return $ret;
 	}

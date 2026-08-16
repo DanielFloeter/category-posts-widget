@@ -83,15 +83,12 @@ function build_block_instance( $attributes ) {
 }
 
 /**
- * Get a stable ID for a block-based load-more request.
- *
- * @param array $attributes The block attributes.
+ * Get a unique ID for a block-based load-more request.
  *
  * @return string The block load-more ID.
  */
-function get_block_loadmore_id( $attributes ) {
-	$hash = md5( wp_json_encode( $attributes ) );
-	return 'block-' . substr( $hash, 0, 12 );
+function get_block_loadmore_id() {
+	return wp_unique_id( 'block-' );
 }
 
 /**
@@ -143,7 +140,7 @@ function render_category_posts_block( $attributes ) {
 	$instance = build_block_instance( $attributes );
 	$instance = upgrade_settings( $instance );
 
-	$block_id = get_block_loadmore_id( $attributes );
+	$block_id = get_block_loadmore_id();
 	store_block_loadmore_settings( $block_id, $attributes );
 	$widget->number = $block_id;
 
@@ -177,6 +174,14 @@ function render_category_posts_block( $attributes ) {
 			wp_enqueue_script( 'jquery' ); // Just in case the theme or other plugins did not enqueue it.
 			add_action(
 				'wp_footer',
+				function () use ( $dom_id, $instance ) {
+					equal_cover_content_height( $dom_id, $instance );
+				},
+				100
+			);
+			// Gutenberg Editor does not run wp_footer, so we also need to enqueue the script in the admin footer.
+			add_action(
+				'admin_footer',
 				function () use ( $dom_id, $instance ) {
 					equal_cover_content_height( $dom_id, $instance );
 				},
