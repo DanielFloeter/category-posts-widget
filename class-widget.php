@@ -378,12 +378,16 @@ class Widget extends \WP_Widget {
 			}
 
 			if ( isset( $instance['title_link'] ) && $instance['title_link'] ) {
+				$new_tab_attr = '';
+				if ( ! empty( $instance['title_link_target'] ) ) {
+					$new_tab_attr = ' target="_blank" rel="noopener noreferrer"';
+				}
 				if ( isset( $instance['cat'] ) && 0 !== (int) $instance['cat'] ) {
-					$ret .= '<a href="' . get_category_link( $instance['cat'] ) . '">' . $title . '</a>';
+					$ret .= '<a href="' . get_category_link( $instance['cat'] ) . '"' . $new_tab_attr . '>' . $title . '</a>';
 				} elseif ( isset( $instance['title_link_url'] ) && $instance['title_link_url'] ) {
-					$ret .= '<a href="' . esc_url( $instance['title_link_url'] ) . '">' . $title . '</a>';
+					$ret .= '<a href="' . esc_url( $instance['title_link_url'] ) . '"' . $new_tab_attr . '>' . $title . '</a>';
 				} else {
-					$ret .= '<a href="' . esc_url( $this->blog_page_url() ) . '">' . $title . '</a>';
+					$ret .= '<a href="' . esc_url( $this->blog_page_url() ) . '"' . $new_tab_attr . '>' . $title . '</a>';
 				}
 			} else {
 				$ret .= $title;
@@ -549,7 +553,11 @@ class Widget extends \WP_Widget {
 		}
 
 		if ( ! empty( $url ) ) {
-			$ret .= '<a class="cat-post-footer-link" href="' . esc_url( $url ) . '">' . esc_html( $text ) . '</a>';
+			$new_tab_attr = '';
+			if ( ! empty( $instance['footer_link_target'] ) ) {
+				$new_tab_attr = ' target="_blank" rel="noopener noreferrer"';
+			}
+			$ret .= '<a class="cat-post-footer-link" href="' . esc_url( $url ) . '"' . $new_tab_attr . '>' . esc_html( $text ) . '</a>';
 		}
 
 		return $ret;

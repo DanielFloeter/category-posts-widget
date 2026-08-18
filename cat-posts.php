@@ -731,6 +731,7 @@ function default_settings() {
 	return array(
 		'title'                  => __( 'Category Posts', 'category-posts' ),
 		'title_link'             => false,
+		'title_link_target'      => false,
 		'title_level'            => 'Initial',
 		'title_link_url'         => '',
 		'hide_title'             => false,
@@ -745,6 +746,7 @@ function default_settings() {
 		'sticky'                 => false,
 		'footer_link_text'       => '',
 		'footer_link'            => '',
+		'footer_link_target'     => false,
 		'item_title_level'       => 'Inline',
 		'item_title_lines'       => 2,
 		'thumb_w'                => get_option( 'thumbnail_size_w', 150 ),

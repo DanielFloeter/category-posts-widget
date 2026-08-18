@@ -25,6 +25,7 @@ function build_block_instance( $attributes ) {
 
 	$instance['title']                  = isset( $attributes['title'] ) ? $attributes['title'] : '';
 	$instance['title_link']             = isset( $attributes['titleLink'] ) ? $attributes['titleLink'] : false;
+	$instance['title_link_target']      = isset( $attributes['titleLinkTarget'] ) ? $attributes['titleLinkTarget'] : false;
 	$instance['title_level']            = isset( $attributes['titleLevel'] ) ? $attributes['titleLevel'] : 'Initial';
 	$instance['title_link_url']         = isset( $attributes['titleLinkUrl'] ) ? $attributes['titleLinkUrl'] : '';
 	$instance['hide_title']             = isset( $attributes['hideTitle'] ) ? $attributes['hideTitle'] : false;
@@ -41,6 +42,7 @@ function build_block_instance( $attributes ) {
 	$instance['sticky']                 = isset( $attributes['sticky'] ) ? $attributes['sticky'] : false;
 	$instance['footer_link_text']       = isset( $attributes['footerLinkText'] ) ? $attributes['footerLinkText'] : '';
 	$instance['footer_link']            = isset( $attributes['footerLink'] ) ? $attributes['footerLink'] : '';
+	$instance['footer_link_target']     = isset( $attributes['footerLinkTarget'] ) ? $attributes['footerLinkTarget'] : false;
 	$instance['item_title_level']       = isset( $attributes['itemTitleLevel'] ) ? $attributes['itemTitleLevel'] : 'Inline';
 	$instance['item_title_lines']       = isset( $attributes['itemTitleLines'] ) ? $attributes['itemTitleLines'] : 2;
 	$instance['thumb_w']                = isset( $attributes['thumbW'] ) ? $attributes['thumbW'] : 150;
@@ -181,6 +183,8 @@ function render_category_posts_block( $attributes ) {
 		if ( count( $items ) === (int) $instance['num'] ) {
 			$ret .= $widget->loadMoreHTML( $instance );
 		}
+
+		$ret .= $widget->footerHTML( $instance );
 
 		// The 'cpwp-wrap-text' class the excerpt-lines CSS relies on, and the
 		// 'cpwp-wrap-text-stage' wrapper, are added by this script at runtime.

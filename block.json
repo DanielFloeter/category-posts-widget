@@ -15,6 +15,10 @@
 			"type": "boolean",
 			"default": false
 		},
+		"titleLinkTarget": {
+			"type": "boolean",
+			"default": false
+		},
 		"titleLevel": {
 			"type": "string",
 			"default": "Initial"
@@ -78,6 +82,10 @@
 		"footerLink": {
 			"type": "string",
 			"default": ""
+		},
+		"footerLinkTarget": {
+			"type": "boolean",
+			"default": false
 		},
 		"itemTitleLevel": {
 			"type": "string",
