@@ -385,6 +385,8 @@ export default function Edit({ attributes, setAttributes }) {
 								})}
 							rows={ 8 }
 						/>
+						{ template && template.includes( '%title%' ) && (
+							<>
 						<PanelRow>{__('Title settings', 'category-posts')}</PanelRow>
 						<div className="cpwp-block-ident">
 							<ToggleGroupControl
@@ -413,6 +415,10 @@ export default function Edit({ attributes, setAttributes }) {
 								allowReset={false}
 							/>
 						</div>
+							</>
+						) }
+						{ template && template.includes( '%excerpt%' ) && (
+							<>
 						<PanelRow>{__('Excerpt settings', 'category-posts')}</PanelRow>
 						<div className="cpwp-block-ident">
 							<NumberControl
@@ -439,6 +445,10 @@ export default function Edit({ attributes, setAttributes }) {
 								}
 							/>
 						</div>
+							</>
+						) }
+						{ template && template.includes( '%more-link%' ) && (
+							<>
 						<PanelRow>{__('More Link settings', 'category-posts')}</PanelRow>
 						<div className="cpwp-block-ident">
 							<TextControl
@@ -447,6 +457,10 @@ export default function Edit({ attributes, setAttributes }) {
 								onChange={(excerptMoreText) => setAttributes({ excerptMoreText })}
 							/>
 						</div>
+							</>
+						) }
+						{ template && template.includes( '%date%' ) && (
+							<>
 						<PanelRow>{__('Date format settings', 'category-posts')}</PanelRow>
 						<div className="cpwp-block-ident">
 							<SelectControl
@@ -474,6 +488,10 @@ export default function Edit({ attributes, setAttributes }) {
 								allowReset={false}
 							/>
 						</div>
+							</>
+						) }
+						{ template && template.includes( '%thumb%' ) && (
+							<>
 						<PanelRow>{__('Thumbnail settings', 'category-posts')}</PanelRow>
 						<div className="cpwp-block-ident">
 							<NumberControl
@@ -528,6 +546,8 @@ export default function Edit({ attributes, setAttributes }) {
 								onChange={() => setAttributes({ everythingIsLink: !everythingIsLink })}
 							/>
 						</div>
+							</>
+						) }
 					</PanelBody>
 					<PanelBody title={__('General', 'category-posts')} initialOpen={ false }>
 						<PanelRow>Inherited CSS</PanelRow>
