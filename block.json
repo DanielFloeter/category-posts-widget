@@ -169,7 +169,7 @@
 		},
 		"template": {
 			"type": "string",
-			"default": "%title%\n\n%thumb%"
+			"default": "%title%\n\n%thumb%\n\n%excerpt%"
 		},
 		"textDoNotWrapThumb": {
 			"type": "boolean",
