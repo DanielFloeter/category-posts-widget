@@ -169,6 +169,68 @@ class testWidgetFront extends WP_UnitTestCase {
 	}
 
 	/**
+	 *  End-to-end regression test for #185 ("Don't wrap thumb with text with
+	 *  two or more Block instances"): render two block instances - each with
+	 *  its own `instanceId` and its own settings - in the same request, the
+	 *  way the block editor does for ServerSideRender previews or a page with
+	 *  more than one instance of the block.
+	 *
+	 *  Before load-more ids were derived from `instanceId`, two instances
+	 *  could end up sharing one wp_unique_id()-generated id. That single id
+	 *  is used as the key for two independent per-instance caches inside
+	 *  render_category_posts_block(): the `cat_posts_block_<id>` transient
+	 *  (store_block_loadmore_settings()) and the `static $styled` CSS-emission
+	 *  guard ("emit the style island for this dom id only once"). A shared id
+	 *  means a shared cache slot, so the second instance's own settings -
+	 *  including things like "do not wrap thumbnail with overflowing text" -
+	 *  silently never took effect: it re-used whatever the first instance had
+	 *  already written there.
+	 *
+	 *  This test renders two instances that deliberately disagree on
+	 *  `textDoNotWrapThumb` and asserts that each instance's own markup, own
+	 *  CSS and own stored load-more settings stay independent.
+	 */
+	public function testRenderCategoryPostsBlockMultipleInstances() {
+		$GLOBALS['before_title'] = '';
+		$GLOBALS['after_title']  = '';
+
+		$attributes_a = array(
+			'instanceId'         => 9101,
+			'template'           => "%title%\n\n%thumb%\n\n%excerpt%",
+			'textDoNotWrapThumb' => true,
+			'num'                => 3,
+		);
+		$attributes_b = array(
+			'instanceId'         => 9102,
+			'template'           => "%title%\n\n%thumb%\n\n%excerpt%",
+			'textDoNotWrapThumb' => false,
+			'num'                => 7,
+		);
+
+		$html_a = \categoryPosts\render_category_posts_block( $attributes_a );
+		$html_b = \categoryPosts\render_category_posts_block( $attributes_b );
+
+		// Each instance renders under its own, stable dom id derived from its
+		// own instanceId - not a shared/colliding one.
+		$this->assertStringContainsString( 'id="category-posts-block-9101"', $html_a );
+		$this->assertStringContainsString( 'id="category-posts-block-9102"', $html_b );
+
+		// Instance A turned "wrap thumbnail with overflowing text" off
+		// (textDoNotWrapThumb = true -> no 'wrap_thumb' CSS rule); instance B
+		// left it on (false -> the 'wrap_thumb' CSS rule IS present). If the
+		// two instances shared a cache slot, both would show the same
+		// (wrong, for one of them) answer here.
+		$this->assertStringNotContainsString( '.cpwp-wrap-text p {display: inline;}', $html_a );
+		$this->assertStringContainsString( '.cpwp-wrap-text p {display: inline;}', $html_b );
+
+		// The stored load-more settings for each block id must be that
+		// instance's own attributes, not overwritten by the other instance's
+		// call.
+		$this->assertSame( $attributes_a, \categoryPosts\get_block_loadmore_settings( 'block-9101' ) );
+		$this->assertSame( $attributes_b, \categoryPosts\get_block_loadmore_settings( 'block-9102' ) );
+	}
+
+	/**
 	 *  Test the titleHTML method of the widget
 	 */
 	function testtitleHTML() {
