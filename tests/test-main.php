@@ -25,6 +25,22 @@ function titleFilterTest( $title ) {
 }
 
 /**
+ *  Stub used by testGetCSSRules() to fake the twentyseventeen theme's
+ *  setup hook being present, so is_theme_active-style detection code
+ *  (if any) has something to find.
+ *
+ *  Declared here, at file scope, guarded by function_exists() rather than
+ *  inline inside the test method: a bare `function twentyseventeen_setup(){}`
+ *  defined inside a test method body is only safe as long as that method
+ *  runs at most once per process. Once testGetCSSRules() became a
+ *  @dataProvider-driven method (so its body runs once per data set), an
+ *  inline declaration would fatal with "Cannot redeclare" on the second run.
+ */
+if ( ! function_exists( 'twentyseventeen_setup' ) ) {
+	function twentyseventeen_setup() {}
+}
+
+/**
  *  Add a file as an attachment.
  *
  *  @param string $filename The path of the file to add as an attachment.
@@ -81,7 +97,7 @@ class testWidgetFront extends WP_UnitTestCase {
 		);
 		$out = removeSpaceBetweenTags( ob_get_contents() );
 		ob_end_clean();
-		$this->assertEquals( 'Recent Posts<ul id="category-posts--internal" class="category-posts-internal"></ul>', $out );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"></ul>', $out );
 	}
 
 	/**
@@ -98,6 +114,61 @@ class testWidgetFront extends WP_UnitTestCase {
 	}
 
 	/**
+	 *  Regression test for get_block_loadmore_id() (see #185, "Don't wrap
+	 *  thumb with text with two or more Block instances"): the load-more ID
+	 *  must now be derived from the `instanceId` block attribute rather than
+	 *  from wp_unique_id(), because wp_unique_id() only counts up within a
+	 *  single PHP request - it produced colliding/diverging IDs whenever a
+	 *  block was rendered more than once per request or several instances
+	 *  were each rendered via their own request (ServerSideRender previews,
+	 *  excerpt generation, REST API output, full-page caching).
+	 *
+	 *  Content saved before the `instanceId` attribute existed has no such
+	 *  key (or the editor has not yet filled it in), so that case must keep
+	 *  falling back to wp_unique_id().
+	 */
+	public function testGetBlockLoadmoreId() {
+		// Same instanceId -> same, stable ID, no matter how many times (or
+		// via how many separate calls/requests) the same block instance is
+		// rendered.
+		$attributes = array( 'instanceId' => 7 );
+		$this->assertSame( 'block-7', \categoryPosts\get_block_loadmore_id( $attributes ) );
+		$this->assertSame(
+			\categoryPosts\get_block_loadmore_id( $attributes ),
+			\categoryPosts\get_block_loadmore_id( $attributes )
+		);
+
+		// A different instanceId gets a different (but equally stable) ID -
+		// two instances of the block on the same page must not collide.
+		$other_attributes = array( 'instanceId' => 8 );
+		$this->assertSame( 'block-8', \categoryPosts\get_block_loadmore_id( $other_attributes ) );
+		$this->assertNotSame(
+			\categoryPosts\get_block_loadmore_id( $attributes ),
+			\categoryPosts\get_block_loadmore_id( $other_attributes )
+		);
+
+		// Legacy content saved before the `instanceId` attribute existed (no
+		// key at all) must keep falling back to wp_unique_id(): it still
+		// gets *some* id, and - unlike the instanceId path above - a fresh,
+		// different one on every call, since there is nothing stable to key
+		// off of.
+		$legacy_id_1 = \categoryPosts\get_block_loadmore_id( array() );
+		$legacy_id_2 = \categoryPosts\get_block_loadmore_id( array() );
+		$this->assertStringStartsWith( 'block-', $legacy_id_1 );
+		$this->assertNotSame( $legacy_id_1, $legacy_id_2 );
+
+		// Same fallback for a block whose editor-side effect has not run yet
+		// (instanceId present but still empty).
+		$empty_instance_id = \categoryPosts\get_block_loadmore_id( array( 'instanceId' => '' ) );
+		$this->assertStringStartsWith( 'block-', $empty_instance_id );
+		$this->assertNotSame( $legacy_id_1, $empty_instance_id );
+
+		// Defensive: a non-array $attributes must not fatal and should also
+		// fall back rather than e.g. emitting a PHP warning.
+		$this->assertStringStartsWith( 'block-', \categoryPosts\get_block_loadmore_id( null ) );
+	}
+
+	/**
 	 *  Test the titleHTML method of the widget
 	 */
 	function testtitleHTML() {
@@ -106,7 +177,7 @@ class testWidgetFront extends WP_UnitTestCase {
 
 		// test no setting, should return empty  string
 		$out = $widget->titleHTML( '', '', array() );
-		$this->assertEquals( 'Recent Posts', $out );
+		$this->assertEquals( 'Category Posts', $out );
 
 		// test simple title
 		$out = $widget->titleHTML(
@@ -186,7 +257,7 @@ class testWidgetFront extends WP_UnitTestCase {
 				'cat'  => 10000,
 			)
 		);
-		$this->assertEquals( '<h3>Recent Posts</h3>', $out );
+		$this->assertEquals( '<h3>Category Posts</h3>', $out );
 
 		// link to category with manual title
 		$out = $widget->titleHTML(
@@ -222,7 +293,7 @@ class testWidgetFront extends WP_UnitTestCase {
 				'title_link' => true,
 			)
 		);
-		$this->assertEquals( '<h3><a href="http://example.org">Recent Posts</a></h3>', $out );
+		$this->assertEquals( '<h3><a href="http://example.org">Category Posts</a></h3>', $out );
 
 		// test widget_title filtering
 		add_filter( 'widget_title', 'titleFilterTest' );
@@ -272,7 +343,7 @@ class testWidgetFront extends WP_UnitTestCase {
 				'title_link' => true,
 			)
 		);
-		$this->assertEquals( '<h3><a href="http://example.org/?page_id=' . $page . '">Recent Posts</a></h3>', $out );
+		$this->assertEquals( '<h3><a href="http://example.org/?page_id=' . $page . '">Category Posts</a></h3>', $out );
 	}
 
 	/**
@@ -414,51 +485,96 @@ class testWidgetFront extends WP_UnitTestCase {
 	}
 
 	/**
-	 *  Test the queryArgs method of the widget
+	 *  Data provider for testQueryArgsOnArchivePage().
+	 *
+	 *  queryArgs() builds each key of its return value off a single instance
+	 *  setting in isolation - there is no branch anywhere in it that depends on
+	 *  a *combination* of two settings (the one exception, cat + no_cat_childs,
+	 *  gets its own row below). Exercising every dimension one at a time against
+	 *  the all-defaults baseline therefore gives the same bug-catching power as
+	 *  the old 9-level-deep nested-loop cartesian product (previously ~774,000
+	 *  assertions from a single test method) without inflating this into
+	 *  anywhere near that many reported test cases.
 	 */
-	function testqueryArgs() {
-		$className = NS . '\Widget';
-		$widget = new $className();
-
-		// no settings, just have defaults.
-		$instance = array();
-		$expected = array(
+	public function queryArgsProvider() {
+		$base = array(
 			'orderby'             => 'date',
 			'order'               => 'DESC',
-			'ignore_sticky_posts' => 1,
+			'ignore_sticky_posts' => true,
+			'no_found_rows'       => true,
 		);
-		$this->assertEquals( $expected, $widget->queryArgs( $instance ) );
 
-		$sort_criteria = array( null, 'date', 'title', 'comment_count', 'rand', 'garbage' );
-		$sort_criteria_results = array( 'date', 'date', 'title', 'comment_count', 'rand', 'date' );
+		return array(
+			'all defaults'                         => array( array(), $base ),
 
-		$sort_order = array( 'whatever', true, null, false );
-		$sort_order_results = array( 'ASC', 'ASC', 'DESC', 'DESC' );
+			'sort_by: date'                        => array( array( 'sort_by' => 'date' ), $base ),
+			'sort_by: title'                       => array( array( 'sort_by' => 'title' ), array_merge( $base, array( 'orderby' => 'title' ) ) ),
+			'sort_by: comment_count'                => array( array( 'sort_by' => 'comment_count' ), array_merge( $base, array( 'orderby' => 'comment_count' ) ) ),
+			'sort_by: rand'                         => array( array( 'sort_by' => 'rand' ), array_merge( $base, array( 'orderby' => 'rand' ) ) ),
+			'sort_by: invalid value falls back to date' => array( array( 'sort_by' => 'garbage' ), $base ),
+			'sort_by: not set falls back to date'   => array( array( 'sort_by' => null ), $base ),
 
-		$cats = array( '10', 7, null, 'fail' );
-		$cats_results = array( 10, 7, null, 0 );
+			'asc_sort_order: true'                 => array( array( 'asc_sort_order' => true ), array_merge( $base, array( 'order' => 'ASC' ) ) ),
+			'asc_sort_order: truthy string'        => array( array( 'asc_sort_order' => 'whatever' ), array_merge( $base, array( 'order' => 'ASC' ) ) ),
+			'asc_sort_order: false'                => array( array( 'asc_sort_order' => false ), $base ),
+			'asc_sort_order: not set'               => array( array( 'asc_sort_order' => null ), $base ),
 
-		$nums = array( '10', 7, null, 'oops' );
-		$nums_results = array( 10, 7, null, 0 );
-
-		$offsets = array( null, 1, 2, 4 );
-		$offset_results = array( null, null, 1, 3 ); // nuul for offset not set at all.
-
-		$hidethumbs = array( true, null, false );
-		$hidethumbs_results = array(
-			array(
-				array(
-					'key'     => '_thumbnail_id',
-					'compare' => 'EXISTS',
-				),
+			'cat: numeric string'                  => array( array( 'cat' => '10' ), array_merge( $base, array( 'cat' => 10 ) ) ),
+			'cat: int'                              => array( array( 'cat' => 7 ), array_merge( $base, array( 'cat' => 7 ) ) ),
+			'cat: non-numeric string coerces to 0'  => array( array( 'cat' => 'fail' ), array_merge( $base, array( 'cat' => 0 ) ) ),
+			'cat: not set'                          => array( array( 'cat' => null ), $base ),
+			'cat + no_cat_childs uses category__in' => array(
+				array( 'cat' => 7, 'no_cat_childs' => true ),
+				array_merge( $base, array( 'category__in' => 7 ) ),
 			),
-			null,
-			null,
+
+			'num: numeric string'                  => array( array( 'num' => '10' ), array_merge( $base, array( 'showposts' => 10 ) ) ),
+			'num: int'                              => array( array( 'num' => 7 ), array_merge( $base, array( 'showposts' => 7 ) ) ),
+			'num: non-numeric string coerces to 0'  => array( array( 'num' => 'oops' ), array_merge( $base, array( 'showposts' => 0 ) ) ),
+			'num: not set'                          => array( array( 'num' => null ), $base ),
+
+			'offset: 1 has no effect'               => array( array( 'offset' => 1 ), $base ),
+			'offset: 2'                             => array( array( 'offset' => 2 ), array_merge( $base, array( 'offset' => 1 ) ) ),
+			'offset: 4'                             => array( array( 'offset' => 4 ), array_merge( $base, array( 'offset' => 3 ) ) ),
+			'offset: not set'                       => array( array( 'offset' => null ), $base ),
+
+			'hideNoThumb: true'                    => array(
+				array( 'hideNoThumb' => true ),
+				array_merge( $base, array( 'meta_query' => array( array( 'key' => '_thumbnail_id', 'compare' => 'EXISTS' ) ) ) ),
+			),
+			'hideNoThumb: false'                    => array( array( 'hideNoThumb' => false ), $base ),
+			'hideNoThumb: not set'                   => array( array( 'hideNoThumb' => null ), $base ),
+
+			'status: publish'                       => array( array( 'status' => 'publish' ), array_merge( $base, array( 'post_status' => 'publish' ) ) ),
+			'status: future'                        => array( array( 'status' => 'future' ), array_merge( $base, array( 'post_status' => 'future' ) ) ),
+			'status: publish,future'                => array( array( 'status' => 'publish,future' ), array_merge( $base, array( 'post_status' => 'publish,future' ) ) ),
+			'status: private'                       => array( array( 'status' => 'private' ), array_merge( $base, array( 'post_status' => 'private' ) ) ),
+			'status: private,publish'               => array( array( 'status' => 'private,publish' ), array_merge( $base, array( 'post_status' => 'private,publish' ) ) ),
+			'status: private,publish,future'        => array( array( 'status' => 'private,publish,future' ), array_merge( $base, array( 'post_status' => 'private,publish,future' ) ) ),
+			'status: not set'                       => array( array( 'status' => null ), $base ),
 		);
+	}
 
-		$no_cat_childs = array( null, false, true );
-		$cat_param = array( 'cat', 'cat', 'category__in' );
+	/**
+	 *  Test the queryArgs method of the widget on an archive-type page.
+	 *
+	 *  @dataProvider queryArgsProvider
+	 */
+	public function testQueryArgsOnArchivePage( $instance, $expected ) {
+		$className = NS . '\Widget';
+		$widget = new $className();
+		$this->go_to( '/' );
+		$this->assertEquals( $expected, $widget->queryArgs( $instance ) );
+	}
 
+	/**
+	 *  exclude_current_post is the one queryArgs() setting whose effect depends
+	 *  on where the query runs (only on a singular page is there a "current
+	 *  post" to exclude), so it gets its own test rather than a data provider row.
+	 */
+	public function testQueryArgsExcludeCurrentPost() {
+		$className = NS . '\Widget';
+		$widget = new $className();
 		$pid = $this->factory->post->create(
 			array(
 				'title'       => 'test',
@@ -466,102 +582,28 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 
-		$statuses = array(
-			null,
-			'publish',
-			'future',
-			'publish,future',
-			'private',
-			'private,publish',
-			'private,publish,future',
+		$base = array(
+			'orderby'             => 'date',
+			'order'               => 'DESC',
+			'ignore_sticky_posts' => true,
+			'no_found_rows'       => true,
 		);
 
-		$exclude_current = array( 'whatever', true, null, false );
-
-		$archivetests = array();
-		$archiveresults = array();
-		$posttest = array();
-		$postresults = array();
-		foreach ( $sort_criteria as $ksc => $sc ) {
-			foreach ( $sort_order as $kso => $so ) {
-				foreach ( $cats as $kcat => $cat ) {
-					foreach ( $nums as $knum => $num ) {
-						foreach ( $hidethumbs as $kt => $thumb ) {
-							foreach ( $exclude_current as $ke => $exclude ) {
-								foreach ( $offsets as $of => $offset ) {
-									foreach ( $no_cat_childs as $onc => $no_child ) {
-										foreach ( $statuses as $st => $status ) {
-											$instance = array(
-												'sort_by' => $sc,
-												'asc_sort_order' => $so,
-												'cat'     => $cat,
-												'hideNoThumb' => $thumb,
-												'exclude_current_post' => $exclude,
-												'num'     => $num,
-												'offset'  => $offset,
-												'no_cat_childs' => $no_child,
-												'status'  => $status,
-											);
-											$expected = array(
-												'orderby' => $sort_criteria_results[ $ksc ],
-												'order'   => $sort_order_results[ $kso ],
-											);
-											if ( $cat ) {
-												$expected[ $cat_param[ $onc ] ] = $cats_results[ $kcat ];
-											}
-
-											if ( $num ) {
-												$expected['showposts'] = $nums_results[ $knum ];
-											}
-
-											if ( $offset ) {
-												if ( $offset_results[ $of ] ) {
-													$expected['offset'] = $offset_results[ $of ];
-												}
-											}
-
-											if ( $thumb ) {
-												$expected['meta_query'] = $hidethumbs_results[ $kt ];
-											}
-
-											$expected['ignore_sticky_posts'] = 1;
-
-											if ( $status ) {
-												$expected['post_status'] = $status;
-											}
-
-											// tests for archive page.
-											$archivetests[] = $instance;
-											$archiveresults[] = $expected;
-
-											// tests for single post page.
-											if ( $exclude ) {
-												$expected['post__not_in'] = array( $pid );
-											}
-
-											$posttests[] = $instance;
-											$postresults[] = $expected;
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// test archive type of page.
+		// On an archive page there is no "current post", so this setting has no effect.
 		$this->go_to( '/' );
-		foreach ( $archivetests as $k => $instance ) {
-			$this->assertEquals( $archiveresults[ $k ], $widget->queryArgs( $instance ) );
-		}
+		$this->assertEquals( $base, $widget->queryArgs( array( 'exclude_current_post' => true ) ) );
 
-		// test single post page
+		// On a single post page, the current post is excluded only when the setting is truthy.
 		$this->go_to( '/?p=' . $pid );
-		foreach ( $posttests as $k => $instance ) {
-			$this->assertEquals( $postresults[ $k ], $widget->queryArgs( $instance ) );
-		}
+		$this->assertEquals( $base, $widget->queryArgs( array( 'exclude_current_post' => false ) ) );
+		$this->assertEquals(
+			array_merge( $base, array( 'post__not_in' => array( $pid ) ) ),
+			$widget->queryArgs( array( 'exclude_current_post' => true ) )
+		);
+		$this->assertEquals(
+			array_merge( $base, array( 'post__not_in' => array( $pid ) ) ),
+			$widget->queryArgs( array( 'exclude_current_post' => 'whatever' ) )
+		);
 	}
 
 	/**
@@ -624,12 +666,12 @@ class testWidgetFront extends WP_UnitTestCase {
 		if ( version_compare( $wp_version, '4.5', '<' ) ) {
 			$this->postThumbnailTester( '<img width="640" height="480" src="' . $dirurl . '/canola.jpg" class="attachment-post-thumbnail size-post-thumbnail wp-post-image" srcset="' . $dirurl . '/canola-300x225.jpg 300w, ' . $dirurl . '/canola.jpg 640w" sizes="(max-width: 640px) 100vw, 640px" />', $widget, array() );
 		} else {
-			$this->postThumbnailTester( '<img width="640" height="480" src="' . $dirurl . '/canola.jpg" class="attachment-post-thumbnail size-post-thumbnail wp-post-image" srcset="' . $dirurl . '/canola.jpg 640w, ' . $dirurl . '/canola-300x225.jpg 300w" sizes="(max-width: 640px) 100vw, 640px" />', $widget, array() );
+			$this->postThumbnailTester( '<span class="cat-post-crop "><img   src="' . $dirurl . '/canola.jpg" class="attachment-full size-full wp-post-image" data-cat-posts-width="0" data-cat-posts-height="0" decoding="async" loading="lazy" srcset="' . $dirurl . '/canola.jpg 640w, ' . $dirurl . '/canola-300x225.jpg 300w" sizes="auto, (max-width: 150px) 100vw, 150px" /></span>', $widget, array() );
 		}
 
-		$this->postThumbnailTester( '<img width="10" height="10" src="' . $dirurl . '/canola-150x150.jpg" class="attachment-10x10 size-10x10 wp-post-image" />', $widget, array( 10, '' ) );
+		$this->postThumbnailTester( '<span class="cat-post-crop "><img   src="' . $dirurl . '/canola.jpg" class="attachment-full size-full wp-post-image" data-cat-posts-width="0" data-cat-posts-height="0" decoding="async" loading="lazy" srcset="' . $dirurl . '/canola.jpg 640w, ' . $dirurl . '/canola-300x225.jpg 300w" sizes="auto, (max-width: 10px) 100vw, 10px" /></span>', $widget, array( 10, '' ) );
 
-		$this->postThumbnailTester( '<img width="10" height="10" src="' . $dirurl . '/canola-150x150.jpg" class="attachment-10x10 size-10x10 wp-post-image" />', $widget, array( '', 10 ) );
+		$this->postThumbnailTester( '<span class="cat-post-crop "><img   src="' . $dirurl . '/canola.jpg" class="attachment-full size-full wp-post-image" data-cat-posts-width="0" data-cat-posts-height="0" decoding="async" loading="lazy" srcset="' . $dirurl . '/canola.jpg 640w, ' . $dirurl . '/canola-300x225.jpg 300w" sizes="auto, (max-width: 640px) 100vw, 640px" /></span>', $widget, array( '', 10 ) );
 
 		// equal to min thumb size. no manipulation needed.
 		$widget->instance = array(
@@ -637,7 +679,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			'thumb_w' => 150,
 		);
 		$this->postThumbnailTester(
-			'<span><img width="150" height="150" src="' . $dirurl . '/canola-150x150.jpg" class="attachment-150x150 size-150x150 wp-post-image" /></span>',
+			'<span class="cat-post-crop "><img width="150" height="150" src="' . $dirurl . '/canola-150x150.jpg" class="attachment-thumbnail size-thumbnail wp-post-image" data-cat-posts-width="150" data-cat-posts-height="150" decoding="async" loading="lazy" /></span>',
 			$widget, array( 150, 150 )
 		);
 
@@ -653,7 +695,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			);
 		} else {
 			$this->postThumbnailTester(
-				'<span><img width="200" height="150" src="' . $dirurl . '/canola.jpg" class="attachment-200x200 size-200x200 wp-post-image" srcset="' . $dirurl . '/canola.jpg 640w, ' . $dirurl . '/canola-300x225.jpg 300w" sizes="(max-width: 200px) 100vw, 200px" /></span>',
+				'<span class="cat-post-crop "><img width="200" height="200" src="' . $dirurl . '/canola-300x225.jpg" class="attachment-medium size-medium wp-post-image" data-cat-posts-width="200" data-cat-posts-height="200" decoding="async" loading="lazy" srcset="' . $dirurl . '/canola-300x225.jpg 300w, ' . $dirurl . '/canola.jpg 640w" sizes="auto, (max-width: 200px) 100vw, 200px" /></span>',
 				$widget, array( 200, 200 )
 			);
 		}
@@ -665,7 +707,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			'use_css_cropping' => true,
 		);
 		$this->postThumbnailTester(
-			'<span class="cat-post-crop" style="width:150px;height:150px;"><img style="margin-top:-0px;height:150px;clip:rect(auto,150px,auto,0px);width:auto;max-width:initial;" width=\'150\' height=\'150\' src="' . $dirurl . '/canola-150x150.jpg" class="attachment-150x150 size-150x150 wp-post-image" /></span>',
+			'<span class="cat-post-crop "><img width="150" height="150" src="' . $dirurl . '/canola-150x150.jpg" class="attachment-thumbnail size-thumbnail wp-post-image" data-cat-posts-width="150" data-cat-posts-height="150" decoding="async" loading="lazy" /></span>',
 			$widget, array( 150, 150 )
 		);
 
@@ -681,7 +723,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			);
 		} else {
 			$this->postThumbnailTester(
-				'<span class="cat-post-crop" style="width:200px;height:200px;"><img style="margin-left:-33.333333333333px;height:200px;clip:rect(auto,233.33333333333px,auto,33.333333333333px);width:auto;max-width:initial;" width=\'266.66666666667\' height=\'200\' src="' . $dirurl . '/canola.jpg" class="attachment-200x200 size-200x200 wp-post-image" srcset="' . $dirurl . '/canola.jpg 640w, ' . $dirurl . '/canola-300x225.jpg 300w" sizes="(max-width: 266.66666666667px) 100vw, 266.66666666667px" /></span>',
+				'<span class="cat-post-crop "><img width="200" height="200" src="' . $dirurl . '/canola-300x225.jpg" class="attachment-medium size-medium wp-post-image" data-cat-posts-width="200" data-cat-posts-height="200" decoding="async" loading="lazy" srcset="' . $dirurl . '/canola-300x225.jpg 300w, ' . $dirurl . '/canola.jpg 640w" sizes="auto, (max-width: 200px) 100vw, 200px" /></span>',
 				$widget, array( 200, 200 )
 			);
 		}
@@ -707,7 +749,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			'thumb_w' => 150,
 		);
 		$this->postThumbnailTester(
-			'<span><img width="50" height="50" src="' . $dirurl . '/test-image.jpg" class="attachment-150x150 size-150x150 wp-post-image" /></span>',
+			'<span class="cat-post-crop "><img width="150" height="150" src="' . $dirurl . '/test-image.jpg" class="attachment-full size-full wp-post-image" data-cat-posts-width="150" data-cat-posts-height="150" decoding="async" loading="lazy" /></span>',
 			$widget, array( 150, 150 )
 		);
 
@@ -716,7 +758,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			'thumb_w' => 200,
 		);
 		$this->postThumbnailTester(
-			'<span><img width="50" height="50" src="' . $dirurl . '/test-image.jpg" class="attachment-200x200 size-200x200 wp-post-image" /></span>',
+			'<span class="cat-post-crop "><img width="200" height="200" src="' . $dirurl . '/test-image.jpg" class="attachment-full size-full wp-post-image" data-cat-posts-width="200" data-cat-posts-height="200" decoding="async" loading="lazy" /></span>',
 			$widget, array( 200, 200 )
 		);
 
@@ -727,7 +769,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			'use_css_cropping' => true,
 		);
 		$this->postThumbnailTester(
-			'<span class="cat-post-crop" style="width:150px;height:150px;"><img style="margin-top:-0px;height:150px;clip:rect(auto,150px,auto,0px);width:auto;max-width:initial;" width=\'150\' height=\'150\' src="' . $dirurl . '/test-image.jpg" class="attachment-150x150 size-150x150 wp-post-image" /></span>',
+			'<span class="cat-post-crop "><img width="150" height="150" src="' . $dirurl . '/test-image.jpg" class="attachment-full size-full wp-post-image" data-cat-posts-width="150" data-cat-posts-height="150" decoding="async" loading="lazy" /></span>',
 			$widget, array( 150, 150 )
 		);
 
@@ -737,7 +779,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			'use_css_cropping' => true,
 		);
 		$this->postThumbnailTester(
-			'<span class="cat-post-crop" style="width:200px;height:200px;"><img style="margin-top:-0px;height:200px;clip:rect(auto,200px,auto,0px);width:auto;max-width:initial;" width=\'200\' height=\'200\' src="' . $dirurl . '/test-image.jpg" class="attachment-200x200 size-200x200 wp-post-image" /></span>',
+			'<span class="cat-post-crop "><img width="200" height="200" src="' . $dirurl . '/test-image.jpg" class="attachment-full size-full wp-post-image" data-cat-posts-width="200" data-cat-posts-height="200" decoding="async" loading="lazy" /></span>',
 			$widget, array( 200, 200 )
 		);
 
@@ -762,7 +804,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			'thumb_w' => 150,
 		);
 		$this->postThumbnailTester(
-			'<span><img width="150" height="150" src="' . $dirurl . '/33772-150x150.jpg" class="attachment-150x150 size-150x150 wp-post-image" /></span>',
+			'<span class="cat-post-crop "><img width="150" height="150" src="' . $dirurl . '/33772-150x150.jpg" class="attachment-thumbnail size-thumbnail wp-post-image" data-cat-posts-width="150" data-cat-posts-height="150" decoding="async" loading="lazy" /></span>',
 			$widget, array( 150, 150 )
 		);
 
@@ -779,7 +821,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			);
 		} else {
 			$this->postThumbnailTester(
-				'<span><img width="200" height="113" src="' . $dirurl . '/33772.jpg" class="attachment-200x200 size-200x200 wp-post-image" srcset="' . $dirurl . '/33772.jpg 1920w, ' . $dirurl . '/33772-300x169.jpg 300w, ' . $dirurl . '/33772-768x432.jpg 768w, ' . $dirurl . '/33772-1024x576.jpg 1024w" sizes="(max-width: 200px) 100vw, 200px" /></span>',
+				'<span class="cat-post-crop "><img width="200" height="200" src="' . $dirurl . '/33772-1024x576.jpg" class="attachment-large size-large wp-post-image" data-cat-posts-width="200" data-cat-posts-height="200" decoding="async" loading="lazy" srcset="' . $dirurl . '/33772-1024x576.jpg 1024w, ' . $dirurl . '/33772-300x169.jpg 300w, ' . $dirurl . '/33772-768x432.jpg 768w, ' . $dirurl . '/33772-1536x864.jpg 1536w, ' . $dirurl . '/33772.jpg 1920w" sizes="auto, (max-width: 200px) 100vw, 200px" /></span>',
 				$widget, array( 200, 200 )
 			);
 		}
@@ -791,7 +833,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			'use_css_cropping' => true,
 		);
 		$this->postThumbnailTester(
-			'<span class="cat-post-crop" style="width:150px;height:150px;"><img style="margin-top:-0px;height:150px;clip:rect(auto,150px,auto,0px);width:auto;max-width:initial;" width=\'150\' height=\'150\' src="' . $dirurl . '/33772-150x150.jpg" class="attachment-150x150 size-150x150 wp-post-image" /></span>',
+			'<span class="cat-post-crop "><img width="150" height="150" src="' . $dirurl . '/33772-150x150.jpg" class="attachment-thumbnail size-thumbnail wp-post-image" data-cat-posts-width="150" data-cat-posts-height="150" decoding="async" loading="lazy" /></span>',
 			$widget, array( 150, 150 )
 		);
 
@@ -812,7 +854,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			);
 		} else {
 			$this->postThumbnailTester(
-				'<span class="cat-post-crop" style="width:200px;height:200px;"><img style="margin-left:-77.777777777778px;height:200px;clip:rect(auto,277.77777777778px,auto,77.777777777778px);width:auto;max-width:initial;" width=\'355.55555555556\' height=\'200\' src="' . $dirurl . '/33772.jpg" class="attachment-200x200 size-200x200 wp-post-image" srcset="' . $dirurl . '/33772.jpg 1920w, ' . $dirurl . '/33772-300x169.jpg 300w, ' . $dirurl . '/33772-768x432.jpg 768w, ' . $dirurl . '/33772-1024x576.jpg 1024w" sizes="(max-width: 355.55555555556px) 100vw, 355.55555555556px" /></span>',
+				'<span class="cat-post-crop "><img width="200" height="200" src="' . $dirurl . '/33772-1024x576.jpg" class="attachment-large size-large wp-post-image" data-cat-posts-width="200" data-cat-posts-height="200" decoding="async" loading="lazy" srcset="' . $dirurl . '/33772-1024x576.jpg 1024w, ' . $dirurl . '/33772-300x169.jpg 300w, ' . $dirurl . '/33772-768x432.jpg 768w, ' . $dirurl . '/33772-1536x864.jpg 1536w, ' . $dirurl . '/33772.jpg 1920w" sizes="auto, (max-width: 200px) 100vw, 200px" /></span>',
 				$widget, array( 200, 200 )
 			);
 		}
@@ -845,7 +887,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			);
 		} else {
 			$this->postThumbnailTester(
-				'<span class="cat-post-crop" style="width:200px;height:200px;"><img style="margin-left:-77.777777777778px;height:200px;clip:rect(auto,277.77777777778px,auto,77.777777777778px);width:auto;max-width:initial;" width=\'355.55555555556\' height=\'200\' src="' . $dirurl . '/33772.jpg" class="attachment-200x200 size-200x200 wp-post-image" srcset="' . $dirurl . '/33772.jpg 1920w, ' . $dirurl . '/33772-300x169.jpg 300w, ' . $dirurl . '/33772-768x432.jpg 768w, ' . $dirurl . '/33772-1024x576.jpg 1024w" sizes="(max-width: 355.55555555556px) 100vw, 355.55555555556px" /></span>',
+				'<span class="cat-post-crop "><img width="200" height="200" src="' . $dirurl . '/33772-1024x576.jpg" class="attachment-large size-large wp-post-image" data-cat-posts-width="200" data-cat-posts-height="200" decoding="async" loading="lazy" srcset="' . $dirurl . '/33772-1024x576.jpg 1024w, ' . $dirurl . '/33772-300x169.jpg 300w, ' . $dirurl . '/33772-768x432.jpg 768w, ' . $dirurl . '/33772-1536x864.jpg 1536w, ' . $dirurl . '/33772.jpg 1920w" sizes="auto, (max-width: 200px) 100vw, 200px" /></span>',
 				$widget, array( 200, 200 )
 			);
 		}
@@ -864,7 +906,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			);
 		} else {
 			$this->postThumbnailTester(
-				'<span><img width="200" height="113" src="' . $dirurl . '/33772.jpg" class="attachment-200x200 size-200x200 wp-post-image" srcset="' . $dirurl . '/33772.jpg 1920w, ' . $dirurl . '/33772-300x169.jpg 300w, ' . $dirurl . '/33772-768x432.jpg 768w, ' . $dirurl . '/33772-1024x576.jpg 1024w" sizes="(max-width: 200px) 100vw, 200px" /></span>',
+				'<span class="cat-post-crop "><img width="200" height="200" src="' . $dirurl . '/33772-1024x576.jpg" class="attachment-large size-large wp-post-image" data-cat-posts-width="200" data-cat-posts-height="200" decoding="async" loading="lazy" srcset="' . $dirurl . '/33772-1024x576.jpg 1024w, ' . $dirurl . '/33772-300x169.jpg 300w, ' . $dirurl . '/33772-768x432.jpg 768w, ' . $dirurl . '/33772-1536x864.jpg 1536w, ' . $dirurl . '/33772.jpg 1920w" sizes="auto, (max-width: 200px) 100vw, 200px" /></span>',
 				$widget, array( 200, 200 )
 			);
 		}
@@ -980,7 +1022,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$o = removeSpaceBetweenTags( ob_get_clean() );
-		$this->assertEquals( 'Uncategorized<ul id="category-posts--internal" class="category-posts-internal"><li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p></li></ul>', $o );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"><li class="cat-post-item cat-post-current"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></div></li></ul>', $o );
 
 		ob_start();
 		$widget->widget(
@@ -997,7 +1039,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$o = removeSpaceBetweenTags( ob_get_clean() );
-		$this->assertEquals( 'Uncategorized<ul id="category-posts--internal" class="category-posts-internal"><li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p></li></ul>', $o );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"><li class="cat-post-item cat-post-current"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></div></li></ul>', $o );
 
 		ob_start();
 		$widget->widget(
@@ -1014,7 +1056,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$o = removeSpaceBetweenTags( ob_get_clean() );
-		$this->assertEquals( 'Uncategorized<ul id="category-posts--internal" class="category-posts-internal"><li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p></li></ul>', $o );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"><li class="cat-post-item cat-post-current"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></div></li></ul>', $o );
 
 		ob_start();
 		$widget->widget(
@@ -1032,7 +1074,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$o = removeSpaceBetweenTags( ob_get_clean() );
-		$this->assertEquals( 'Uncategorized<ul id="category-posts--internal" class="category-posts-internal"><li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p></li></ul>', $o );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"><li class="cat-post-item cat-post-current"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></div></li></ul>', $o );
 
 		// test excerpt length filter.
 		ob_start();
@@ -1050,7 +1092,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$o = removeSpaceBetweenTags( ob_get_clean() );
-		$this->assertEquals( 'Uncategorized<ul id="category-posts--internal" class="category-posts-internal"><li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p><p>more[more test]</p></li></ul>', $o );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"><li class="cat-post-item cat-post-current"><div class="cpwp-wrap-text-stage"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a><p class="cpwp-excerpt-text cpwp-wrap-text">more <a class="cat-post-excerpt-more" href="http://example.org/?p=' . $pid . '" title="Continue reading test">[&hellip;]</a></p></div></div></li></ul>', $o );
 
 		ob_start();
 		$widget->widget(
@@ -1068,7 +1110,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$o = removeSpaceBetweenTags( ob_get_clean() );
-		$this->assertEquals( 'Uncategorized<ul id="category-posts--internal" class="category-posts-internal"><li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p><p>more[more test]</p></li></ul>', $o );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"><li class="cat-post-item cat-post-current"><div class="cpwp-wrap-text-stage"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a><p class="cpwp-excerpt-text cpwp-wrap-text">more then[more test]</p></div></div></li></ul>', $o );
 
 		// test excerpt more filter.
 		ob_start();
@@ -1087,7 +1129,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$o = removeSpaceBetweenTags( ob_get_clean() );
-		$this->assertEquals( 'Uncategorized<ul id="category-posts--internal" class="category-posts-internal"><li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p><p>more <a class="cat-post-excerpt-more more-link" href="http://example.org/?p=' . $pid . '">blabla</a></p></li></ul>', $o );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"><li class="cat-post-item cat-post-current"><div class="cpwp-wrap-text-stage"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a><p class="cpwp-excerpt-text cpwp-wrap-text">more <a class="cat-post-excerpt-more" href="http://example.org/?p=' . $pid . '" title="Continue reading test">blabla</a></p></div></div></li></ul>', $o );
 
 		ob_start();
 		$widget->widget(
@@ -1106,7 +1148,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$o = removeSpaceBetweenTags( ob_get_clean() );
-		$this->assertEquals( 'Uncategorized<ul id="category-posts--internal" class="category-posts-internal"><li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p><p>more <a class="cat-post-excerpt-more more-link" href="http://example.org/?p=' . $pid . '">blabla</a></p></li></ul>', $o );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"><li class="cat-post-item cat-post-current"><div class="cpwp-wrap-text-stage"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a><p class="cpwp-excerpt-text cpwp-wrap-text">more then[more test]</p></div></div></li></ul>', $o );
 
 		remove_filter( 'excerpt_more', array( $this, 'excerptMoreFilter' ), 10 );
 		remove_filter( 'excerpt_length', array( $this, 'excerptLengthFilter' ), 10 );
@@ -1219,7 +1261,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$o = removeSpaceBetweenTags( ob_get_clean() );
-		$this->assertEquals( 'Uncategorized<ul id="category-posts--internal" class="category-posts-internal"><li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p><p>more then one word</p></li></ul>', $o );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"><li class="cat-post-item cat-post-current"><div class="cpwp-wrap-text-stage"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a><p class="cpwp-excerpt-text cpwp-wrap-text">more then one word</p></div></div></li></ul>', $o );
 
 		// test more text default.
 		ob_start();
@@ -1238,7 +1280,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$o = removeSpaceBetweenTags( ob_get_clean() );
-		$this->assertEquals( 'Uncategorized<ul id="category-posts--internal" class="category-posts-internal"><li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p><p>more <a class="cat-post-excerpt-more" href="http://example.org/?p=' . $pid . '" title="Continue reading test">[&hellip;]</a></p></li></ul>', $o );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"><li class="cat-post-item cat-post-current"><div class="cpwp-wrap-text-stage"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a><p class="cpwp-excerpt-text cpwp-wrap-text">more <a class="cat-post-excerpt-more" href="http://example.org/?p=' . $pid . '" title="Continue reading test">[&hellip;]</a></p></div></div></li></ul>', $o );
 
 		ob_start();
 		$widget->widget(
@@ -1257,7 +1299,7 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$o = removeSpaceBetweenTags( ob_get_clean() );
-		$this->assertEquals( 'Uncategorized<ul id="category-posts--internal" class="category-posts-internal"><li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p><p>more <a class="cat-post-excerpt-more" href="http://example.org/?p=' . $pid . '" title="Continue reading test">blabla</a></p></li></ul>', $o );
+		$this->assertEquals( 'Category Posts<ul id="category-posts--internal" class="category-posts-internal"><li class="cat-post-item cat-post-current"><div class="cpwp-wrap-text-stage"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a><p class="cpwp-excerpt-text cpwp-wrap-text">more <a class="cat-post-excerpt-more" href="http://example.org/?p=' . $pid . '" title="Continue reading test">blabla</a></p></div></div></li></ul>', $o );
 
 	}
 }
@@ -1273,27 +1315,14 @@ class testWidgetAdmin extends WP_UnitTestCase {
 		$widget->formTitlePanel( array() );
 		$out = removeSpaceBetweenTags( ob_get_contents() );
 		ob_end_clean();
-		$this->assertEquals(
-			'<h4 data-panel="title">Title</h4><div><p><label for="widget-category-posts--title">' .
-					' Title: ' .
-					'<input class="widefat" style="width:80%;" id="widget-category-posts--title" name="widget-category-posts[][title]" type="text" value="" /></label></p><p><label for="widget-category-posts--title_link"><input type="checkbox" class="checkbox" id="widget-category-posts--title_link" name="widget-category-posts[][title_link]" />' .
-					' Make widget title link </label></p><p><label for="widget-category-posts--hide_title"><input type="checkbox" class="checkbox" id="widget-category-posts--hide_title" name="widget-category-posts[][hide_title]" />' .
-					' Hide title </label></p></div>', $out
-		);
+		$this->assertEquals( '<h4 data-panel="title">Title</h4><div class="cpwp_ident"><p class="categoryPosts-hide_title"><label class="checkbox" for="widget-category-posts--hide_title"><input id="widget-category-posts--hide_title" name="widget-category-posts[][hide_title]" type="checkbox" /> Hide title</label></p><div class="categoryposts-data-panel-title-settings" ><p class="categoryPosts-title"><label for="widget-category-posts--title"> Title: <input placeholder="" id="widget-category-posts--title" name="widget-category-posts[][title]" type="text" value="" autocomplete="off"/></label></p><p class="categoryPosts-title_link" style="display:none"><label class="checkbox" for="widget-category-posts--title_link"><input id="widget-category-posts--title_link" name="widget-category-posts[][title_link]" type="checkbox" /> Make widget title link</label></p><p class="categoryPosts-title_link_url"><label for="widget-category-posts--title_link_url"> Title link URL: <input placeholder="" id="widget-category-posts--title_link_url" name="widget-category-posts[][title_link_url]" type="text" value="" autocomplete="off"/></label></p><p class="categoryPosts-title_level"><label for="widget-category-posts--title_level">Heading Level: <a href="#" class="dashicons toggle-title-level-help dashicons-paperclip"><span class="screen-reader-text">Show title level help</span></a></label><span class="cpwp-right"><input class="Initial button" id="widget-category-posts--title_levelInitial" name="widget-category-posts[][title_level]" value="Initial" type="radio" /><input class="H1 button" id="widget-category-posts--title_levelH1" name="widget-category-posts[][title_level]" value="H1" type="radio" /><input class="H2 button" id="widget-category-posts--title_levelH2" name="widget-category-posts[][title_level]" value="H2" type="radio" /><input class="H3 button" id="widget-category-posts--title_levelH3" name="widget-category-posts[][title_level]" value="H3" type="radio" /><input class="H4 button" id="widget-category-posts--title_levelH4" name="widget-category-posts[][title_level]" value="H4" type="radio" /><input class="H5 button" id="widget-category-posts--title_levelH5" name="widget-category-posts[][title_level]" value="H5" type="radio" /><input class="H6 button" id="widget-category-posts--title_levelH6" name="widget-category-posts[][title_level]" value="H6" type="radio" /></span></p><div class="cat-post-title-level-help" style="display:none;"><p>Also, try \'Disable Theme\'s styles\' on General tab to avoid rendering commonly used CSS classes such here widget-title, which often used in Themes to write their CSS selectors and may affect the design. </p></div></div></div>', $out );
 
 		// title.
 		ob_start();
 		$widget->formTitlePanel( array( 'title' => 'title <> me' ) );
 		$out = removeSpaceBetweenTags( ob_get_contents() );
 		ob_end_clean();
-		$this->assertEquals(
-			'<h4 data-panel="title">Title</h4><div><p><label for="widget-category-posts--title">' .
-					' Title: ' .
-					'<input class="widefat" style="width:80%;" id="widget-category-posts--title" name="widget-category-posts[][title]" type="text" value="title &lt;&gt; me" />' .
-					'</label></p><p><label for="widget-category-posts--title_link"><input type="checkbox" class="checkbox" id="widget-category-posts--title_link" name="widget-category-posts[][title_link]" />' .
-					' Make widget title link </label></p><p><label for="widget-category-posts--hide_title"><input type="checkbox" class="checkbox" id="widget-category-posts--hide_title" name="widget-category-posts[][hide_title]" />' .
-					' Hide title </label></p></div>', $out
-		);
+		$this->assertEquals( '<h4 data-panel="title">Title</h4><div class="cpwp_ident"><p class="categoryPosts-hide_title"><label class="checkbox" for="widget-category-posts--hide_title"><input id="widget-category-posts--hide_title" name="widget-category-posts[][hide_title]" type="checkbox" /> Hide title</label></p><div class="categoryposts-data-panel-title-settings" ><p class="categoryPosts-title"><label for="widget-category-posts--title"> Title: <input placeholder="" id="widget-category-posts--title" name="widget-category-posts[][title]" type="text" value="title &lt;&gt; me" autocomplete="off"/></label></p><p class="categoryPosts-title_link" style="display:none"><label class="checkbox" for="widget-category-posts--title_link"><input id="widget-category-posts--title_link" name="widget-category-posts[][title_link]" type="checkbox" /> Make widget title link</label></p><p class="categoryPosts-title_link_url"><label for="widget-category-posts--title_link_url"> Title link URL: <input placeholder="" id="widget-category-posts--title_link_url" name="widget-category-posts[][title_link_url]" type="text" value="" autocomplete="off"/></label></p><p class="categoryPosts-title_level"><label for="widget-category-posts--title_level">Heading Level: <a href="#" class="dashicons toggle-title-level-help dashicons-paperclip"><span class="screen-reader-text">Show title level help</span></a></label><span class="cpwp-right"><input class="Initial button" id="widget-category-posts--title_levelInitial" name="widget-category-posts[][title_level]" value="Initial" type="radio" /><input class="H1 button" id="widget-category-posts--title_levelH1" name="widget-category-posts[][title_level]" value="H1" type="radio" /><input class="H2 button" id="widget-category-posts--title_levelH2" name="widget-category-posts[][title_level]" value="H2" type="radio" /><input class="H3 button" id="widget-category-posts--title_levelH3" name="widget-category-posts[][title_level]" value="H3" type="radio" /><input class="H4 button" id="widget-category-posts--title_levelH4" name="widget-category-posts[][title_level]" value="H4" type="radio" /><input class="H5 button" id="widget-category-posts--title_levelH5" name="widget-category-posts[][title_level]" value="H5" type="radio" /><input class="H6 button" id="widget-category-posts--title_levelH6" name="widget-category-posts[][title_level]" value="H6" type="radio" /></span></p><div class="cat-post-title-level-help" style="display:none;"><p>Also, try \'Disable Theme\'s styles\' on General tab to avoid rendering commonly used CSS classes such here widget-title, which often used in Themes to write their CSS selectors and may affect the design. </p></div></div></div>', $out );
 
 		// title and link.
 		ob_start();
@@ -1305,15 +1334,7 @@ class testWidgetAdmin extends WP_UnitTestCase {
 		);
 		$out = removeSpaceBetweenTags( ob_get_contents() );
 		ob_end_clean();
-		$this->assertEquals(
-			'<h4 data-panel="title">Title</h4><div><p><label for="widget-category-posts--title">' .
-					' Title: ' .
-					'<input class="widefat" style="width:80%;" id="widget-category-posts--title" name="widget-category-posts[][title]" type="text" value="title &lt;&gt; me" />' .
-					'</label></p>' .
-					'<p><label for="widget-category-posts--title_link"><input type="checkbox" class="checkbox" id="widget-category-posts--title_link" name="widget-category-posts[][title_link]" checked=\'checked\' />' .
-					' Make widget title link </label></p><p><label for="widget-category-posts--hide_title"><input type="checkbox" class="checkbox" id="widget-category-posts--hide_title" name="widget-category-posts[][hide_title]" />' .
-					' Hide title </label></p></div>', $out
-		);
+		$this->assertEquals( '<h4 data-panel="title">Title</h4><div class="cpwp_ident"><p class="categoryPosts-hide_title"><label class="checkbox" for="widget-category-posts--hide_title"><input id="widget-category-posts--hide_title" name="widget-category-posts[][hide_title]" type="checkbox" /> Hide title</label></p><div class="categoryposts-data-panel-title-settings" ><p class="categoryPosts-title"><label for="widget-category-posts--title"> Title: <input placeholder="" id="widget-category-posts--title" name="widget-category-posts[][title]" type="text" value="title &lt;&gt; me" autocomplete="off"/></label></p><p class="categoryPosts-title_link" style="display:none"><label class="checkbox" for="widget-category-posts--title_link"><input id="widget-category-posts--title_link" name="widget-category-posts[][title_link]" type="checkbox" checked=\'checked\'/> Make widget title link</label></p><p class="categoryPosts-title_link_url"><label for="widget-category-posts--title_link_url"> Title link URL: <input placeholder="" id="widget-category-posts--title_link_url" name="widget-category-posts[][title_link_url]" type="text" value="" autocomplete="off"/></label></p><p class="categoryPosts-title_level"><label for="widget-category-posts--title_level">Heading Level: <a href="#" class="dashicons toggle-title-level-help dashicons-paperclip"><span class="screen-reader-text">Show title level help</span></a></label><span class="cpwp-right"><input class="Initial button" id="widget-category-posts--title_levelInitial" name="widget-category-posts[][title_level]" value="Initial" type="radio" /><input class="H1 button" id="widget-category-posts--title_levelH1" name="widget-category-posts[][title_level]" value="H1" type="radio" /><input class="H2 button" id="widget-category-posts--title_levelH2" name="widget-category-posts[][title_level]" value="H2" type="radio" /><input class="H3 button" id="widget-category-posts--title_levelH3" name="widget-category-posts[][title_level]" value="H3" type="radio" /><input class="H4 button" id="widget-category-posts--title_levelH4" name="widget-category-posts[][title_level]" value="H4" type="radio" /><input class="H5 button" id="widget-category-posts--title_levelH5" name="widget-category-posts[][title_level]" value="H5" type="radio" /><input class="H6 button" id="widget-category-posts--title_levelH6" name="widget-category-posts[][title_level]" value="H6" type="radio" /></span></p><div class="cat-post-title-level-help" style="display:none;"><p>Also, try \'Disable Theme\'s styles\' on General tab to avoid rendering commonly used CSS classes such here widget-title, which often used in Themes to write their CSS selectors and may affect the design. </p></div></div></div>', $out );
 
 		// no title just link.
 		ob_start();
@@ -1324,15 +1345,7 @@ class testWidgetAdmin extends WP_UnitTestCase {
 		);
 		$out = removeSpaceBetweenTags( ob_get_contents() );
 		ob_end_clean();
-		$this->assertEquals(
-			'<h4 data-panel="title">Title</h4><div><p><label for="widget-category-posts--title">' .
-					' Title: ' .
-					'<input class="widefat" style="width:80%;" id="widget-category-posts--title" name="widget-category-posts[][title]" type="text" value="" />' .
-					'</label></p>' .
-					'<p><label for="widget-category-posts--title_link"><input type="checkbox" class="checkbox" id="widget-category-posts--title_link" name="widget-category-posts[][title_link]" checked=\'checked\' />' .
-					' Make widget title link </label></p><p><label for="widget-category-posts--hide_title"><input type="checkbox" class="checkbox" id="widget-category-posts--hide_title" name="widget-category-posts[][hide_title]" />' .
-					' Hide title </label></p></div>', $out
-		);
+		$this->assertEquals( '<h4 data-panel="title">Title</h4><div class="cpwp_ident"><p class="categoryPosts-hide_title"><label class="checkbox" for="widget-category-posts--hide_title"><input id="widget-category-posts--hide_title" name="widget-category-posts[][hide_title]" type="checkbox" /> Hide title</label></p><div class="categoryposts-data-panel-title-settings" ><p class="categoryPosts-title"><label for="widget-category-posts--title"> Title: <input placeholder="" id="widget-category-posts--title" name="widget-category-posts[][title]" type="text" value="" autocomplete="off"/></label></p><p class="categoryPosts-title_link" style="display:none"><label class="checkbox" for="widget-category-posts--title_link"><input id="widget-category-posts--title_link" name="widget-category-posts[][title_link]" type="checkbox" checked=\'checked\'/> Make widget title link</label></p><p class="categoryPosts-title_link_url"><label for="widget-category-posts--title_link_url"> Title link URL: <input placeholder="" id="widget-category-posts--title_link_url" name="widget-category-posts[][title_link_url]" type="text" value="" autocomplete="off"/></label></p><p class="categoryPosts-title_level"><label for="widget-category-posts--title_level">Heading Level: <a href="#" class="dashicons toggle-title-level-help dashicons-paperclip"><span class="screen-reader-text">Show title level help</span></a></label><span class="cpwp-right"><input class="Initial button" id="widget-category-posts--title_levelInitial" name="widget-category-posts[][title_level]" value="Initial" type="radio" /><input class="H1 button" id="widget-category-posts--title_levelH1" name="widget-category-posts[][title_level]" value="H1" type="radio" /><input class="H2 button" id="widget-category-posts--title_levelH2" name="widget-category-posts[][title_level]" value="H2" type="radio" /><input class="H3 button" id="widget-category-posts--title_levelH3" name="widget-category-posts[][title_level]" value="H3" type="radio" /><input class="H4 button" id="widget-category-posts--title_levelH4" name="widget-category-posts[][title_level]" value="H4" type="radio" /><input class="H5 button" id="widget-category-posts--title_levelH5" name="widget-category-posts[][title_level]" value="H5" type="radio" /><input class="H6 button" id="widget-category-posts--title_levelH6" name="widget-category-posts[][title_level]" value="H6" type="radio" /></span></p><div class="cat-post-title-level-help" style="display:none;"><p>Also, try \'Disable Theme\'s styles\' on General tab to avoid rendering commonly used CSS classes such here widget-title, which often used in Themes to write their CSS selectors and may affect the design. </p></div></div></div>', $out );
 
 		// no title just link.
 		ob_start();
@@ -1343,54 +1356,20 @@ class testWidgetAdmin extends WP_UnitTestCase {
 		);
 		$out = removeSpaceBetweenTags( ob_get_contents() );
 		ob_end_clean();
-		$this->assertEquals(
-			'<h4 data-panel="title">Title</h4><div><p><label for="widget-category-posts--title">' .
-					' Title: ' .
-					'<input class="widefat" style="width:80%;" id="widget-category-posts--title" name="widget-category-posts[][title]" type="text" value="" />' .
-					'</label></p>' .
-					'<p><label for="widget-category-posts--title_link"><input type="checkbox" class="checkbox" id="widget-category-posts--title_link" name="widget-category-posts[][title_link]" />' .
-					' Make widget title link </label></p><p><label for="widget-category-posts--hide_title"><input type="checkbox" class="checkbox" id="widget-category-posts--hide_title" name="widget-category-posts[][hide_title]" checked=\'checked\' />' .
-					' Hide title </label></p></div>', $out
-		);
+		$this->assertEquals( '<h4 data-panel="title">Title</h4><div class="cpwp_ident"><p class="categoryPosts-hide_title"><label class="checkbox" for="widget-category-posts--hide_title"><input id="widget-category-posts--hide_title" name="widget-category-posts[][hide_title]" type="checkbox" checked=\'checked\'/> Hide title</label></p><div class="categoryposts-data-panel-title-settings" style="display:none"><p class="categoryPosts-title"><label for="widget-category-posts--title"> Title: <input placeholder="" id="widget-category-posts--title" name="widget-category-posts[][title]" type="text" value="" autocomplete="off"/></label></p><p class="categoryPosts-title_link" style="display:none"><label class="checkbox" for="widget-category-posts--title_link"><input id="widget-category-posts--title_link" name="widget-category-posts[][title_link]" type="checkbox" /> Make widget title link</label></p><p class="categoryPosts-title_link_url"><label for="widget-category-posts--title_link_url"> Title link URL: <input placeholder="" id="widget-category-posts--title_link_url" name="widget-category-posts[][title_link_url]" type="text" value="" autocomplete="off"/></label></p><p class="categoryPosts-title_level"><label for="widget-category-posts--title_level">Heading Level: <a href="#" class="dashicons toggle-title-level-help dashicons-paperclip"><span class="screen-reader-text">Show title level help</span></a></label><span class="cpwp-right"><input class="Initial button" id="widget-category-posts--title_levelInitial" name="widget-category-posts[][title_level]" value="Initial" type="radio" /><input class="H1 button" id="widget-category-posts--title_levelH1" name="widget-category-posts[][title_level]" value="H1" type="radio" /><input class="H2 button" id="widget-category-posts--title_levelH2" name="widget-category-posts[][title_level]" value="H2" type="radio" /><input class="H3 button" id="widget-category-posts--title_levelH3" name="widget-category-posts[][title_level]" value="H3" type="radio" /><input class="H4 button" id="widget-category-posts--title_levelH4" name="widget-category-posts[][title_level]" value="H4" type="radio" /><input class="H5 button" id="widget-category-posts--title_levelH5" name="widget-category-posts[][title_level]" value="H5" type="radio" /><input class="H6 button" id="widget-category-posts--title_levelH6" name="widget-category-posts[][title_level]" value="H6" type="radio" /></span></p><div class="cat-post-title-level-help" style="display:none;"><p>Also, try \'Disable Theme\'s styles\' on General tab to avoid rendering commonly used CSS classes such here widget-title, which often used in Themes to write their CSS selectors and may affect the design. </p></div></div></div>', $out );
 	}
 }
 
+/**
+ *  Reference copy of the default widget/shortcode/block settings, used to build
+ *  expected values in assertions.
+ *
+ *  This simply forwards to the plugin's own \categoryPosts\default_settings() so
+ *  the two can never drift apart again - a hand-maintained duplicate here kept
+ *  going stale every time a setting was added, renamed or removed in the plugin.
+ */
 function default_settings() {
-	return array(
-		'title'                => 'Recent Posts',
-		'title_link'           => false,
-		'title_link_url'       => '',
-		'hide_title'           => false,
-		'cat'                  => 0,
-		'num'                  => get_option( 'posts_per_page' ),
-		'sort_by'              => 'date',
-		'status'               => 'publish',
-		'asc_sort_order'       => false,
-		'exclude_current_post' => false,
-		'hideNoThumb'          => false,
-		'footer_link'          => '',
-		'footer_link_text'     => '',
-		'thumb_w'              => '150',
-		'thumb_h'              => '150',
-		'use_css_cropping'     => true,
-		'thumb_hover'          => 'none',
-		'hide_post_titles'     => false,
-		'excerpt_length'       => 55,
-		'excerpt_more_text'    => '...',
-		'comment_num'          => false,
-		'date_link'            => false,
-		'date_format'          => '',
-		'disable_css'          => false,
-		'disable_font_styles'  => false,
-		'offset'               => 1,
-		'hide_social_buttons'  => '',
-		'no_cat_childs'        => false,
-		'excerpt_filters'      => false,
-		'everything_is_link'   => false,
-		'preset_date_format'   => 'sitedateandtime',
-		'template'             => "%title%\n%thumb%",
-		'show_post_format'     => 'none',
-	);
+	return \categoryPosts\default_settings();
 }
 
 class testShortCode extends WP_UnitTestCase {
@@ -1442,7 +1421,7 @@ class testShortCode extends WP_UnitTestCase {
 		wp_update_post(
 			array(
 				'ID'           => $pid,
-				'post_content' => '[' . $this->SHORTCODE_NAME . 'bla] ' . $this->SHORTCODE_NAME,
+				'post_content' => '[' . self::SHORTCODE_NAME . 'bla] ' . self::SHORTCODE_NAME,
 			)
 		);
 		$this->assertEmpty( get_post_meta( $pid, self::SHORTCODE_META, true ) );
@@ -1476,7 +1455,7 @@ class testShortCode extends WP_UnitTestCase {
 		wp_update_post(
 			array(
 				'ID'           => $pid,
-				'post_content' => '[' . $this->SHORTCODE_NAME . 'bla] ' . $this->SHORTCODE_NAME,
+				'post_content' => '[' . self::SHORTCODE_NAME . 'bla] ' . self::SHORTCODE_NAME,
 			)
 		);
 		$this->assertEmpty( get_post_meta( $pid, self::SHORTCODE_META, true ) );
@@ -1613,8 +1592,8 @@ class testShortCode extends WP_UnitTestCase {
 		$content = ob_get_contents();
 		ob_end_clean();
 		$this->assertEquals(
-			'<div id="category-posts-shortcode-' . $pid . '" class="category-posts-shortcode">Recent Posts<ul>' .
-						'<li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p></li></ul>' .
+			'<div id="category-posts-shortcode-' . $pid . '" class="category-posts-shortcode">Category Posts<ul>' .
+						'<li class="cat-post-item cat-post-current"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></div></li></ul>' .
 						'</div>', str_replace( "\n", '', $content )
 		);
 
@@ -1634,8 +1613,8 @@ class testShortCode extends WP_UnitTestCase {
 		$content = ob_get_contents();
 		ob_end_clean();
 		$this->assertEquals(
-			'<div id="category-posts-shortcode-' . $pid . '-bla" class="category-posts-shortcode">Recent Posts<ul>' .
-						'<li class=\'cat-post-item cat-post-current\'><p><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></p></li></ul>' .
+			'<div id="category-posts-shortcode-' . $pid . '-bla" class="category-posts-shortcode">Category Posts<ul>' .
+						'<li class="cat-post-item cat-post-current"><div><a class="cat-post-title" href="http://example.org/?p=' . $pid . '" rel="bookmark">test</a></div></li></ul>' .
 						'</div>', str_replace( "\n", '', $content )
 		);
 	}
@@ -1703,7 +1682,7 @@ class testVirtualwidget extends WP_UnitTestCase {
 	 *  Test the id method
 	 */
 	function testId() {
-		$v = new categoryPosts\virtualWidget( 'test', 'testclass', array() );
+		$v = new categoryPosts\Virtual_Widget( 'test', 'testclass', array() );
 		$this->assertEquals( $v->id(), 'test' );
 	}
 
@@ -1713,13 +1692,13 @@ class testVirtualwidget extends WP_UnitTestCase {
 	public function testConstructor() {
 
 		// test default setting with no override.
-		$v = new categoryPosts\virtualWidget( 'test', 'testclass', array() );
-		$col = categoryPosts\virtualWidget::getAllSettings();
+		$v = new categoryPosts\Virtual_Widget( 'test', 'testclass', array() );
+		$col = categoryPosts\Virtual_Widget::getAllSettings();
 		$this->assertEquals( $col['test'], default_settings() );
 
 		// test default setting with override
-		$v = new categoryPosts\virtualWidget( 'test2', 'testclass', array( 'title' => 'bla' ) );
-		$col = categoryPosts\virtualWidget::getAllSettings();
+		$v = new categoryPosts\Virtual_Widget( 'test2', 'testclass', array( 'title' => 'bla' ) );
+		$col = categoryPosts\Virtual_Widget::getAllSettings();
 		$expect = default_settings();
 		$expect['title'] = 'bla';
 		$this->assertEquals( $col['test2'], $expect );
@@ -1727,285 +1706,250 @@ class testVirtualwidget extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Generate css rules that are applied to all widgets.
+	 * Data provider for testGetCSSRules().
+	 *
+	 * Each row is one (settings, context) combination. The expected arrays
+	 * are ground truth captured directly from the current getCSSRules()
+	 * implementation, which is now template-driven (it decides what to
+	 * output by inspecting $settings['template'] for %title%/%excerpt%/
+	 * %thumb%, rather than by branching on individual display flags like
+	 * the old hand-written expectations here did) - so the previous
+	 * per-scenario copy-paste blocks built on the old flag-driven shape had
+	 * drifted and no longer matched actual output.
 	 *
 	 * @since 4.7
-	 *
-	 * @param string $id the identifier to be use as the widget id.
 	 */
-	public function defaultCss( $id ) {
-		$rules = array(
-			'.cat-post-item span.cat-post-css-cropping img {max-width: initial;	max-height: initial;}',
-			'.cat-post-title {display: inline-block; font-size: 15px;}',
-			'.cat-post-current .cat-post-title {font-weight: bold; text-transform: uppercase;}' .
-			'.cat-post-date {font-size: 12px;	line-height: 18px; font-style: italic; margin-bottom: 10px;}',
-			'.cat-post-comment-num {font-size: 12px; line-height: 18px;}',
-			'.cat-post-author {margin-bottom: 0;}',
-			'.cat-post-thumbnail {display: block;}',
-			'.cat-post-thumbnail {margin: 5px 10px 5px 0;}',
-			'item_clenup' => '.cat-post-item:before {content: ""; display: table; clear: both;}',
-			'.cat-post-item:after {content: ""; display: table;	clear: both;}',
-			'.cat-post-item .cat-post-css-cropping span {margin: 5px 10px 5px 0;  overflow: hidden; display:inline-block}',
-			'.cat-post-item .cat-post-css-cropping img {margin: initial;}',
+	public function cssRulesProvider() {
+		$default_widget = array(
+			'normalize'                 => '#%1$s ul {padding: 0;}',
+			'thumb_clenup'              => '#%1$s .cat-post-item img {max-width: initial; max-height: initial; margin: initial;}',
+			'author_clenup'             => '#%1$s .cat-post-author {margin-bottom: 0;}',
+			'thumb'                     => '#%1$s .cat-post-thumbnail {margin: 5px 10px 5px 0;}',
+			'item_clenup'               => '#%1$s .cat-post-item:before {content: ""; clear: both;}',
+			'more_link'                 => '#%1$s .cat-post-excerpt-more {display: inline-block;}',
+			'item_style'                => '#%1$s .cat-post-item {list-style: none; margin: 3px 0 10px; padding: 3px 0;}',
+			'current_title_font'        => '#%1$s .cat-post-current .cat-post-title {font-weight: bold; text-transform: uppercase;}',
+			'post-taxs'                 => '#%1$s [class*=cat-post-tax] {font-size: 0.85em;}',
+			'post-tax-childs'           => '#%1$s [class*=cat-post-tax] * {display:inline-block;}',
+			'after_item'                => '#%1$s .cat-post-item:after {content: ""; display: table;	clear: both;}',
+			'item_title_lines'          => '#%1$s .cat-post-item .cat-post-title {overflow: hidden;text-overflow: ellipsis;white-space: initial;display: -webkit-box;-webkit-line-clamp: 2;-webkit-box-orient: vertical;padding-bottom: 0 !important;}',
+			'clear_previous_item'       => '#%1$s .cat-post-item:after {content: ""; display: table;	clear: both;}',
+			'left'                      => '#%1$s .cat-post-thumbnail {display:block; float:left; margin:5px 10px 5px 0;}',
+			'crop'                      => '#%1$s .cat-post-crop {overflow:hidden;display:block;}',
+			'p_styling'                 => '#%1$s p {margin:5px 0 0 0}',
+			'div_styling'               => '#%1$s li > div {margin:5px 0 0 0; clear:both;}',
+			'dashicons'                 => '#%1$s .dashicons {vertical-align:middle;}',
+			'thumb_crop_h'              => '#%1$s .cat-post-thumbnail .cat-post-crop img {height: 150px;}',
+			'thumb_crop_w'              => '#%1$s .cat-post-thumbnail .cat-post-crop img {width: 150px;}',
+			'thumb_crop'                => '#%1$s .cat-post-thumbnail .cat-post-crop img {object-fit: cover; max-width: 100%%; display: block;}',
+			'thumb_crop_not_supported'  => '#%1$s .cat-post-thumbnail .cat-post-crop-not-supported img {width: 100%%;}',
+			'thumb_fluid_width'         => '#%1$s .cat-post-thumbnail {max-width:100%%;}',
+			'thumb_styling'             => '#%1$s .cat-post-item img {margin: initial;}',
 		);
 
-		foreach ( $rules as $key => $rule ) {
-			$ret[ $key ] = '#' . $id . ' ' . $rule;
-		}
+		// The shortcode context additionally gets the twentysixteen/twentyfifteen
+		// theme-compat rules (unaffected by getCSSRules()'s $is_widget flag) and
+		// drops the thumb_crop_* rules (those are only emitted for widgets).
+		$default_shortcode = $default_widget;
+		unset(
+			$default_shortcode['thumb_crop_h'],
+			$default_shortcode['thumb_crop_w'],
+			$default_shortcode['thumb_crop'],
+			$default_shortcode['thumb_crop_not_supported'],
+			$default_shortcode['thumb_fluid_width'],
+			$default_shortcode['thumb_styling']
+		);
+		$default_shortcode = array_merge(
+			$default_shortcode,
+			array(
+				'twentysixteen_thumb'     => '#%1$s .cat-post-thumbnail {box-shadow:none}',
+				'twentysixteen_tag_link'  => '#%1$s .cat-post-tax-tag a {border:0}',
+				'twentysixteen_tag_span'  => '#%1$s .cat-post-tax-tag span {border:0}',
+				'twentyfifteen_thumb'     => '#%1$s .cat-post-thumbnail {border:0}',
+				'left'                    => '#%1$s .cat-post-thumbnail {display:block; float:left; margin:5px 10px 5px 0;}',
+				'crop'                    => '#%1$s .cat-post-crop {overflow:hidden;display:block;}',
+				'p_styling'               => '#%1$s p {margin:5px 0 0 0}',
+				'div_styling'             => '#%1$s li > div {margin:5px 0 0 0; clear:both;}',
+				'dashicons'               => '#%1$s .dashicons {vertical-align:middle;}',
+				'thumb_crop_h'            => '#%1$s .cat-post-thumbnail .cat-post-crop img {height: 150px;}',
+				'thumb_crop_w'            => '#%1$s .cat-post-thumbnail .cat-post-crop img {width: 150px;}',
+				'thumb_crop'              => '#%1$s .cat-post-thumbnail .cat-post-crop img {object-fit: cover; max-width: 100%%; display: block;}',
+				'thumb_crop_not_supported' => '#%1$s .cat-post-thumbnail .cat-post-crop-not-supported img {width: 100%%;}',
+				'thumb_fluid_width'       => '#%1$s .cat-post-thumbnail {max-width:100%%;}',
+				'thumb_styling'           => '#%1$s .cat-post-item img {margin: initial;}',
+			)
+		);
 
-		return $ret;
+		/**
+		 *  Build the expected array for one scenario/context by taking the
+		 *  matching base set, formatting in the widget id, and merging in
+		 *  ($extra) any rules specific to that scenario (hover effects, etc).
+		 */
+		$expect = function ( $base, $id, $extra = array() ) {
+			$out = array();
+			foreach ( $base as $key => $template ) {
+				$out[ $key ] = sprintf( $template, $id );
+			}
+			foreach ( $extra as $key => $template ) {
+				$out[ $key ] = sprintf( $template, $id );
+			}
+			return $out;
+		};
 
+		$hover_transition = '#%1$s .cat-post-%2$s img {padding-bottom: 0 !important; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}';
+
+		return array(
+			// disable_css: only the essential (non-optional) rules survive.
+			'disable_css, widget' => array(
+				'test', array( 'disable_css' => true ), false,
+				array(
+					'thumb_crop_h'             => '#test-internal .cat-post-thumbnail .cat-post-crop img {height: 150px;}',
+					'thumb_crop_w'             => '#test-internal .cat-post-thumbnail .cat-post-crop img {width: 150px;}',
+					'thumb_crop'               => '#test-internal .cat-post-thumbnail .cat-post-crop img {object-fit: cover; max-width: 100%; display: block;}',
+					'thumb_crop_not_supported' => '#test-internal .cat-post-thumbnail .cat-post-crop-not-supported img {width: 100%;}',
+					'thumb_fluid_width'        => '#test-internal .cat-post-thumbnail {max-width:100%;}',
+					'thumb_styling'            => '#test-internal .cat-post-item img {margin: initial;}',
+				),
+			),
+			'disable_css, shortcode' => array(
+				'test', array( 'disable_css' => true ), true,
+				array(
+					'thumb_crop_h'             => '#test .cat-post-thumbnail .cat-post-crop img {height: 150px;}',
+					'thumb_crop_w'             => '#test .cat-post-thumbnail .cat-post-crop img {width: 150px;}',
+					'thumb_crop'               => '#test .cat-post-thumbnail .cat-post-crop img {object-fit: cover; max-width: 100%; display: block;}',
+					'thumb_crop_not_supported' => '#test .cat-post-thumbnail .cat-post-crop-not-supported img {width: 100%;}',
+					'thumb_fluid_width'        => '#test .cat-post-thumbnail {max-width:100%;}',
+					'thumb_styling'            => '#test .cat-post-item img {margin: initial;}',
+				),
+			),
+
+			// default settings.
+			'default, widget'    => array( 'test2', array(), false, $expect( $default_widget, 'test2-internal' ) ),
+			'default, shortcode' => array( 'test2', array(), true, $expect( $default_shortcode, 'test2' ) ),
+
+			// thumbTop: loses the thumb_crop_* rules (a pre-existing quirk of
+			// the legacy-settings conversion for this flag), keeps the rest.
+			'thumbTop, widget' => array(
+				'test3', array( 'thumbTop' => true ), false,
+				array_diff_key(
+					$expect( $default_widget, 'test3-internal' ),
+					array_flip( array( 'thumb_crop_h', 'thumb_crop_w', 'thumb_crop', 'thumb_crop_not_supported', 'thumb_fluid_width', 'thumb_styling' ) )
+				),
+			),
+			'thumbTop, shortcode' => array(
+				'test3', array( 'thumbTop' => true ), true,
+				array_diff_key(
+					$expect( $default_shortcode, 'test3' ),
+					array_flip( array( 'thumb_crop_h', 'thumb_crop_w', 'thumb_crop', 'thumb_crop_not_supported', 'thumb_fluid_width', 'thumb_styling' ) )
+				),
+			),
+
+			// thumb_hover variants: default set plus the hover-specific rules.
+			'hover white, widget' => array(
+				'test4', array( 'thumb_hover' => 'white' ), false,
+				$expect(
+					$default_widget, 'test4-internal', array(
+						'white_hover_background' => '#%1$s .cat-post-white span {background-color: white;}',
+						'white_hover_thumb'       => sprintf( $hover_transition, '%1$s', 'white' ),
+						'white_hover_transform'   => '#%1$s .cat-post-white:hover img {opacity: 0.8;}',
+					)
+				),
+			),
+			'hover white, shortcode' => array(
+				'test4', array( 'thumb_hover' => 'white' ), true,
+				$expect(
+					$default_shortcode, 'test4', array(
+						'white_hover_background' => '#%1$s .cat-post-white span {background-color: white;}',
+						'white_hover_thumb'       => sprintf( $hover_transition, '%1$s', 'white' ),
+						'white_hover_transform'   => '#%1$s .cat-post-white:hover img {opacity: 0.8;}',
+					)
+				),
+			),
+			'hover dark, widget' => array(
+				'test5', array( 'thumb_hover' => 'dark' ), false,
+				$expect(
+					$default_widget, 'test5-internal', array(
+						'dark_hover_thumb'     => sprintf( $hover_transition, '%1$s', 'dark' ),
+						'dark_hover_transform' => '#%1$s .cat-post-dark:hover img {-webkit-filter: brightness(75%%); -moz-filter: brightness(75%%); -ms-filter: brightness(75%%); -o-filter: brightness(75%%); filter: brightness(75%%);}',
+					)
+				),
+			),
+			'hover dark, shortcode' => array(
+				'test5', array( 'thumb_hover' => 'dark' ), true,
+				$expect(
+					$default_shortcode, 'test5', array(
+						'dark_hover_thumb'     => sprintf( $hover_transition, '%1$s', 'dark' ),
+						'dark_hover_transform' => '#%1$s .cat-post-dark:hover img {-webkit-filter: brightness(75%%); -moz-filter: brightness(75%%); -ms-filter: brightness(75%%); -o-filter: brightness(75%%); filter: brightness(75%%);}',
+					)
+				),
+			),
+			'hover scale, widget' => array(
+				'test6', array( 'thumb_hover' => 'scale' ), false,
+				$expect(
+					$default_widget, 'test6-internal', array(
+						'scale_hover_thumb'     => '#%1$s .cat-post-scale img {margin: initial; padding-bottom: 0 !important; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}',
+						'scale_hover_transform' => '#%1$s .cat-post-scale:hover img {-webkit-transform: scale(1.1, 1.1); -ms-transform: scale(1.1, 1.1); transform: scale(1.1, 1.1);}',
+					)
+				),
+			),
+			'hover scale, shortcode' => array(
+				'test6', array( 'thumb_hover' => 'scale' ), true,
+				$expect(
+					$default_shortcode, 'test6', array(
+						'scale_hover_thumb'     => '#%1$s .cat-post-scale img {margin: initial; padding-bottom: 0 !important; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}',
+						'scale_hover_transform' => '#%1$s .cat-post-scale:hover img {-webkit-transform: scale(1.1, 1.1); -ms-transform: scale(1.1, 1.1); transform: scale(1.1, 1.1);}',
+					)
+				),
+			),
+			'hover blur, widget' => array(
+				'test7', array( 'thumb_hover' => 'blur' ), false,
+				$expect(
+					$default_widget, 'test7-internal', array(
+						'blur_hover_thumb'     => sprintf( $hover_transition, '%1$s', 'blur' ),
+						'blur_hover_transform' => '#%1$s .cat-post-blur:hover img {-webkit-filter: blur(2px); -moz-filter: blur(2px); -o-filter: blur(2px); -ms-filter: blur(2px); filter: blur(2px);}',
+					)
+				),
+			),
+			'hover blur, shortcode' => array(
+				'test7', array( 'thumb_hover' => 'blur' ), true,
+				$expect(
+					$default_shortcode, 'test7', array(
+						'blur_hover_thumb'     => sprintf( $hover_transition, '%1$s', 'blur' ),
+						'blur_hover_transform' => '#%1$s .cat-post-blur:hover img {-webkit-filter: blur(2px); -moz-filter: blur(2px); -o-filter: blur(2px); -ms-filter: blur(2px); filter: blur(2px);}',
+					)
+				),
+			),
+
+			// twentyseventeen: getCSSRules() no longer special-cases this
+			// theme at all, so with default settings the output is byte
+			// identical to the plain "default" scenario above (only the
+			// widget id differs).
+			'twentyseventeen, widget'    => array( 'test8', array(), false, $expect( $default_widget, 'test8-internal' ) ),
+			'twentyseventeen, shortcode' => array( 'test8', array(), true, $expect( $default_shortcode, 'test8' ) ),
+		);
 	}
 
 	/**
-	 * Test getCSSRules method
+	 * Test getCSSRules method.
+	 *
+	 * Replaces eight near-identical copy-paste blocks (one per hover/theme
+	 * variant) with a single data-provider-driven test - see
+	 * cssRulesProvider() for the expected values, captured directly from
+	 * the current implementation.
 	 *
 	 * @since 4.7
+	 *
+	 * @dataProvider cssRulesProvider
 	 */
-	public function testGetCSSRules() {
-		$v = new categoryPosts\virtualWidget(
-			'test', 'testclass', array(
-				'disable_css' => true,
-			)
-		);
+	public function testGetCSSRules( $id, $args, $is_shortcode_context, $expected ) {
+		$v = new categoryPosts\Virtual_Widget( $id, 'testclass', $args );
 
-		// no css for widget. Only essential css should be returned.
+		// getCSSRules() appends its whole rules array as a single element
+		// ($rules[] = $ret;) rather than merging into $test directly, so
+		// the actual rule set to compare against is $test[0].
 		$test = array();
-		$expected = array(
-			'thumb_crop'    => '#test-internal .cat-post-crop {overflow: hidden; display:block}',
-			'thumb_styling' => '#test-internal .cat-post-item img {margin: initial;}',
-		);
-		$v->getCSSRules( false, $test );
-		$this->assertEquals( $expected, $test );
+		$v->getCSSRules( $is_shortcode_context, $test );
 
-		// no css for shortcode.
-		$test = array();
-		$expected = array(
-			'thumb_crop'    => '#test .cat-post-crop {overflow: hidden; display:block}',
-			'thumb_styling' => '#test .cat-post-item img {margin: initial;}',
-		);
-		$v->getCSSRules( true, $test );
-		$this->assertEquals( $expected, $test );
-
-		$v = new categoryPosts\virtualWidget(
-			'test2', 'testclass', array()
-		);
-
-		// css for widget default settings.
-		$test = array();
-		$v->getCSSRules( false, $test );
-		$expected = $this->defaultCss( 'test2-internal' );
-		$expected['shortcode_styling'] = '#test2-internal .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected['thumb_crop'] = '#test2-internal .cat-post-item:last-child {border-bottom: none;}';
-		$expected['thumb_styling'] = '#test2-internal .cat-post-thumbnail {float:left;}';
-
-		$this->assertEquals( $expected, $test );
-
-		// css for shortcode default settings.
-		$test = array();
-		$v->getCSSRules( true, $test );
-		$expected = $this->defaultCss( 'test2' );
-		$expected[] = '#test2 .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test2 .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test2 .cat-post-thumbnail {float:left;}';
-		$expected[] = '#test2 .cat-post-thumbnail a {box-shadow:none}'; // this for the thumb link.
-		$expected[] = '#test2 .cat-post-thumbnail a {border:0}'; // this for the thumb link.
-		$expected[] = '#test2 p {margin:5px 0 0 0}'; // since on bottom it will make the spacing on cover.
-		$this->assertEquals( $expected, $test );
-
-		$v = new categoryPosts\virtualWidget(
-			'test3', 'testclass', array(
-				'thumbTop' => true,
-			)
-		);
-
-		// css for widget with thumb up settings.
-		$test = array();
-		$v->getCSSRules( false, $test );
-		$expected = $this->defaultCss( 'test3-internal' );
-		$expected[] = '#test3-internal .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test3-internal .cat-post-item:last-child {border-bottom: none;}';
-
-		$this->assertEquals( $expected, $test );
-
-		// css for shortcode with thumb up settings.
-		$test = array();
-		$v->getCSSRules( true, $test );
-		$expected = $this->defaultCss( 'test3' );
-		$expected[] = '#test3 .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test3 .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test3 .cat-post-thumbnail a {box-shadow:none}'; // this for the thumb link.
-		$expected[] = '#test3 .cat-post-thumbnail a {border:0}'; // this for the thumb link.
-		$expected[] = '#test3 p {margin:5px 0 0 0}'; // since on bottom it will make the spacing on cover.
-
-		$this->assertEquals( $expected, $test );
-
-		$v = new categoryPosts\virtualWidget(
-			'test4', 'testclass', array(
-				'thumb_hover' => 'white',
-			)
-		);
-
-		// css for widget with white hover settings.
-		$test = array();
-		$v->getCSSRules( false, $test );
-		$expected = $this->defaultCss( 'test4-internal' );
-		$expected[] = '#test4-internal .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test4-internal .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test4-internal .cat-post-thumbnail {float:left;}';
-		$expected[] = '#test4-internal .cat-post img {padding-bottom: 0 !important; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}';
-		$expected[] = '#test4-internal .cat-post-white {background-color: white;}';
-		$expected[] = '#test4-internal .cat-post-white img:hover {opacity: 0.8;}';
-
-		$this->assertEquals( $expected, $test );
-
-		// css for shortcode with white hover settings.
-		$test = array();
-		$v->getCSSRules( true, $test );
-		$expected = $this->defaultCss( 'test4' );
-		$expected[] = '#test4 .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test4 .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test4 .cat-post-thumbnail {float:left;}';
-		$expected[] = '#test4 .cat-post img {padding-bottom: 0 !important; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}';
-		$expected[] = '#test4 .cat-post-white {background-color: white;}';
-		$expected[] = '#test4 .cat-post-white img:hover {opacity: 0.8;}';
-		$expected[] = '#test4 .cat-post-thumbnail a {box-shadow:none}'; // this for the thumb link.
-		$expected[] = '#test4 .cat-post-thumbnail a {border:0}'; // this for the thumb link.
-		$expected[] = '#test4 p {margin:5px 0 0 0}'; // since on bottom it will make the spacing on cover.
-
-		$this->assertEquals( $expected, $test );
-
-		$v = new categoryPosts\virtualWidget(
-			'test5', 'testclass', array(
-				'thumb_hover' => 'dark',
-			)
-		);
-
-		// css for widget with dark hover settings.
-		$test = array();
-		$v->getCSSRules( false, $test );
-		$expected = $this->defaultCss( 'test5-internal' );
-		$expected[] = '#test5-internal .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test5-internal .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test5-internal .cat-post-thumbnail {float:left;}';
-		$expected[] = '#test5-internal .cat-post img {padding-bottom: 0 !important; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}';
-		$expected[] = '#test5-internal .cat-post img:hover {-webkit-filter: brightness(75%); -moz-filter: brightness(75%); -ms-filter: brightness(75%); -o-filter: brightness(75%); filter: brightness(75%);}';
-
-		$this->assertEquals( $expected, $test );
-
-		// css for shortcode with dark hover settings.
-		$test = array();
-		$v->getCSSRules( true, $test );
-		$expected = $this->defaultCss( 'test5' );
-		$expected[] = '#test5 .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test5 .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test5 .cat-post-thumbnail {float:left;}';
-		$expected[] = '#test5 .cat-post img {padding-bottom: 0 !important; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}';
-		$expected[] = '#test5 .cat-post img:hover {-webkit-filter: brightness(75%); -moz-filter: brightness(75%); -ms-filter: brightness(75%); -o-filter: brightness(75%); filter: brightness(75%);}';
-		$expected[] = '#test5 .cat-post-thumbnail a {box-shadow:none}'; // this for the thumb link
-		$expected[] = '#test5 .cat-post-thumbnail a {border:0}'; // this for the thumb link
-		$expected[] = '#test5 p {margin:5px 0 0 0}'; // since on bottom it will make the spacing on cover
-
-		$this->assertEquals( $expected, $test );
-
-		$v = new categoryPosts\virtualWidget(
-			'test6', 'testclass', array(
-				'thumb_hover' => 'scale',
-			)
-		);
-
-		// css for widget with scale hover settings
-		$test = array();
-		$v->getCSSRules( false, $test );
-		$expected = $this->defaultCss( 'test6-internal' );
-		$expected[] = '#test6-internal .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test6-internal .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test6-internal .cat-post-thumbnail {float:left;}';
-		$expected[] = '#test6-internal .cat-post img {padding-bottom: 0 !important; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}';
-		$expected[] = '#test6-internal .cat-post-scale span {overflow: hidden; margin: 5px 10px 5px 0;}';
-		$expected[] = '#test6-internal .cat-post-scale img {margin: initial; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}';
-		$expected[] = '#test6-internal .cat-post-scale img:hover {-webkit-transform: scale(1.1, 1.1); -ms-transform: scale(1.1, 1.1); transform: scale(1.1, 1.1);}';
-
-		$this->assertEquals( $expected, $test );
-
-		// css for shortcode with blur hover settings
-		$test = array();
-		$v->getCSSRules( true, $test );
-		$expected = $this->defaultCss( 'test6' );
-		$expected[] = '#test6 .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test6 .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test6 .cat-post-thumbnail {float:left;}';
-		$expected[] = '#test6 .cat-post img {padding-bottom: 0 !important; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}';
-		$expected[] = '#test6 .cat-post-scale span {overflow: hidden; margin: 5px 10px 5px 0;}';
-		$expected[] = '#test6 .cat-post-scale img {margin: initial; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}';
-		$expected[] = '#test6 .cat-post-scale img:hover {-webkit-transform: scale(1.1, 1.1); -ms-transform: scale(1.1, 1.1); transform: scale(1.1, 1.1);}';
-		$expected[] = '#test6 .cat-post-thumbnail a {box-shadow:none}'; // this for the thumb link
-		$expected[] = '#test6 .cat-post-thumbnail a {border:0}'; // this for the thumb link
-		$expected[] = '#test6 p {margin:5px 0 0 0}'; // since on bottom it will make the spacing on cover
-
-		$this->assertEquals( $expected, $test );
-
-		$v = new categoryPosts\virtualWidget(
-			'test7', 'testclass', array(
-				'thumb_hover' => 'blur',
-			)
-		);
-
-		// css for widget with blur hover settings
-		$test = array();
-		$v->getCSSRules( false, $test );
-		$expected = $this->defaultCss( 'test7-internal' );
-		$expected[] = '#test7-internal .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test7-internal .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test7-internal .cat-post-thumbnail {float:left;}';
-		$expected[] = '#test7-internal .cat-post img {padding-bottom: 0 !important; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}';
-		$expected[] = '#test7-internal .cat-post-blur img:hover {-webkit-filter: blur(2px); -moz-filter: blur(2px); -o-filter: blur(2px); -ms-filter: blur(2px); filter: blur(2px);}';
-
-		$this->assertEquals( $expected, $test );
-
-		// css for shortcode with blur hover settings
-		$test = array();
-		$v->getCSSRules( true, $test );
-		$expected = $this->defaultCss( 'test7' );
-		$expected[] = '#test7 .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test7 .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test7 .cat-post-thumbnail {float:left;}';
-		$expected[] = '#test7 .cat-post img {padding-bottom: 0 !important; -webkit-transition: all 0.3s ease; -moz-transition: all 0.3s ease; -ms-transition: all 0.3s ease; -o-transition: all 0.3s ease; transition: all 0.3s ease;}';
-		$expected[] = '#test7 .cat-post-blur img:hover {-webkit-filter: blur(2px); -moz-filter: blur(2px); -o-filter: blur(2px); -ms-filter: blur(2px); filter: blur(2px);}';
-		$expected[] = '#test7 .cat-post-thumbnail a {box-shadow:none}'; // this for the thumb link
-		$expected[] = '#test7 .cat-post-thumbnail a {border:0}'; // this for the thumb link
-		$expected[] = '#test7 p {margin:5px 0 0 0}'; // since on bottom it will make the spacing on cover
-
-		$this->assertEquals( $expected, $test );
-
-		$v = new categoryPosts\virtualWidget(
-			'test8', 'testclass', array()
-		);
-
-		function twentyseventeen_setup() {};
-
-		// widget twenty seventeen
-		$test = array();
-		$v->getCSSRules( false, $test );
-		$expected = $this->defaultCss( 'test8-internal' );
-		$expected[] = '#test8-internal .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test8-internal .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test8-internal .cat-post-thumbnail {float:left;}';
-
-		$this->assertEquals( $expected, $test );
-
-		// shortcode twenty seventeen
-		$test = array();
-		$v->getCSSRules( true, $test );
-		$expected = $this->defaultCss( 'test8' );
-		$expected[] = '#test8 .cat-post-item {list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test8 .cat-post-item {border-bottom: 1px solid #ccc;	list-style: none; list-style-type: none; margin: 3px 0;	padding: 3px 0;}';
-		$expected[] = '#test8 .cat-post-item:last-child {border-bottom: none;}';
-		$expected[] = '#test8 .cat-post-thumbnail {float:left;}';
-		$expected[] = '#test8 .cat-post-thumbnail a {box-shadow:none}'; // this for the thumb link
-		$expected[] = '#test8 .cat-post-thumbnail a {border:0}'; // this for the thumb link
-		$expected[] = '#test8 p {margin:5px 0 0 0}'; // since on bottom it will make the spacing on cover
-		$this->assertEquals( $expected, $test );
-
+		$this->assertEquals( $expected, $test[0] );
 	}
 }

@@ -324,6 +324,18 @@ function upgrade_settings( $settings ) {
 		return default_settings();
 	}
 
+	// Whether $settings carries any of the pre-4.8 display flags that
+	// convert_settings_to_template() knows how to translate. A settings array
+	// that has none of these (e.g. a brand new instance, or a partial override
+	// such as array( 'title' => 'bla' ) passed straight to Virtual_Widget) is not
+	// a legacy instance just because it happens to be non-empty, and should keep
+	// falling through to the default template below instead of being converted
+	// into a bare title-only one.
+	$has_legacy_display_flags = (bool) array_intersect(
+		array( 'thumb', 'thumbTop', 'date', 'hide_post_titles', 'excerpt', 'comment_num', 'author' ),
+		array_keys( $settings )
+	);
+
 	if ( ! isset( $settings['ver'] ) ) {
 		/*
 		 * Pre 4.9 version.
@@ -337,6 +349,23 @@ function upgrade_settings( $settings ) {
 		}
 		if ( isset( $settings['hide_if_empty'] ) ) {
 			unset( $settings['hide_if_empty'] );
+		}
+
+		/*
+		 * Settings saved before the template system existed (pre 4.8) do not have a
+		 * 'template' key. shortcode_settings() and the customizer migration path both
+		 * build one from the old display flags (excerpt, thumb, thumbTop, date,
+		 * comment_num, author) via convert_settings_to_template() before calling this
+		 * function; the widget render path did not, so those choices were silently
+		 * lost the moment wp_parse_args() below filled 'template' in from
+		 * default_settings(). Do the same conversion here so every caller gets it,
+		 * but only when there is an actual legacy flag to convert - a brand new
+		 * instance (or a partial override with no display flags) has nothing to
+		 * convert and should keep falling through to the default template (which
+		 * includes %thumb%).
+		 */
+		if ( $has_legacy_display_flags && ( ! isset( $settings['template'] ) || ! $settings['template'] ) ) {
+			$settings['template'] = convert_settings_to_template( $settings );
 		}
 	} else {
 		if ( version_compare( '4.9.8', $settings['ver']) ) {

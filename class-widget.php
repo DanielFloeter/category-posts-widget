@@ -22,6 +22,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Widget extends \WP_Widget {
 
 	/**
+	 * The settings for the instance currently being rendered/configured.
+	 *
+	 * Several helper methods (thumbnail rendering, excerpt filters, etc.) read
+	 * this before it is necessarily populated by widget()/form(); declaring it
+	 * (instead of relying on it being created as a dynamic property) means those
+	 * reads get an empty array instead of an "undefined property" warning.
+	 *
+	 * @var array
+	 */
+	public $instance = array();
+
+	/**
 	 * Widget constructor.
 	 */
 	public function __construct() {
@@ -43,12 +55,17 @@ class Widget extends \WP_Widget {
 	 *
 	 * @since 4.9.22
 	 */
-	public function post_thumbnail_attachment_size( $post_thumbnail_id ) { 
+	public function post_thumbnail_attachment_size( $post_thumbnail_id ) {
+		// $this->instance is only populated once the widget/shortcode/block render path has
+		// set it (e.g. via widget()); guard against it being unset to avoid PHP warnings.
+		$thumb_w = isset( $this->instance['thumb_w'] ) ? intval( $this->instance['thumb_w'] ) : 0;
+		$thumb_h = isset( $this->instance['thumb_h'] ) ? intval( $this->instance['thumb_h'] ) : 0;
+
 		// Get attachment image by size
 		$image_sizes = array('thumbnail', 'medium', 'large', 'full');
 		foreach ($image_sizes as $img_size) {
 			$attachment_img_size = wp_get_attachment_image_src($post_thumbnail_id, $img_size);
-			if ($attachment_img_size[1] >= intval($this->instance['thumb_w']) && $attachment_img_size[2] >= intval($this->instance['thumb_h']) && ! (0 === intval($this->instance['thumb_w']) && 0 === intval($this->instance['thumb_h'])) ||
+			if ($attachment_img_size[1] >= $thumb_w && $attachment_img_size[2] >= $thumb_h && ! (0 === $thumb_w && 0 === $thumb_h) ||
 				'full' === $img_size) {
 				$html = wp_get_attachment_image(
 					$post_thumbnail_id,
@@ -56,8 +73,8 @@ class Widget extends \WP_Widget {
 					false,
 					array
 					(
-						"data-cat-posts-width" => intval($this->instance['thumb_w']),
-						"data-cat-posts-height" => intval($this->instance['thumb_h'])
+						"data-cat-posts-width" => $thumb_w,
+						"data-cat-posts-height" => $thumb_h
 					)
 				);
 				break;
@@ -98,7 +115,7 @@ class Widget extends \WP_Widget {
 
 		// replace width.
 		$pattern = '/width="' . $array[1] . '"/';
-		if ( 0 != $this->instance['thumb_w'] ) {
+		if ( ! empty( $this->instance['thumb_w'] ) ) {
 			$html = preg_replace( $pattern, 'width="' . $size[0] . '"', $html );
 		} else {
 			$html = preg_replace( $pattern, '', $html );
@@ -108,14 +125,15 @@ class Widget extends \WP_Widget {
 		$array = array();
 		preg_match( '/height="([^"]*)"/i', $html, $array );
 		$pattern = '/height="' . $array[1] . '"/';
-		if ( 0 != $this->instance['thumb_h'] ) {
+		if ( ! empty( $this->instance['thumb_h'] ) ) {
 			$html = preg_replace( $pattern, 'height="' . $size[1] . '"', $html );
 		} else {
 			$html = preg_replace( $pattern, '', $html );
 		}
 
 		$show_post_format = isset( $this->instance['show_post_format'] ) && ( 'none' !== $this->instance['show_post_format'] );
-		if ( $show_post_format || $this->instance['thumb_hover'] ) {
+		$post_format_class = '';
+		if ( $show_post_format || ! empty( $this->instance['thumb_hover'] ) ) {
 			$format = get_post_format() ? : 'standard';
 			$post_format_class = 'cat-post-format cat-post-format-' . $format;
 		}
@@ -140,7 +158,12 @@ class Widget extends \WP_Widget {
 	 */
 	public function the_post_thumbnail( $size = 'post-thumbnail' ) {
 		if ( empty( $size ) ) { // if junk value, make it a normal thumb.
-			$size = 'post-thumbnail';
+			// post_thumbnail_html() below always expects a [width, height] pixel
+			// pair to rewrite the width/height/sizes attributes with, not a named
+			// size string - passing through the string 'post-thumbnail' made it
+			// index into the string itself (e.g. $size[0] === 'p'), corrupting the
+			// generated markup (a "ppx" sizes attribute, wrong width/height).
+			$size = array( get_option( 'thumbnail_size_w', 150 ), get_option( 'thumbnail_size_h', 150 ) );
 		} elseif ( is_array( $size ) && ( 2 === count( $size ) ) ) {  // good format at least.
 			// normalize to ints first.
 			list( $width, $height ) = array_map('intval', $size); 
@@ -164,7 +187,7 @@ class Widget extends \WP_Widget {
 		}
 
 		$post_thumbnail_id = get_post_thumbnail_id( get_the_ID() );
-		if ( ! $post_thumbnail_id && $this->instance['default_thunmbnail'] ) {
+		if ( ! $post_thumbnail_id && ! empty( $this->instance['default_thunmbnail'] ) ) {
 			$post_thumbnail_id = $this->instance['default_thunmbnail'];
 		}
 
@@ -278,7 +301,7 @@ class Widget extends \WP_Widget {
 			);
 		}
 
-		switch ( $instance['date_range'] ) {
+		switch ( isset( $instance['date_range'] ) ? $instance['date_range'] : 'off' ) {
 			case 'days_ago':
 				$ago = (int) $instance['days_ago'];
 
@@ -325,7 +348,7 @@ class Widget extends \WP_Widget {
 	public function titleHTML( $before_title, $after_title, $instance ) {
 		$ret = '';
 
-		if( in_array( $instance['title_level'], array( 'H1','H2', 'H3', 'H4', 'H5', 'H6') ) ) {
+		if ( isset( $instance['title_level'] ) && in_array( $instance['title_level'], array( 'H1','H2', 'H3', 'H4', 'H5', 'H6') ) ) {
 			$before_title = '';
 			$after_title  = '';
 		}
@@ -333,7 +356,7 @@ class Widget extends \WP_Widget {
 		// If no title, use the name of the category.
 		if ( ! isset( $instance['title'] ) || ! $instance['title'] ) {
 			$instance['title'] = '';
-			if ( 0 !== (int) $instance['cat'] ) {
+			if ( isset( $instance['cat'] ) && 0 !== (int) $instance['cat'] ) {
 				$category_info = get_category( $instance['cat'] );
 				if ( $category_info && ! is_wp_error( $category_info ) ) {
 					$instance['title'] = $category_info->name;
@@ -355,7 +378,7 @@ class Widget extends \WP_Widget {
 			}
 
 			if ( isset( $instance['title_link'] ) && $instance['title_link'] ) {
-				if ( 0 !== (int) $instance['cat'] ) {
+				if ( isset( $instance['cat'] ) && 0 !== (int) $instance['cat'] ) {
 					$ret .= '<a href="' . get_category_link( $instance['cat'] ) . '">' . $title . '</a>';
 				} elseif ( isset( $instance['title_link_url'] ) && $instance['title_link_url'] ) {
 					$ret .= '<a href="' . esc_url( $instance['title_link_url'] ) . '">' . $title . '</a>';
@@ -385,7 +408,7 @@ class Widget extends \WP_Widget {
 
 		$class = ( isset( $instance[ 'disable_theme_styles' ] ) && $instance[ 'disable_theme_styles' ] ) ? '' : ' class="widget-title"';
 
-		switch( $instance[ $key ] ) {
+		switch ( isset( $instance[ $key ] ) ? $instance[ $key ] : '' ) {
 			case 'H1':
 				$ret = '<h1' . $class . '>' . $ret . '</h1>';
 			break;
@@ -1245,7 +1268,7 @@ class Widget extends \WP_Widget {
 	 * @since 4.6
 	 */
 	public function formTitlePanel( $instance ) {
-		$cat = (int) $instance['cat'];
+		$cat = isset( $instance['cat'] ) ? (int) $instance['cat'] : 0;
 
 		$hide_title = false;
 		if ( isset( $instance['hide_title'] ) && $instance['hide_title'] ) {
@@ -1466,7 +1489,7 @@ class Widget extends \WP_Widget {
 	 */
 	private function get_text_input_block_html( $instance, $key, $label, $placeholder, $visible ) {
 
-		$value = $instance[ $key ];
+		$value = isset( $instance[ $key ] ) ? $instance[ $key ] : '';
 
 		$ret = '<label for="' . $this->get_field_id( $key ) . "\">\n" .
 					$label . ":\n" .
@@ -1592,12 +1615,9 @@ class Widget extends \WP_Widget {
 	 */
 	private function get_checkbox_block_html( $instance, $key, $label, $visible ) {
 
-		if ( array_key_exists( $key, $instance ) ) {
-			if ( $instance[ $key ] ) {
-				$value = true;
-			} else {
-				$value = false;
-			}
+		$value = false;
+		if ( array_key_exists( $key, $instance ) && $instance[ $key ] ) {
+			$value = true;
 		}
 		$ret = '<label class="checkbox" for="' . esc_attr( $this->get_field_id( $key ) ) . "\">\n" .
 					'<input id="' . esc_attr( $this->get_field_id( $key ) ) . '" name="' . esc_attr( $this->get_field_name( $key ) ) . '" type="checkbox" ' . checked( $value, true, false ) . '/>' . "\n" .
@@ -1657,7 +1677,7 @@ class Widget extends \WP_Widget {
 		$ret .= '<span class="cpwp-right">';
 
 		array_map ( function( $value ) use ( &$ret, $instance, $key ) {
-			if ( $instance[ $key ] == $value ) {
+			if ( isset( $instance[ $key ] ) && $instance[ $key ] == $value ) {
 				$checked = true;
 			} else {
 				$checked = false;
