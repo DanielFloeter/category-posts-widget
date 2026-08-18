@@ -157,7 +157,7 @@ class Virtual_Widget {
 	 */
 	public function getCSSRules( $context, &$rules ) {
 
-		if ( is_bool( $context ) ) { // Signature used before 4.9.23.
+		if ( is_bool( $context ) ) { // Signature used before 5.0.0.
 			$context = $context ? CONTEXT_SHORTCODE : CONTEXT_WIDGET;
 		}
 

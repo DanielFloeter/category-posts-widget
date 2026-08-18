@@ -4,15 +4,18 @@ Donate link: https://wordpress.org/support/plugin/category-posts/reviews/
 Tags: block, category, categories, posts, recent posts
 Requires at least: 2.8
 Tested up to: 6.8
-Stable tag: 4.9.22
+Stable tag: 5.0.0
 Requires PHP: 5.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Adds a widget that shows the most recent posts from a single category.
+Adds a block and a widget that shows the most recent posts from a single category.
 
 == Description ==
-Category Posts Widget is a light widget designed to do one thing and do it well: display the most recent posts from a certain category.
+Category Posts Widget is a light block and widget designed to do one thing and do it well: display the most recent posts from a certain category.
+
+= Category Posts Block =
+Use the "Category Posts" block in the Gutenberg editor to place the post list anywhere in your content. All options are available in the block sidebar panels: Title, Filter, Details, Thumbnail, Excerpt, Footer, Load more and General. Several blocks can be used on the same page, each with its own settings.
 
 = Term and Category based Posts Widget =
 A premium version of that free widget available at [tiptoppress.com](https://tiptoppress.com/) created for big Wordpress sites.
@@ -32,6 +35,8 @@ A premium version of that free widget available at [tiptoppress.com](https://tip
 * More examples on the [demo pages](https://demo.tiptoppress.com/)
 
 = Features =
+* Block for the block editor and Site Editor.
+* Multiple blocks on the same page or post, each with its own settings.
 * [Template](https://tiptoppress.com/template-arrange-post-details/) to arrange the post details.
 * The Template text can be a post details placeholder, plain text, HTML or a font-icons.
 * Font-icon support.
@@ -77,13 +82,15 @@ Automatic installation is the easiest option as WordPress handles the file trans
 2. In the search field type “Category Posts Widget” and click Search Plugins.
 3. Once you’ve found plugin, you can install it by simply clicking “Install Now”.
 4. Then, go to plugins page of WordPress admin activate the plugin.
-5. Now, goto the Widgets page of the Appearance section and configure the Category Posts widget.
+5. Now, goto the Widgets page of the Appearance section and configure the Category Posts widget,
+   or add the "Category Posts" block to a post, page or template in the editor.
 
 = Manual installation =
 1. Download the plugin.
 2. Upload it to the plugins folder of your blog.
 3. Activate the plugin through the 'Plugins' menu in WordPress
-4. Now, goto the Widgets page of the Appearance section and configure the Category Posts widget.
+4. Now, goto the Widgets page of the Appearance section and configure the Category Posts widget,
+   or add the "Category Posts" block to a post, page or template in the editor.
 
 == Upgrade Notice ==
 * Please consider to re-configure the widget as the latest version has numerous changes from previous.
@@ -118,9 +125,13 @@ Is 'All categories' selected in the Filter panel: Use the text field 'Title link
 4. Use shortcode [catposts] in the content.
 5. The widget configuration dialog.
 6. Widget behaviour settings for each user.
+7. The Category Posts block and its options in the block editor.
 
 == Changelog ==
 [Read more on our blog ...](https://tiptoppress.com/category/category-posts-widget)
+
+= 5.0.0 - August 18th 2026 =
+* Category Posts Block for the Gutenberg editor
 
 = 4.9.22 - July 26th 2025 =
 * Calculate the attachment size
