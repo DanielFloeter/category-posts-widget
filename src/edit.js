@@ -372,149 +372,169 @@ export default function Edit({ attributes, setAttributes }) {
 								})}
 							rows={ 8 }
 						/>
-						<PanelRow>{__('Title settings', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							<ToggleGroupControl
-								label={__('Item title heading level', 'category-posts')}
-								value={itemTitleLevel}
-								isBlock
-								isAdaptiveWidth
-								onChange={(itemTitleLevel) =>
-									setAttributes({
-										itemTitleLevel,
-									})}
-							>
-								<ToggleGroupControlOption value="Inline" label="Inline" />
-								<ToggleGroupControlOption value="H1" label="H1" />
-								<ToggleGroupControlOption value="H2" label="H2" />
-								<ToggleGroupControlOption value="H3" label="H3" />
-								<ToggleGroupControlOption value="H4" label="H4" />
-								<ToggleGroupControlOption value="H5" label="H5" />
-								<ToggleGroupControlOption value="H6" label="H6" />
-							</ToggleGroupControl>
-							<NumberControl
-								label={__('Item title lines', 'category-posts')}
-								value={itemTitleLines}
-								onChange={(itemTitleLines) => setAttributes({ itemTitleLines: parseInt(itemTitleLines) })}
-								min={0}
-								allowReset={false}
-							/>
-						</div>
-						<PanelRow>{__('Excerpt settings', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							<NumberControl
-								label={__('Excerpt lines', 'category-posts')}
-								value={excerptLines}
-								onChange={(excerptLines) => setAttributes({ excerptLines: parseInt(excerptLines) })}
-								min={0}
-								allowReset={false}
-							/>
-							<RadioControl
-								label={ __( 'Intent', 'category-posts' ) }
-								selected={ excerptRadio }
-								options={ [
-									{ label: __( 'Excerpt', 'category-posts' ), value: 'excerpt' },
-									{
-										label: __( 'Full Post', 'category-posts' ),
-										value: 'full_post',
-									},
-								] }
-								onChange={ ( value ) =>
-									setAttributes( {
-										excerptRadio: value,
-									} )
-								}
-							/>
-						</div>
-						<PanelRow>{__('More Link settings', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							<TextControl
-								label={__('Read more text', 'category-posts')}
-								value={excerptMoreText}
-								onChange={(excerptMoreText) => setAttributes({ excerptMoreText })}
-							/>
-						</div>
-						<PanelRow>{__('Date format settings', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							<SelectControl
-								label={__('Date format', 'category-posts')}
-								value={presetDateFormat}
-								onChange={(presetDateFormat) => setAttributes({ presetDateFormat })}
-								options={[
-									{ label: 'Site date and time', value: 'sitedateandtime' },
-									{ label: 'Site date', value: 'sitedate' },
-									{ label: 'Reader\'s local date and time', value: 'localsitedateandtime' },
-									{ label: 'Reader\'s local date', value: 'localsitedate' },
-									{ label: 'PHP style format', value: 'other' },
-								]}
-							/>
-							<TextControl
-								label={__('PHP style date format', 'category-posts')}
-								value={dateFormat}
-								onChange={(dateFormat) => setAttributes({ dateFormat })}
-							/>
-							<NumberControl
-								label={__('Show past time up to x-days', 'category-posts')}
-								value={datePastTime}
-								onChange={(datePastTime) => setAttributes({ datePastTime })}
-								min={0}
-								allowReset={false}
-							/>
-						</div>
-						<PanelRow>{__('Thumbnail settings', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							<NumberControl
-								label={__('Thumbnail width', 'category-posts')}
-								value={thumbW}
-								onChange={(thumbW) => setAttributes({ thumbW: parseInt(thumbW) })}
-								min={0}
-								allowReset={false}
-							/>
-							<NumberControl
-								label={__('Thumbnail height', 'category-posts')}
-								value={thumbH}
-								onChange={(thumbH) => setAttributes({ thumbH: parseInt(thumbH) })}
-								min={0}
-								allowReset={false}
-							/>
-							<SelectControl
-								label={__('Hover effect', 'category-posts')}
-								value={thumbHover}
-								onChange={(thumbHover) => setAttributes({ thumbHover })}
-								options={[
-									{ label: 'None', value: 'none' },
-									{ label: 'Darker', value: 'dark' },
-									{ label: 'Brighter', value: 'white' },
-									{ label: 'Zoom in', value: 'scale' },
-									{ label: 'Blur', value: 'blur' },
-									{ label: 'Icon', value: 'icon' },
-								]}
-							/>
-							<SelectControl
-								label={__('Post format indicator', 'category-posts')}
-								value={showPostFormat}
-								onChange={(showPostFormat) => setAttributes({ showPostFormat })}
-								options={[
-									{ label: 'None', value: 'none' },
-									{ label: 'Top left', value: 'topleft' },
-									{ label: 'Bottom left', value: 'bottomleft' },
-									{ label: 'Center', value: 'ceter' },
-									{ label: 'Top right', value: 'topright' },
-									{ label: 'Bottom right', value: 'bottomright' },
-									{ label: 'HTML without styling', value: 'nocss' },
-								]}
-							/>
-							<ToggleControl
-								label={__('Do not wrap thumbnail with text', 'category-posts')}
-								checked={textDoNotWrapThumb}
-								onChange={() => setAttributes({ textDoNotWrapThumb: !textDoNotWrapThumb })}
-							/>
-							<ToggleControl
-								label={__('Everything is a link', 'category-posts')}
-								checked={everythingIsLink}
-								onChange={() => setAttributes({ everythingIsLink: !everythingIsLink })}
-							/>
-						</div>
+						{ template && template.includes( '%title%' ) && (
+							<>
+								<PanelRow>{__('Title settings', 'category-posts')}</PanelRow>
+								<div className="cpwp-block-ident">
+									<ToggleGroupControl
+										label={__('Item title heading level', 'category-posts')}
+										value={itemTitleLevel}
+										isBlock
+										isAdaptiveWidth
+										onChange={(itemTitleLevel) =>
+											setAttributes({
+												itemTitleLevel,
+											})}
+									>
+										<ToggleGroupControlOption value="Inline" label="Inline" />
+										<ToggleGroupControlOption value="H1" label="H1" />
+										<ToggleGroupControlOption value="H2" label="H2" />
+										<ToggleGroupControlOption value="H3" label="H3" />
+										<ToggleGroupControlOption value="H4" label="H4" />
+										<ToggleGroupControlOption value="H5" label="H5" />
+										<ToggleGroupControlOption value="H6" label="H6" />
+									</ToggleGroupControl>
+									<NumberControl
+										label={__('Item title lines', 'category-posts')}
+										value={itemTitleLines}
+										onChange={(itemTitleLines) => setAttributes({ itemTitleLines: parseInt(itemTitleLines) })}
+										min={0}
+										allowReset={false}
+									/>
+								</div>
+							</>
+						) }
+						{ template && template.includes( '%excerpt%' ) && (
+							<>
+								<PanelRow>{__('Excerpt settings', 'category-posts')}</PanelRow>
+								<div className="cpwp-block-ident">
+									<NumberControl
+										label={__('Excerpt lines', 'category-posts')}
+										value={excerptLines}
+										onChange={(excerptLines) => setAttributes({ excerptLines: parseInt(excerptLines) })}
+										min={0}
+										allowReset={false}
+									/>
+									<RadioControl
+										label={ __( 'Intent', 'category-posts' ) }
+										selected={ excerptRadio }
+										options={ [
+											{ label: __( 'Excerpt', 'category-posts' ), value: 'excerpt' },
+											{
+												label: __( 'Full Post', 'category-posts' ),
+												value: 'full_post',
+											},
+										] }
+										onChange={ ( value ) =>
+											setAttributes( {
+												excerptRadio: value,
+											} )
+										}
+									/>
+								</div>
+							</>
+						) }
+						{ template && template.includes( '%more-link%' ) && (
+							<>
+								<PanelRow>{__('More Link settings', 'category-posts')}</PanelRow>
+								<div className="cpwp-block-ident">
+									<TextControl
+										label={__('Read more text', 'category-posts')}
+										value={excerptMoreText}
+										onChange={(excerptMoreText) => setAttributes({ excerptMoreText })}
+									/>
+								</div>
+							</>
+						) }
+						{ template && template.includes( '%date%' ) && (
+							<>
+								<PanelRow>{__('Date format settings', 'category-posts')}</PanelRow>
+								<div className="cpwp-block-ident">
+									<SelectControl
+										label={__('Date format', 'category-posts')}
+										value={presetDateFormat}
+										onChange={(presetDateFormat) => setAttributes({ presetDateFormat })}
+										options={[
+											{ label: 'Site date and time', value: 'sitedateandtime' },
+											{ label: 'Site date', value: 'sitedate' },
+											{ label: 'Reader\'s local date and time', value: 'localsitedateandtime' },
+											{ label: 'Reader\'s local date', value: 'localsitedate' },
+											{ label: 'PHP style format', value: 'other' },
+										]}
+									/>
+									<TextControl
+										label={__('PHP style date format', 'category-posts')}
+										value={dateFormat}
+										onChange={(dateFormat) => setAttributes({ dateFormat })}
+									/>
+									<NumberControl
+										label={__('Show past time up to x-days', 'category-posts')}
+										value={datePastTime}
+										onChange={(datePastTime) => setAttributes({ datePastTime })}
+										min={0}
+										allowReset={false}
+									/>
+								</div>
+							</>
+						) }
+						{ template && template.includes( '%thumb%' ) && (
+							<>
+								<PanelRow>{__('Thumbnail settings', 'category-posts')}</PanelRow>
+								<div className="cpwp-block-ident">
+									<NumberControl
+										label={__('Thumbnail width', 'category-posts')}
+										value={thumbW}
+										onChange={(thumbW) => setAttributes({ thumbW: parseInt(thumbW) })}
+										min={0}
+										allowReset={false}
+									/>
+									<NumberControl
+										label={__('Thumbnail height', 'category-posts')}
+										value={thumbH}
+										onChange={(thumbH) => setAttributes({ thumbH: parseInt(thumbH) })}
+										min={0}
+										allowReset={false}
+									/>
+									<SelectControl
+										label={__('Hover effect', 'category-posts')}
+										value={thumbHover}
+										onChange={(thumbHover) => setAttributes({ thumbHover })}
+										options={[
+											{ label: 'None', value: 'none' },
+											{ label: 'Darker', value: 'dark' },
+											{ label: 'Brighter', value: 'white' },
+											{ label: 'Zoom in', value: 'scale' },
+											{ label: 'Blur', value: 'blur' },
+											{ label: 'Icon', value: 'icon' },
+										]}
+									/>
+									<SelectControl
+										label={__('Post format indicator', 'category-posts')}
+										value={showPostFormat}
+										onChange={(showPostFormat) => setAttributes({ showPostFormat })}
+										options={[
+											{ label: 'None', value: 'none' },
+											{ label: 'Top left', value: 'topleft' },
+											{ label: 'Bottom left', value: 'bottomleft' },
+											{ label: 'Center', value: 'ceter' },
+											{ label: 'Top right', value: 'topright' },
+											{ label: 'Bottom right', value: 'bottomright' },
+											{ label: 'HTML without styling', value: 'nocss' },
+										]}
+									/>
+									<ToggleControl
+										label={__('Do not wrap thumbnail with text', 'category-posts')}
+										checked={textDoNotWrapThumb}
+										onChange={() => setAttributes({ textDoNotWrapThumb: !textDoNotWrapThumb })}
+									/>
+									<ToggleControl
+										label={__('Everything is a link', 'category-posts')}
+										checked={everythingIsLink}
+										onChange={() => setAttributes({ everythingIsLink: !everythingIsLink })}
+									/>
+								</div>
+							</>
+						) }
 					</PanelBody>
 					<PanelBody title={__('General', 'category-posts')} initialOpen={ false }>
 						<PanelRow>Inherited CSS</PanelRow>
