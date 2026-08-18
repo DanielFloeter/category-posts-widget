@@ -65,7 +65,7 @@ function build_block_instance( $attributes ) {
 	$instance['preset_date_format']     = isset( $attributes['presetDateFormat'] ) ? $attributes['presetDateFormat'] : 'sitedate';
 	$instance['date_format']            = isset( $attributes['dateFormat'] ) ? $attributes['dateFormat'] : '';
 	$instance['date_past_time']         = isset( $attributes['datePastTime'] ) ? $attributes['datePastTime'] : '0';
-	$instance['template']               = isset( $attributes['template'] ) ? $attributes['template'] : "%title%\n\n%thumb%\n\n%excerpt%";
+	$instance['template']               = isset( $attributes['template'] ) ? $attributes['template'] : "%title%\n\n%thumb%\n%excerpt%";
 	$instance['text_do_not_wrap_thumb'] = isset( $attributes['textDoNotWrapThumb'] ) ? $attributes['textDoNotWrapThumb'] : false;
 	$instance['enable_loadmore']        = isset( $attributes['enableLoadmore'] ) ? $attributes['enableLoadmore'] : false;
 	$instance['loadmore_scrollTo']      = isset( $attributes['loadmoreScrollTo'] ) ? $attributes['loadmoreScrollTo'] : false;

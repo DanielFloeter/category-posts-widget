@@ -196,13 +196,13 @@ class testWidgetFront extends WP_UnitTestCase {
 
 		$attributes_a = array(
 			'instanceId'         => 9101,
-			'template'           => "%title%\n\n%thumb%\n\n%excerpt%",
+			'template'           => "%title%\n\n%thumb%\n%excerpt%",
 			'textDoNotWrapThumb' => true,
 			'num'                => 3,
 		);
 		$attributes_b = array(
 			'instanceId'         => 9102,
-			'template'           => "%title%\n\n%thumb%\n\n%excerpt%",
+			'template'           => "%title%\n\n%thumb%\n%excerpt%",
 			'textDoNotWrapThumb' => false,
 			'num'                => 7,
 		);
