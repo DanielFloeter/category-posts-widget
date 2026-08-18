@@ -843,11 +843,11 @@ class Widget extends \WP_Widget {
 			}
 		}
 
-		// 'cpwp-wrap-text' is what the excerpt-lines CSS hooks on. It is normally set by
-		// equal_cover_content_height(), but that script never runs in the block editor
-		// preview (REST request, no wp_footer), so set it server side as the baseline.
-		// The script still moves it to the stage wrapper later when the text wraps.
-		$excerpt = str_replace( '<p>', '<p class="cpwp-excerpt-text cpwp-wrap-text">', $excerpt );
+		// 'cpwp-wrap-text' is what the excerpt-lines CSS hooks on, but where it belongs
+		// depends on the "do not wrap thumbnail with text" setting, which is only known
+		// in itemHTML() where the stage wrapper is built. So only mark the paragraph
+		// here and let itemHTML() place 'cpwp-wrap-text'.
+		$excerpt = str_replace( '<p>', '<p class="cpwp-excerpt-text">', $excerpt );
 		$ret = apply_filters( 'cpw_excerpt', $excerpt, $this );
 		return $ret;
 	}
@@ -983,12 +983,23 @@ class Widget extends \WP_Widget {
 		// additionally wrapped in the 'cpwp-wrap-text-stage' element the excerpt lines CSS
 		// needs, so that it is part of the markup right away -- also for items delivered by
 		// the load more REST route and for the block editor preview, where no script runs.
+		//
+		// 'cpwp-wrap-text' is the class the excerpt lines CSS hooks on, and its position
+		// decides the layout: on the stage the text wraps around the floating thumbnail
+		// (the CSS hack), on the paragraph it does not. Because no script runs in the
+		// block editor preview, that decision is made here, server side, from the
+		// "do not wrap thumbnail with text" setting. equal_cover_content_height() only
+		// refines it later when the excerpt is shorter than the thumbnail.
 		$blocks       = preg_split( '/\n\r|\n\n/', $template_res ); // "\n\r" in widget areas, "\n\n" as shortcode.
 		$template_res = '';
 		foreach ( $blocks as $block ) {
 			$div = '<div>' . $block . '</div>';
 			if ( false !== strpos( $block, 'cpwp-excerpt-text' ) ) {
-				$div = '<div class="cpwp-wrap-text-stage">' . $div . '</div>';
+				$stage_class = 'cpwp-wrap-text-stage';
+				if ( ! $no_wrap ) {
+					$stage_class .= ' cpwp-wrap-text';
+				}
+				$div = '<div class="' . $stage_class . '">' . $div . '</div>';
 			}
 			$template_res .= $div;
 		}
