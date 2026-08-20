@@ -1,5 +1,5 @@
 {
-	"apiVersion": 2,
+	"apiVersion": 3,
 	"name": "tiptip/category-posts-block",
 	"title": "Category Posts",
 	"category": "widgets",
