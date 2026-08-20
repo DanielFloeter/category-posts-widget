@@ -69,6 +69,163 @@ export default function Edit({ attributes, setAttributes }) {
 		}
 	}, [ instanceId, generatedInstanceId ] );
 
+	// The 'cpwp-wrap-text' class the excerpt-lines CSS hooks on, and the image-ratio
+	// height, are normally corrected on the front end by equal_cover_content_height()
+	// on wp_footer/admin_footer once the real rendered heights are known. Neither hook
+	// runs for the REST request the ServerSideRender preview is built from, and a
+	// <script> element inside that markup is not executed by React either
+	// (dangerouslySetInnerHTML does not run embedded scripts) - so
+	// render_category_posts_block() hands the same flags to the preview as inert
+	// JSON (the '.cpwp-block-preview-config' node), and this effect applies them.
+	const previewRef = useRef( null );
+	useEffect( () => {
+		const host = previewRef.current;
+		if ( ! host ) {
+			return;
+		}
+
+		let timer = null;
+
+		// Port of cat_posts_namespace.layout_wrap_text.add() (see cat-posts.php). Its
+		// position decides the layout: on the stage the text wraps around the
+		// floating thumbnail, on the paragraph it does not. itemHTML() always puts it
+		// on the stage when wrapping is enabled, and this refines that guess once the
+		// rendered heights are known. Uses plain DOM instead of jQuery because the
+		// preview lives in the editor's iframe while jQuery here belongs to the outer
+		// document, and its offset based measuring would be wrong across that boundary.
+		const placeWrapText = ( item ) => {
+			const text = item.querySelector( 'p.cpwp-excerpt-text' );
+			if ( ! text ) {
+				return;
+			}
+
+			const stage = text.closest( '.cpwp-wrap-text-stage' );
+			if ( ! stage ) {
+				return;
+			}
+
+			// Measure from a defined state: the class on the paragraph, so its height
+			// is the clamped text height no matter what the server side left behind.
+			stage.classList.remove( 'cpwp-wrap-text' );
+			text.classList.add( 'cpwp-wrap-text' );
+
+			const thumb = item.querySelector( '.cat-post-thumbnail' );
+			const thumbHeight = thumb ? thumb.getBoundingClientRect().height : 0;
+
+			if ( text.getBoundingClientRect().height < thumbHeight ) {
+				// The text is shorter than the thumbnail, no wrapping needed and the
+				// class is already on the paragraph.
+				return;
+			}
+
+			text.classList.remove( 'cpwp-wrap-text' );
+			stage.classList.add( 'cpwp-wrap-text' );
+		};
+
+		// Port of cat_posts_namespace.layout_img_size.replace() (see cat-posts.php).
+		const fixImageRatio = ( item ) => {
+			item.querySelectorAll( 'img' ).forEach( ( img ) => {
+				const originalWidth = parseInt( img.getAttribute( 'data-cat-posts-width' ), 10 );
+				const originalHeight = parseInt( img.getAttribute( 'data-cat-posts-height' ), 10 );
+				if ( ! originalWidth || ! originalHeight ) {
+					return;
+				}
+
+				const width = img.getBoundingClientRect().width;
+				if ( width && width < originalWidth ) {
+					img.style.height = ( width * originalHeight / originalWidth ) + 'px';
+				} else {
+					img.style.height = '';
+				}
+			} );
+		};
+
+		const handleItem = ( item, config ) => {
+			if ( config.imgSize ) {
+				fixImageRatio( item );
+			}
+			if ( config.wrapText ) {
+				placeWrapText( item );
+			}
+		};
+
+		const applyOnce = ( config ) => {
+			if ( ! config.wrapText && ! config.imgSize ) {
+				return;
+			}
+
+			host.querySelectorAll( '.cat-post-item' ).forEach( ( item ) => {
+				// Measure right away, and again once an image that was still on its
+				// way has arrived - waiting for the images first would drop the item
+				// completely whenever its load event had already passed or never
+				// comes at all, for instance for a lazily loaded image below the fold.
+				handleItem( item, config );
+
+				item.querySelectorAll( 'img' ).forEach( ( img ) => {
+					if ( img.complete && img.naturalWidth ) {
+						return;
+					}
+					img.addEventListener( 'load', () => handleItem( item, config ), { once: true } );
+				} );
+			} );
+		};
+
+		// The very first pass can land before the style island of the freshly
+		// inserted markup has been applied, and then measures the unclamped instead
+		// of the line-clamped text height, which flips the decision. The front end
+		// has the same problem and solves it by running on ready, load and resize;
+		// repeat the pass the same way here. It is idempotent, so repeating costs
+		// nothing but a reflow.
+		// Each of the three passes below re-reads the config from the DOM instead of
+		// sharing one snapshot: ServerSideRender can swap in a newer render (a new
+		// config node) while an older pass's rAF/timeout is still pending, and
+		// applying that stale config to the then-current markup would undo what the
+		// newer render already got right.
+		const run = () => {
+			const configNode = host.querySelector( '.cpwp-block-preview-config' );
+			if ( ! configNode ) {
+				return;
+			}
+
+			let config;
+			try {
+				config = JSON.parse( configNode.textContent );
+			} catch ( e ) {
+				return;
+			}
+
+			applyOnce( config );
+		};
+
+		const apply = () => {
+			run();
+			window.requestAnimationFrame( run );
+			window.setTimeout( run, 400 );
+		};
+
+		const schedule = () => {
+			window.clearTimeout( timer );
+			timer = window.setTimeout( apply, 200 );
+		};
+
+		// ServerSideRender replaces the preview markup with a raw innerHTML swap, not
+		// a reconciled React update, so this has to watch for that DOM change itself
+		// rather than relying on a dependency array.
+		const observer = new window.MutationObserver( () => schedule() );
+		observer.observe( host, { childList: true, subtree: true } );
+		schedule();
+
+		// The preview has its own window when the editor renders its canvas in an iframe.
+		const previewWindow = host.ownerDocument.defaultView || window;
+		previewWindow.addEventListener( 'resize', schedule );
+
+		return () => {
+			observer.disconnect();
+			previewWindow.removeEventListener( 'resize', schedule );
+			window.clearTimeout( timer );
+		};
+	}, [] );
+
 	const categoriesList = useSelect( ( select ) => {
 		return select( 'core' ).getEntityRecords(
 			'taxonomy',
@@ -696,6 +853,7 @@ export default function Edit({ attributes, setAttributes }) {
 				  */}
 				<div
 					className="cpwp-block-preview"
+					ref={ previewRef }
 					onClickCapture={(event) => event.preventDefault()}
 				>
 					<ServerSideRender

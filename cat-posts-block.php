@@ -139,6 +139,34 @@ function get_block_loadmore_settings( $id ) {
 }
 
 /**
+ * Collect everything the editor preview has to apply on its own.
+ *
+ * On the front end equal_cover_content_height() prints a script on wp_footer/
+ * admin_footer that refines the server-side "wrap the excerpt around the thumbnail"
+ * guess once the actual rendered heights are known. Neither hook runs for the REST
+ * request the ServerSideRender preview is built from, so the same flags are handed
+ * to src/edit.js as data instead, which applies the refinement itself.
+ *
+ * The conditions have to stay in sync with equal_cover_content_height().
+ *
+ * @param array $instance The widget instance data.
+ *
+ * @return array The wrap-text/image-ratio handling flags for the preview.
+ */
+function block_preview_config( $instance ) {
+	$wrap_text = ! ( isset( $instance['text_do_not_wrap_thumb'] ) && $instance['text_do_not_wrap_thumb'] );
+
+	// No ratio calculation if one or more dimensions is set to 0.
+	$img_size = isset( $instance['thumb_w'] ) && 0 !== intval( $instance['thumb_w'] ) &&
+		isset( $instance['thumb_h'] ) && 0 !== intval( $instance['thumb_h'] );
+
+	return array(
+		'wrapText' => $wrap_text,
+		'imgSize'  => $img_size,
+	);
+}
+
+/**
  * Renders the `tiptip/category-posts-block` on server.
  *
  * @see WP_Widget_Archives
@@ -206,6 +234,18 @@ function render_category_posts_block( $attributes ) {
 				},
 				100
 			);
+		}
+
+		// Everything above hooks into wp_footer/admin_footer, which never run for the
+		// REST request the editor preview is built from - and a <script> element
+		// inside the returned markup would not be executed by React either
+		// (dangerouslySetInnerHTML does not run embedded scripts). So hand the editor
+		// the same wrap-text/image-ratio flags as inert JSON, src/edit.js applies
+		// them to the preview itself.
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			$ret .= '<script type="application/json" class="cpwp-block-preview-config">' .
+				wp_json_encode( block_preview_config( $instance ) ) .
+				'</script>';
 		}
 	} elseif ( 'text' === $instance['no_match_handling'] ) {
 		$ret = $widget->titleHTML( $before_title, $after_title, $instance );
