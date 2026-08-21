@@ -1,24 +1,24 @@
-﻿=== Category Posts Widget ===
+﻿=== Category Posts Block ===
 Contributors: mark-k, kometschuh, mkrdip
 Donate link: https://wordpress.org/support/plugin/category-posts/reviews/
 Tags: block, category, categories, posts, recent posts
 Requires at least: 2.8
-Tested up to: 7.0
+Tested up to: 7.1
 Stable tag: 5.0.0
 Requires PHP: 5.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Adds a block and a widget that shows the most recent posts from a single category.
+Adds a block that shows the most recent posts from a single category.
 
 == Description ==
-Category Posts Widget is a light block and widget designed to do one thing and do it well: display the most recent posts from a certain category.
+Category Posts Block is a light block designed to do one thing and do it well: display the most recent posts from a certain category.
 
 = Category Posts Block =
 Use the "Category Posts" block in the Gutenberg editor to place the post list anywhere in your content. All options are available in the block sidebar panels: Title, Filter, Details, Thumbnail, Excerpt, Footer, Load more and General. Several blocks can be used on the same page, each with its own settings.
 
-= Term and Category based Posts Widget =
-A premium version of that free widget available at [tiptoppress.com](https://tiptoppress.com/) created for big Wordpress sites.
+= Term and Category based Posts Block =
+A premium version of that free block available at [tiptoppress.com](https://tiptoppress.com/) created for big Wordpress sites.
 
 = Premium features =
 * Auto-sizing Grid layout
@@ -36,38 +36,32 @@ A premium version of that free widget available at [tiptoppress.com](https://tip
 
 = Features =
 * Block for the block editor and Site Editor.
-* Multiple blocks on the same page or post, each with its own settings.
 * [Template](https://tiptoppress.com/template-arrange-post-details/) to arrange the post details.
 * The Template text can be a post details placeholder, plain text, HTML or a font-icons.
-* Font-icon support.
+* Font-icon support
 * 'Load more' button / Ajax API
 * Item Title heading level buttons
 * Excerpt length and item title in lines (line-clamp)
-* Shortcode (Easily change all Shortcode options in the customizer).
 * Date range filter
 * New date format: Time since plublished
-* Filter by post status: Published, scheduled, private.
-* Multiple shortcodes at the same site or post.
-* Add option for post offset (use two or more widgets after another).
-* Admin UI: Buttons in the editor toolbar to insert shortcode.
-* Option to touch device friendly "everything is a link".
-* For editing shortcode adds a Customizer link to the admin-bar ("With one click to the Customizer").
-* Set thumbnail width & height / image crop with CSS (object-fit).
-* Fluid images (max-width in %).
-* One thumb dimension can be left empty.
-* Option to set mouse hover effects for post thumbnail.
-* Set a default thumbnail.
-* Hide widget text or text, if there is no post.
-* Option to hide posts which have no thumbnail.
-* Option exclude current post.
-* Option show post author, comment's count, post date.
+* Filter by post status: Published, scheduled, private
+* Add option for post offset (use two or more widgets after another)
+* Admin UI: Buttons in the editor toolbar to insert shortcode
+* Option to touch device friendly "everything is a link"
+* Set thumbnail width & height / image crop with CSS (object-fit)
+* Fluid images (max-width in %)
+* One thumb dimension can be left empty
+* Option to set mouse hover effects for post thumbnail
+* Set a default thumbnail
+* Hide widget text or text, if there is no post
+* Option to hide posts which have no thumbnail
+* Option exclude current post
+* Option show post author, comment's count, post date
 * Admin UI: Set / find thumbnail size buttons: +, ¼, ½, 2x, -, ratio and Media sizes
-* Admin UI: Buttons to easy add post details placeholder.
-* Multi sites support.
+* Admin UI: Buttons to easy add post details placeholder
 
 = Documentation =
 * Full [documentation](https://tiptoppress.com/category-posts-widget/documentation-4-9)
-* Shortcode: Use [catposts] in the content and [edit in the customizer](https://tiptoppress.com/use-shortcode-to-add-category-posts-widget-to-the-content/)
 * Formatting date and time: See <a target="_blank" href="https://codex.wordpress.org/Formatting_Date_and_Time">Formatting Date and Time</a>
 
 = Contribute =
@@ -76,26 +70,19 @@ While using this plugin if you find any bug or any conflict, please submit an is
 
 == Installation ==
 = Automatic installation =
-Automatic installation is the easiest option as WordPress handles the file transfers itself and you don’t need to leave your web browser. To do an automatic install of Category Posts Widget,
+Automatic installation is the easiest option as WordPress handles the file transfers itself and you don’t need to leave your web browser. To do an automatic install of Category Posts Block
 
-1. log in to your WordPress dashboard, navigate to the Plugins menu and click Add New.
-2. In the search field type “Category Posts Widget” and click Search Plugins.
+1. Log in to your WordPress dashboard, navigate to the Plugins menu and click Add New.
+2. In the search field type “Category Posts Block” and click Search Plugins.
 3. Once you’ve found plugin, you can install it by simply clicking “Install Now”.
 4. Then, go to plugins page of WordPress admin activate the plugin.
-5. Now, goto the Widgets page of the Appearance section and configure the Category Posts widget,
-   or add the "Category Posts" block to a post, page or template in the editor.
+5. Add the "Category Posts Block" to a post, page or template in the editor.
 
 = Manual installation =
 1. Download the plugin.
 2. Upload it to the plugins folder of your blog.
 3. Activate the plugin through the 'Plugins' menu in WordPress
-4. Now, goto the Widgets page of the Appearance section and configure the Category Posts widget,
-   or add the "Category Posts" block to a post, page or template in the editor.
-
-== Upgrade Notice ==
-* Please consider to re-configure the widget as the latest version has numerous changes from previous.
-* Version 4.0 uses CSS file for styling the widget in front end.
-* Version 3.0 or later version uses WordPress 2.9's built in post thumbnail functionality.
+4. Add the "Category Posts Block" to a post, page or template in the editor.
 
 == Frequently Asked Questions ==
 = Template, placeholder and post detail =
@@ -108,9 +95,6 @@ For more layout options please try our premium widget: [Term and Category based 
 = Use SVG icons =
 For SVG font-icon HTML we recommend the [WordPress Dashicons](https://developer.wordpress.org/resource/dashicons/), which are included as default and can be used without any font-icon including.
 
-= How to use Page Bilder plugins like Divi, SiteOrigin Page Builder or Elementor =
-Read more about Page Builder plugins at our [FAQs](https://tiptoppress.com/faqs/)
-
 = The font-size is different from that of other widgets or Theme elements? =
 Use the option: 'Disable only font style' in the General panel.
 
@@ -120,12 +104,8 @@ Is 'All categories' selected in the Filter panel: Use the text field 'Title link
 
 == Screenshots ==
 1. Front end of the widget with SVG font-icon support for post formats, hover effects and the Template text-area.
-2. Template to arrange the post details with placeholders.
-3. Edit the widget options with the customizer.
-4. Use shortcode [catposts] in the content.
-5. The widget configuration dialog.
-6. Widget behaviour settings for each user.
-7. The Category Posts block and its options in the block editor.
+2. Widget behaviour settings for each user.
+3. The Category Posts block and its Template to arrange the post details with placeholders.
 
 == Changelog ==
 [Read more on our blog ...](https://tiptoppress.com/category/category-posts-widget)
