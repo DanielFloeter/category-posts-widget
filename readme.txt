@@ -61,7 +61,7 @@ A premium version of that free block available at [tiptoppress.com](https://tipt
 * Admin UI: Buttons to easy add post details placeholder
 
 = Documentation =
-* Full [documentation](https://tiptoppress.com/category-posts-widget/documentation-4-9)
+* Full [documentation](https://tiptoppress.com/category-posts-widget/documentation-5-0)
 * Formatting date and time: See <a target="_blank" href="https://codex.wordpress.org/Formatting_Date_and_Time">Formatting Date and Time</a>
 
 = Contribute =
@@ -86,7 +86,7 @@ Automatic installation is the easiest option as WordPress handles the file trans
 
 == Frequently Asked Questions ==
 = Template, placeholder and post detail =
-Here You can control the [Post Detail parts](https://tiptoppress.com/category-posts-widget/documentation-4-9/#Post_details), which appears as part of the post item. All post detail will placed as placeholder. The text in the Template area can be a post details placeholder, plain text, HTML or HTML for SVG icons.
+Here You can control the [Post Detail parts](https://tiptoppress.com/category-posts-widget/documentation-5-0/#Post_details), which appears as part of the post item. All post detail will placed as placeholder. The text in the Template area can be a post details placeholder, plain text, HTML or HTML for SVG icons.
 
 [How it works? and examples.](https://tiptoppress.com/template-arrange-post-details/)
 

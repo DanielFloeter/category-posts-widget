@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 const VERSION        	= '5.0.0';
-const DOC_URL        	= 'https://tiptoppress.com/category-posts-widget/documentation-4-9/';
+const DOC_URL        	= 'https://tiptoppress.com/category-posts-widget/documentation-5-0/';
 const PRO_URL        	= 'https://tiptoppress.com/term-and-category-based-posts-widget/';
 const SUPPORT_URL    	= 'https://wordpress.org/support/plugin/category-posts/';
 const SHORTCODE_NAME 	= 'catposts';
