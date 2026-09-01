@@ -290,7 +290,7 @@ function category_posts_block_init() {
 
 	$script_asset_path = "$dir/build/index.asset.php";
 	if ( ! file_exists( $script_asset_path ) ) {
-		throw new Error(
+		throw new \Error(
 			'You need to run `npm start` or `npm run build` for the "tiptip/category-posts-block" block first.'
 		);
 	}
