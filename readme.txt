@@ -110,6 +110,10 @@ Is 'All categories' selected in the Filter panel: Use the text field 'Title link
 == Changelog ==
 [Read more on our blog ...](https://tiptoppress.com/category/category-posts-widget)
 
+= 5.1.0 - September xx 2026 =
+* Show the whole image for logos
+* Bugfix Wrap text around image
+
 = 5.0.0 - August 18th 2026 =
 * Category Posts Block for the Gutenberg editor
 
