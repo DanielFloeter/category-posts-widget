@@ -276,8 +276,20 @@ function render_category_posts_block( $attributes ) {
 		}
 	}
 
+	// get_block_wrapper_attributes() is what actually applies the block-supports
+	// classes (e.g. "aligncenter" from the toolbar's alignment option) to a
+	// dynamic block's markup - core never adds them on its own, they only ever
+	// end up in $attributes and are otherwise silently dropped by a hardcoded
+	// wrapper like the one this used to build.
+	$wrapper_attributes = get_block_wrapper_attributes(
+		array(
+			'id'    => $dom_id,
+			'class' => WIDGET_BASE_ID . '-block',
+		)
+	);
+
 	return ( '' !== $css ? '<style>' . $css . '</style>' : '' ) .
-		'<div id="' . esc_attr( $dom_id ) . '" class="' . WIDGET_BASE_ID . '-block">' . $ret . '</div>';
+		'<div ' . $wrapper_attributes . '>' . $ret . '</div>';
 }
 
 /**
