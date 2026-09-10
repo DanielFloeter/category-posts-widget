@@ -777,6 +777,7 @@ function default_settings() {
 		'thumb_fluid_width'      => 100,
 		'thumb_h'                => get_option( 'thumbnail_size_h', 150 ),
 		'thumb_hover'            => 'none',
+		'thumb_symbols'          => false,
 		'hide_post_titles'       => false,
 		'excerpt_radio'          => __( 'excerpt', 'category-posts' ),
 		'excerpt_lines'          => 4,

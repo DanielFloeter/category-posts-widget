@@ -46,7 +46,7 @@ export default function Edit({ attributes, setAttributes }) {
 		hideTitle, title, titleLink, titleLinkUrl, titleLinkTarget, titleLevel,
 		order, orderBy, categories, status, num, offset, dateRange, startDate, endDate, daysAgo, excludeCurrentPost, hideNoThumb, sticky,
 		template, itemTitleLevel, itemTitleLines, excerptRadio, excerptLines, excerptMoreText,
-		thumbW, thumbH, thumbHover, showPostFormat, textDoNotWrapThumb, everythingIsLink, presetDateFormat, dateFormat, datePastTime,
+		thumbW, thumbH, thumbHover, thumbSymbols, showPostFormat, textDoNotWrapThumb, everythingIsLink, presetDateFormat, dateFormat, datePastTime,
 		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, loadmoreScrollTo, loadmoreText, loadingText,
 		footerLinkText, footerLink, footerLinkTarget, instanceId
 	} = attributes;
@@ -701,6 +701,11 @@ export default function Edit({ attributes, setAttributes }) {
 								label={__('Everything is a link', 'category-posts')}
 								checked={everythingIsLink}
 								onChange={() => setAttributes({ everythingIsLink: !everythingIsLink })}
+							/>
+							<ToggleControl
+								label={__('Symbols', 'category-posts')}
+								checked={thumbSymbols}
+								onChange={() => setAttributes({ thumbSymbols: !thumbSymbols })}
 							/>
 						</div>
 							</>

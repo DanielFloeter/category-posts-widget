@@ -323,7 +323,12 @@ class Virtual_Widget {
 			if ( isset( $settings['thumb_w'] ) && 0 !== intval( $settings['thumb_w'] ) ) {
 				$ret['thumb_crop_w'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop img {width: ' . intval($settings['thumb_w']) . 'px;}';
 			}
-			$ret['thumb_crop'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop img {object-fit: cover; max-width: 100%; display: block;}';
+			// "Symbols" (logos, icons, ...) should never be cropped, so their whole
+			// image stays visible (object-fit: contain) instead of filling and
+			// cropping the allocated space the way a photo thumbnail normally does
+			// (object-fit: cover).
+			$object_fit = ( isset( $settings['thumb_symbols'] ) && $settings['thumb_symbols'] ) ? 'contain' : 'cover';
+			$ret['thumb_crop'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop img {object-fit: ' . $object_fit . '; max-width: 100%; display: block;}';
 			$ret['thumb_crop_not_supported'] = '#' . $widget_id . ' .cat-post-thumbnail .cat-post-crop-not-supported img {width: 100%;}';
 			$ret['thumb_fluid_width'] = '#' . $widget_id . ' .cat-post-thumbnail {max-width:' . intval( $settings['thumb_fluid_width'] ) . '%;}';
 			$ret['thumb_styling'] = '#' . $widget_id . ' .cat-post-item img {margin: initial;}';

@@ -49,6 +49,7 @@ function build_block_instance( $attributes ) {
 	$instance['thumb_fluid_width']      = isset( $attributes['thumbFluidWidth'] ) ? $attributes['thumbFluidWidth'] : 100;
 	$instance['thumb_h']                = isset( $attributes['thumbH'] ) ? $attributes['thumbH'] : 150;
 	$instance['thumb_hover']            = isset( $attributes['thumbHover'] ) ? $attributes['thumbHover'] : 'none';
+	$instance['thumb_symbols']          = isset( $attributes['thumbSymbols'] ) ? $attributes['thumbSymbols'] : false;
 	$instance['hide_post_titles']       = isset( $attributes['hidePostTitles'] ) ? $attributes['hidePostTitles'] : false;
 	$instance['excerpt_radio']          = isset( $attributes['excerptRadio'] ) ? $attributes['excerptRadio'] : 'excerpt';
 	$instance['excerpt_lines']          = isset( $attributes['excerptLines'] ) ? $attributes['excerptLines'] : 4;
