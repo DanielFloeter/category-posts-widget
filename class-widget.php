@@ -396,7 +396,9 @@ class Widget extends \WP_Widget {
 			$ret .= $after_title;
 		}
 
-		$ret = $this->add_heading_level( $instance, $ret, 'title_level' );
+		if ( ! ( isset( $instance['hide_title'] ) && $instance['hide_title'] ) ) {
+			$ret = $this->add_heading_level( $instance, $ret, 'title_level' );
+		}
 
 		return $ret;
 	}
