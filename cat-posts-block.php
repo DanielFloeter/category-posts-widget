@@ -317,22 +317,6 @@ function category_posts_block_init() {
 	);
 	wp_set_script_translations( 'tiptip-category-posts-block-editor', 'category-posts' );
 
-	$editor_css = 'build/style-index.css';
-	wp_register_style(
-		'tiptip-category-posts-block-editor',
-		plugins_url( $editor_css, __FILE__ ),
-		array(),
-		filemtime( "$dir/$editor_css" )
-	);
-
-	$style_css = 'build/style-index.css';
-	wp_register_style(
-		'tiptip-category-posts-block',
-		plugins_url( $style_css, __FILE__ ),
-		array(),
-		filemtime( "$dir/$style_css" )
-	);
-
 	register_block_type_from_metadata(
 		__DIR__,
 		array(
