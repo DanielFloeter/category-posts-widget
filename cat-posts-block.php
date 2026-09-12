@@ -79,7 +79,7 @@ function build_block_instance( $attributes ) {
 	$instance['no_match_handling']      = isset( $attributes['noMatchHandling'] ) ? $attributes['noMatchHandling'] : 'nothing';
 	$instance['no_match_text']          = isset( $attributes['noMatchText'] ) ? $attributes['noMatchText'] : '';
 	$instance['default_thunmbnail']     = isset( $attributes['defaultThunmbnail'] ) ? $attributes['defaultThunmbnail'] : 0;
-	$instance['ver']                    = isset( $attributes['ver'] ) ? $attributes['ver'] : '5.0.0';
+	$instance['ver']                    = isset( $attributes['ver'] ) ? $attributes['ver'] : '5.1.0';
 	$instance['context']                = CONTEXT_BLOCK;
 
 	return $instance;

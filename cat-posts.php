@@ -12,7 +12,7 @@ Plugin Name: Category Posts Widget
 Plugin URI: https://wordpress.org/plugins/category-posts/
 Description: Adds a widget that shows the most recent posts from a single category.
 Author: TipTopPress
-Version: 5.0.0
+Version: 5.1.0
 Author URI: https://tiptoppress.com
 Text Domain: category-posts
 Domain Path: /languages
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const VERSION        	= '5.0.0';
+const VERSION        	= '5.1.0';
 const DOC_URL        	= 'https://tiptoppress.com/category-posts-widget/documentation-5-0/';
 const PRO_URL        	= 'https://tiptoppress.com/term-and-category-based-posts-widget/';
 const SUPPORT_URL    	= 'https://wordpress.org/support/plugin/category-posts/';
