@@ -5,3 +5,6 @@ package.json
 
 # build output
 build
+
+# PHPUnit runner artefacts
+.phpunit.result.cache

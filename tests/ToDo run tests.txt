@@ -1,18 +1,13 @@
+Run the tests with:
 
+    ./tests/local/run.sh
 
-A. Install PHPUnit and follow this steps, expected 2. and download the right WP version: https://make.wordpress.org/core/handbook/testing/automated-testing/phpunit/
+Everything needed (WordPress test suite, PHPUnit, polyfills, test database) is
+set up on the first run. See tests/local/README.md for details and settings.
 
-B. Set system path variable to 'phpunit.phar' 
-
-
-1. Upload the widget in the plugin folder in the downloaded WP test (downloaded )
-
-2. Open cmd shell
-
-3. Move to folder: src\plugins\category-posts-widget\tests
-
-4. Run the Category-Posts-Widget tests with $phpunit or $phpunit --debug
-
+The older, manual route - checking the plugin out inside a wordpress-develop
+tree and running phpunit.phar in this folder against tests/bootstrap.php - still
+works and is described at:
+https://make.wordpress.org/core/handbook/testing/automated-testing/phpunit/
 
 Tipp: Use print "hello world" for dumping variables and output to CLI
-
