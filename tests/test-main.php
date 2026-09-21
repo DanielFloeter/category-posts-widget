@@ -231,6 +231,57 @@ class testWidgetFront extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the block wrapper carries the block-supports classes.
+	 *
+	 * The markup has to go through render_block()/do_blocks(), not through
+	 * render_category_posts_block() directly, because only then does core
+	 * expose the block being rendered to get_block_wrapper_attributes().
+	 */
+	public function testBlockWrapperHasBlockSupportsClasses() {
+		$GLOBALS['before_title'] = '';
+		$GLOBALS['after_title']  = '';
+
+		$html = do_blocks( '<!-- wp:tiptip/category-posts-block {"align":"center","instanceId":9201} /-->' );
+
+		// The alignment picked in the toolbar ends up as a class on the
+		// wrapper - a hardcoded wrapper silently dropped it.
+		$this->assertStringContainsString( 'aligncenter', $html );
+
+		// ... without losing the plugin's own id and class.
+		$this->assertStringContainsString( 'id="category-posts-block-9201"', $html );
+		$this->assertStringContainsString( 'category-posts-block', $html );
+
+		// Without an alignment there is no align class.
+		$html = do_blocks( '<!-- wp:tiptip/category-posts-block {"instanceId":9202} /-->' );
+		$this->assertStringNotContainsString( 'aligncenter', $html );
+		$this->assertStringContainsString( 'id="category-posts-block-9202"', $html );
+	}
+
+	/**
+	 * Test that the block's thumbSymbols attribute reaches the CSS.
+	 */
+	public function testBlockThumbSymbolsAttribute() {
+		$GLOBALS['before_title'] = '';
+		$GLOBALS['after_title']  = '';
+
+		$html = \categoryPosts\render_category_posts_block(
+			array(
+				'instanceId'   => 9301,
+				'thumbSymbols' => true,
+			)
+		);
+		$this->assertStringContainsString( 'object-fit: contain;', $html );
+
+		$html = \categoryPosts\render_category_posts_block(
+			array(
+				'instanceId'   => 9302,
+				'thumbSymbols' => false,
+			)
+		);
+		$this->assertStringContainsString( 'object-fit: cover;', $html );
+	}
+
+	/**
 	 *  Test the titleHTML method of the widget
 	 */
 	function testtitleHTML() {
@@ -273,6 +324,27 @@ class testWidgetFront extends WP_UnitTestCase {
 			)
 		);
 		$this->assertEquals( '', $out );
+
+		// A hidden title must not leave an empty heading behind: with a
+		// title_level set, add_heading_level() used to wrap the (empty)
+		// title in an <h2></h2> even though nothing was rendered.
+		$out = $widget->titleHTML(
+			'<h3>', '</h3>', array(
+				'title'       => 'test',
+				'hide_title'  => true,
+				'title_level' => 'H2',
+			)
+		);
+		$this->assertEquals( '', $out );
+
+		// The heading level is still applied when the title is visible.
+		$out = $widget->titleHTML(
+			'', '', array(
+				'title'       => 'test',
+				'title_level' => 'H2',
+			)
+		);
+		$this->assertEquals( '<h2 class="widget-title">test</h2>', $out );
 
 		// test title as category name when title empty
 		$cid = $this->factory->category->create( array( 'name' => 'test cat' ) );
@@ -1988,6 +2060,30 @@ class testVirtualwidget extends WP_UnitTestCase {
 			// widget id differs).
 			'twentyseventeen, widget'    => array( 'test8', array(), false, $expect( $default_widget, 'test8-internal' ) ),
 			'twentyseventeen, shortcode' => array( 'test8', array(), true, $expect( $default_shortcode, 'test8' ) ),
+
+			// thumb_symbols ("Symbols"): symbols/logos must stay whole, so
+			// the thumbnail is fitted with object-fit: contain instead of
+			// the cropping default cover. Everything else is unchanged.
+			'thumb_symbols, widget' => array(
+				'test9', array( 'thumb_symbols' => true ), false,
+				$expect(
+					$default_widget, 'test9-internal', array(
+						'thumb_crop' => '#%1$s .cat-post-thumbnail .cat-post-crop img {object-fit: contain; max-width: 100%%; display: block;}',
+					)
+				),
+			),
+			'thumb_symbols, shortcode' => array(
+				'test9', array( 'thumb_symbols' => true ), true,
+				$expect(
+					$default_shortcode, 'test9', array(
+						'thumb_crop' => '#%1$s .cat-post-thumbnail .cat-post-crop img {object-fit: contain; max-width: 100%%; display: block;}',
+					)
+				),
+			),
+			'thumb_symbols off, widget' => array(
+				'test10', array( 'thumb_symbols' => false ), false,
+				$expect( $default_widget, 'test10-internal' ),
+			),
 		);
 	}
 
