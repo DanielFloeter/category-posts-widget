@@ -103,9 +103,12 @@ Is just a single category selected in the Filter panel: Enable the check box "Ma
 Is 'All categories' selected in the Filter panel: Use the text field 'Title link URL'.
 
 == Screenshots ==
-1. Front end of the widget with SVG font-icon support for post formats, hover effects and the Template text-area.
+1. Front end of the widget with SVG font-icon support for post formats, hover effects and post tags.
 2. Widget behaviour settings for each user.
-3. The Category Posts block and its Template to arrange the post details with placeholders.
+3. The Template text-area with the placeholder buttons to arrange the post details.
+4. The Category Posts block in the editor: Template, item title heading level and excerpt settings.
+5. The Category Posts block in the editor: filter by category, status, date range, sort order and offset.
+6. The Category Posts block used in the Site Editor.
 
 == Changelog ==
 [Read more on our blog ...](https://tiptoppress.com/category/category-posts-widget)
