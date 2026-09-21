@@ -1,15 +1,15 @@
 ﻿=== Category Posts Block ===
 Contributors: mark-k, kometschuh, mkrdip
 Donate link: https://wordpress.org/support/plugin/category-posts/reviews/
-Tags: block, category, categories, posts, recent posts
-Requires at least: 2.8
+Tags: recent posts, latest posts, post list, post thumbnails, load more
+Requires at least: 6.6
 Tested up to: 7.1
-Stable tag: 5.1.0
-Requires PHP: 5.3
+Stable tag: 5.1.1
+Requires PHP: 7.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Adds a block that shows the most recent posts from a single category.
+Shows a list of recent posts from a category - with thumbnails, excerpt and a load more button. For posts, pages and the Site Editor.
 
 == Description ==
 Category Posts Block is a light block designed to do one thing and do it well: display the most recent posts from a certain category.
@@ -45,7 +45,7 @@ A premium version of that free block available at [tiptoppress.com](https://tipt
 * Date range filter
 * New date format: Time since plublished
 * Filter by post status: Published, scheduled, private
-* Add option for post offset (use two or more widgets after another)
+* Add option for post offset (use two or more blocks after another)
 * Admin UI: Buttons in the editor toolbar to insert shortcode
 * Option to touch device friendly "everything is a link"
 * Set thumbnail width & height / image crop with CSS (object-fit)
@@ -53,12 +53,10 @@ A premium version of that free block available at [tiptoppress.com](https://tipt
 * One thumb dimension can be left empty
 * Option to set mouse hover effects for post thumbnail
 * Set a default thumbnail
-* Hide widget text or text, if there is no post
+* Hide the block text, if there is no post
 * Option to hide posts which have no thumbnail
 * Option exclude current post
 * Option show post author, comment's count, post date
-* Admin UI: Set / find thumbnail size buttons: +, ¼, ½, 2x, -, ratio and Media sizes
-* Admin UI: Buttons to easy add post details placeholder
 
 = Documentation =
 * Full [documentation](https://tiptoppress.com/category-posts-widget/documentation-5-0)
@@ -90,21 +88,21 @@ Here You can control the [Post Detail parts](https://tiptoppress.com/category-po
 
 [How it works? and examples.](https://tiptoppress.com/template-arrange-post-details/)
 
-For more layout options please try our premium widget: [Term and Category based Posts Widget](https://tiptoppress.com/term-and-category-based-posts-widget/).
+For more layout options please try our premium block: [Term and Category based Posts Block](https://tiptoppress.com/term-and-category-based-posts-widget/).
 
 = Use SVG icons =
 For SVG font-icon HTML we recommend the [WordPress Dashicons](https://developer.wordpress.org/resource/dashicons/), which are included as default and can be used without any font-icon including.
 
-= The font-size is different from that of other widgets or Theme elements? =
+= The font-size is different from that of other blocks or Theme elements? =
 Use the option: 'Disable only font style' in the General panel.
 
 = I want the title as a link pointing to the selected Categorie page? =
-Is just a single category selected in the Filter panel: Enable the check box "Make widget title link".
+Is just a single category selected in the Filter panel: Enable the check box "Make block title link".
 Is 'All categories' selected in the Filter panel: Use the text field 'Title link URL'.
 
 == Screenshots ==
-1. Front end of the widget with SVG font-icon support for post formats, hover effects and post tags.
-2. Widget behaviour settings for each user.
+1. Front end of the block with SVG font-icon support for post formats, hover effects and post tags.
+2. Block behaviour settings for each user.
 3. The Template text-area with the placeholder buttons to arrange the post details.
 4. The Category Posts block in the editor: Template, item title heading level and excerpt settings.
 5. The Category Posts block in the editor: filter by category, status, date range, sort order and offset.
@@ -112,6 +110,9 @@ Is 'All categories' selected in the Filter panel: Use the text field 'Title link
 
 == Changelog ==
 [Read more on our blog ...](https://tiptoppress.com/category/category-posts-widget)
+
+= 5.1.1 - September 21st 2026 =
+* Transform to Term and Category Posts based Block
 
 = 5.1.0 - September 12th 2026 =
 * Show the whole image for logos

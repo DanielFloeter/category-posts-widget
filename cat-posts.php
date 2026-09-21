@@ -8,11 +8,11 @@
  */
 
 /*
-Plugin Name: Category Posts Widget
+Plugin Name: Category Posts Block
 Plugin URI: https://wordpress.org/plugins/category-posts/
-Description: Adds a widget that shows the most recent posts from a single category.
+Description: Shows a list of recent posts from a category - with thumbnails, excerpt and a load more button.
 Author: TipTopPress
-Version: 5.1.0
+Version: 5.1.1
 Author URI: https://tiptoppress.com
 Text Domain: category-posts
 Domain Path: /languages
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const VERSION        	= '5.1.0';
+const VERSION        	= '5.1.1';
 const DOC_URL        	= 'https://tiptoppress.com/category-posts-widget/documentation-5-0/';
 const PRO_URL        	= 'https://tiptoppress.com/term-and-category-based-posts-widget/';
 const SUPPORT_URL    	= 'https://wordpress.org/support/plugin/category-posts/';

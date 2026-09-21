@@ -325,7 +325,7 @@ export default function Edit({ attributes, setAttributes }) {
 										})}
 								/>
 								<ToggleControl
-									label={__('Make widget title link', 'category-posts')}
+									label={__('Make block title link', 'category-posts')}
 									checked={titleLink}
 									onChange={() =>
 										setAttributes({

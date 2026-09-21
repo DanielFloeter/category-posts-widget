@@ -1,7 +1,7 @@
 {
 	"name": "category-posts-block",
-	"version": "4.9.13",
-	"description": "Adds a widget that shows the most recent posts from a single category.",
+	"version": "5.1.1",
+	"description": "Shows a list of recent posts from a category - with thumbnails, excerpt and a load more button.",
 	"author": "kometschuh",
 	"license": "GPL-2.0-or-later",
 	"main": "build/index.js",
@@ -14,11 +14,11 @@
 		"packages-update": "wp-scripts packages-update"
 	},
 	"dependencies": {
-		"@wordpress/block-editor": "^14.20.0",
-		"@wordpress/blocks": "^14.14.0",
-		"@wordpress/i18n": "^5.25.0"
+		"@wordpress/block-editor": "^17.1.0",
+		"@wordpress/blocks": "^16.0.0",
+		"@wordpress/i18n": "^6.28.0"
 	},
 	"devDependencies": {
-		"@wordpress/scripts": "^30.18.0"
+		"@wordpress/scripts": "^35.0.0"
 	}
 }

@@ -4,7 +4,7 @@
 	"title": "Category Posts",
 	"category": "widgets",
 	"icon": "admin-post",
-	"description": "Adds a widget that shows the most recent posts from a single category.",
+	"description": "Shows a list of recent posts from a category - with thumbnails, excerpt and a load more button.",
 	"textdomain": "category-posts",
 	"attributes": {
 		"title": {
@@ -233,7 +233,7 @@
 		},
 		"ver": {
 			"type": "string",
-			"default": "4.9.13"
+			"default": "5.1.1"
 		},
 		"instanceId": {
 			"type": "number"

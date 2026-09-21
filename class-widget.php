@@ -1301,7 +1301,7 @@ class Widget extends \WP_Widget {
 		<?php echo $this->get_checkbox_block_html( $instance, 'hide_title', esc_html__( 'Hide title', 'category-posts' ), true ); ?>
 		<div class="categoryposts-data-panel-title-settings" <?php echo ( $hide_title ) ? 'style="display:none"' : ''; ?>>
 			<?php echo $this->get_text_input_block_html( $instance, 'title', esc_html__( 'Title', 'category-posts' ), '', true ); ?>
-			<?php echo $this->get_checkbox_block_html( $instance, 'title_link', esc_html__( 'Make widget title link', 'category-posts' ), 0 !== $cat ); ?>
+			<?php echo $this->get_checkbox_block_html( $instance, 'title_link', esc_html__( 'Make block title link', 'category-posts' ), 0 !== $cat ); ?>
 			<?php echo $this->get_text_input_block_html( $instance, 'title_link_url', esc_html__( 'Title link URL', 'category-posts' ), '', 0 === $cat ); ?>
 			<?php echo $this->get_radio_buttons_block_html( $instance, 'title_level', array( 'Initial', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6' ), esc_html__( 'Heading Level', 'category-posts' ) . ":" .
 				' <a href="#" class="dashicons toggle-title-level-help dashicons-paperclip"><span class="screen-reader-text">' . 
