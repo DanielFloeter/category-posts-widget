@@ -4,6 +4,7 @@ import { __ } from '@wordpress/i18n';
 import './style.scss';
 import Edit from './edit';
 import Save from './save';
+import transformToPro from './transform';
 import metadata from './../block.json';
 const { name } = metadata;
 
@@ -59,7 +60,8 @@ registerBlockType(name, {
 				},
 
 			},
-		]
+		],
+		to: [ transformToPro ],
 	},
 	edit: Edit,
 	save: Save,
