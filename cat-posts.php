@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 const VERSION        	= '5.1.1';
 const DOC_URL        	= 'https://tiptoppress.com/category-posts-widget/documentation-5-0/';
-const PRO_URL        	= 'https://tiptoppress.com/term-and-category-based-posts-widget/';
+const PRO_URL        	= 'https://demo.tiptoppress.com/';
 const SUPPORT_URL    	= 'https://wordpress.org/support/plugin/category-posts/';
 const SHORTCODE_NAME 	= 'catposts';
 const SHORTCODE_META 	= 'categoryPosts-shorcode';
@@ -454,7 +454,7 @@ function add_action_links( $links ) {
 
 	if ( ! class_exists( '\\termcategoryPostsPro\\Widget' ) ) {
 		$pro_link = array(
-			'<a target="_blank" href="' . esc_url( PRO_URL ) . '">' . esc_html__( 'Get the Pro version', 'category-posts' ) . '</a>',
+			'<a target="_blank" style="color:#00a32a;font-weight:700;" href="' . esc_url( PRO_URL ) . '">' . esc_html__( 'Get the Pro version', 'category-posts' ) . '</a>',
 		);
 
 		$links = array_merge( $pro_link, $links );
