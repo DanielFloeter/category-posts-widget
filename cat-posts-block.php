@@ -36,7 +36,7 @@ function build_block_instance( $attributes ) {
 	$instance['offset']                 = isset( $attributes['offset'] ) ? $attributes['offset'] : 1;
 	$instance['sort_by']                = isset( $attributes['orderBy'] ) ? $attributes['orderBy'] : 'date';
 	$instance['status']                 = isset( $attributes['status'] ) ? $attributes['status'] : 'publish';
-	$instance['asc_sort_order']         = isset( $attributes['order'] ) ? $attributes['order'] : true;
+	$instance['asc_sort_order']         = isset( $attributes['order'] ) ? $attributes['order'] : false;
 	$instance['exclude_current_post']   = isset( $attributes['excludeCurrentPost'] ) ? $attributes['excludeCurrentPost'] : false;
 	$instance['hide_no_thumb']          = isset( $attributes['hideNoThumb'] ) ? $attributes['hideNoThumb'] : false;
 	$instance['sticky']                 = isset( $attributes['sticky'] ) ? $attributes['sticky'] : false;

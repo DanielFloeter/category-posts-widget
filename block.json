@@ -61,7 +61,7 @@
 		},
 		"order": {
 			"type": "boolean",
-			"default": true
+			"default": false
 		},
 		"excludeCurrentPost": {
 			"type": "boolean",
