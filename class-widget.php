@@ -157,6 +157,15 @@ class Widget extends \WP_Widget {
 	 * @since 4.1
 	 */
 	public function the_post_thumbnail( $size = 'post-thumbnail' ) {
+		// The image which is going to be rendered, which is not necessarily the
+		// featured image of the post: a post without one is shown with the default
+		// thumbnail when the settings name one. Resolved up here because a dimension
+		// left at 0 is filled in from this very image below.
+		$post_thumbnail_id = get_post_thumbnail_id( get_the_ID() );
+		if ( ! $post_thumbnail_id && ! empty( $this->instance['default_thunmbnail'] ) ) {
+			$post_thumbnail_id = $this->instance['default_thunmbnail'];
+		}
+
 		if ( empty( $size ) ) { // if junk value, make it a normal thumb.
 			// post_thumbnail_html() below always expects a [width, height] pixel
 			// pair to rewrite the width/height/sizes attributes with, not a named
@@ -169,26 +178,34 @@ class Widget extends \WP_Widget {
 			list( $width, $height ) = array_map('intval', $size); 
 			if ( ( 0 === $width ) && ( 0 === $height ) ) { // Both values zero then revert to ratio from the orig with large.
 				$size = array( get_option( 'large_size_w', 150 ), get_option( 'large_size_h', 150 ) );
-			} elseif ( ( 0 === $width ) && ( 0 !== $height ) ) {
-				// if thumb width 0 set to max/full widths for wp rendering.
-				$post_thumb = get_the_post_thumbnail( get_the_ID(), 'full' );
-				preg_match( '/(?<=width=")[\d]*/', $post_thumb, $thumb_full_w );
-				$size[0] = $thumb_full_w[0];
-			} elseif ( ( 0 !== $width ) && ( 0 === $height ) ) {
-				// if thumb height 0 get full thumb for ratio and calc height with ratio.
-				$post_thumb = get_the_post_thumbnail( get_the_ID(), 'full' );
-				preg_match( '/(?<=width=")[\d]*/', $post_thumb, $thumb_full_w );
-				preg_match( '/(?<=height=")[\d]*/', $post_thumb, $thumb_full_h );
-				$ratio = $thumb_full_w[0] / $thumb_full_h[0];
-				$size[1] = intval( $width / $ratio );
+			} elseif ( ( 0 === $width ) || ( 0 === $height ) ) {
+				// Exactly one of the two is left to the image, so the other one has to
+				// come from the image itself. Ask the attachment for its dimensions
+				// instead of parsing them back out of get_the_post_thumbnail(): that
+				// only ever knows about a real featured image, so for a post shown with
+				// the default thumbnail it returned nothing at all, and the width and
+				// height read from that nothing made the ratio a division by zero.
+				$full   = wp_get_attachment_image_src( $post_thumbnail_id, 'full' );
+				$full_w = $full ? intval( $full[1] ) : 0;
+				$full_h = $full ? intval( $full[2] ) : 0;
+
+				if ( 0 === $width ) {
+					// The width follows the image, hand WordPress the full width for
+					// the rest of the markup.
+					$size[0] = $full_w;
+				} elseif ( $full_w && $full_h ) {
+					// The height follows the width through the ratio of the image.
+					$size[1] = intval( $width * $full_h / $full_w );
+				}
+
+				// An attachment which does not report its dimensions - an SVG without
+				// them in its meta data, or none at all because there is no image to
+				// show in the first place - leaves the 0 in place. post_thumbnail_html()
+				// then drops that attribute and getCSSRules() emits no rule for it,
+				// which is exactly what a 0 asks for: the browser keeps the ratio.
 			}
 		} else {
 			$size = array( get_option( 'thumbnail_size_w', 150 ), get_option( 'thumbnail_size_h', 150 ) ); // yet another form of junk.
-		}
-
-		$post_thumbnail_id = get_post_thumbnail_id( get_the_ID() );
-		if ( ! $post_thumbnail_id && ! empty( $this->instance['default_thunmbnail'] ) ) {
-			$post_thumbnail_id = $this->instance['default_thunmbnail'];
 		}
 
 		do_action( 'begin_fetch_post_thumbnail_html', get_the_ID(), $post_thumbnail_id, $size );

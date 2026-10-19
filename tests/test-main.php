@@ -781,6 +781,37 @@ class testWidgetFront extends WP_UnitTestCase {
 	}
 
 	/**
+	 * A thumbnail with only one of its two dimensions set to 0 takes the other
+	 * one from the image being rendered - which is the default thumbnail for a
+	 * post without a featured image. That used to be read from the featured
+	 * image alone, so the ratio became a division by zero and took the whole
+	 * page down.
+	 */
+	public function test_the_post_thumbnail_one_dimension_zero() {
+		$className = NS . '\Widget';
+		$widget    = new $className();
+
+		$thumbnail_id = _make_attachment( DIR_TESTDATA . '/images/canola.jpg' ); // 640x480.
+
+		global $post;
+		$post = get_post( $this->factory->post->create( array( 'post_status' => 'publish' ) ) );
+		setup_postdata( $post );
+
+		// The default thumbnail is rendered instead, at the width asked for.
+		$widget->instance = array( 'default_thunmbnail' => $thumbnail_id );
+		$html = $widget->the_post_thumbnail( array( 150, 0 ) );
+		$this->assertStringContainsString( 'canola', $html );
+		$this->assertStringContainsString( '(max-width: 150px) 100vw, 150px', $html );
+
+		// ... and at its own full width when the width is the one left at 0.
+		$html = $widget->the_post_thumbnail( array( 0, 150 ) );
+		$this->assertStringContainsString( 'canola', $html );
+		$this->assertStringContainsString( '(max-width: 640px) 100vw, 640px', $html );
+
+		wp_reset_postdata();
+	}
+
+	/**
 	 * Test the post_thumbnail method of the widget
 	 *
 	 * @since 4.6
