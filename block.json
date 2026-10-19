@@ -237,6 +237,10 @@
 		},
 		"instanceId": {
 			"type": "number"
+		},
+		"shownTools": {
+			"type": "array",
+			"default": []
 		}
 	},
 	"supports": {

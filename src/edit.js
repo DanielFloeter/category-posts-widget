@@ -21,11 +21,11 @@ import {
 	__experimentalToggleGroupControlOption, ToggleGroupControlOption as stableToggleGroupControlOption,
 	__experimentalNumberControl, NumberControl as stableNumberControl,
 	__experimentalInputControlSuffixWrapper, InputControlSuffixWrapper as stableInputControlSuffixWrapper,
+	__experimentalToolsPanel, ToolsPanel as stableToolsPanel,
+	__experimentalToolsPanelItem, ToolsPanelItem as stableToolsPanelItem,
 	DatePicker,
 	Dropdown,
 	Button,
-	Panel,
-	PanelBody,
 	PanelRow,
 	Flex,
 	FlexBlock,
@@ -39,12 +39,95 @@ import { dateI18n, getSettings as getDateSettings } from '@wordpress/date';
  * Internal dependencies
  */
 import TemplateControl from './template-control';
+import metadata from './../block.json';
 import './editor.scss';
 
 export const ToggleGroupControl = __experimentalToggleGroupControl || stableToggleGroupControl;
 export const ToggleGroupControlOption = __experimentalToggleGroupControlOption || stableToggleGroupControlOption;
 export const NumberControl = __experimentalNumberControl || stableNumberControl;
 const InputControlSuffixWrapper = __experimentalInputControlSuffixWrapper || stableInputControlSuffixWrapper || 'span';
+const ToolsPanel = __experimentalToolsPanel || stableToolsPanel;
+const ToolsPanelItem = __experimentalToolsPanelItem || stableToolsPanelItem;
+
+/*
+ * The attributes behind each entry of a ToolsPanel menu. "Reset" sets them back to
+ * their defaults from block.json.
+ */
+const TITLE = [ 'hideTitle', 'title' ];
+const TITLE_LEVEL = [ 'titleLevel' ];
+const TITLE_LINK = [ 'titleLink', 'titleLinkUrl', 'titleLinkTarget' ];
+const NO_RESULTS = [ 'noMatchHandling', 'noMatchText' ];
+const LOAD_MORE = [ 'enableLoadmore', 'loadmoreScrollTo', 'loadmoreText', 'loadingText' ];
+const FOOTER_LINK = [ 'footerLinkText', 'footerLink', 'footerLinkTarget' ];
+const CATEGORY = [ 'categories' ];
+const ORDER = [ 'orderBy', 'order' ];
+const STATUS = [ 'status' ];
+const NUMBER_OF_POSTS = [ 'num', 'offset' ];
+// Hiding the date range clears its dates as well.
+const DATE_RANGE = [ 'dateRange', 'daysAgo', 'startDate', 'endDate' ];
+const START_DATE = [ 'startDate' ];
+const END_DATE = [ 'endDate' ];
+const EXCLUDE_CURRENT_POST = [ 'excludeCurrentPost' ];
+const HIDE_NO_THUMB = [ 'hideNoThumb' ];
+const STICKY = [ 'sticky' ];
+const FILTER = [
+	...CATEGORY, ...ORDER, ...STATUS, ...NUMBER_OF_POSTS, ...DATE_RANGE,
+	...EXCLUDE_CURRENT_POST, ...HIDE_NO_THUMB, ...STICKY,
+];
+const BUILT_IN_CSS = [ 'disableCss', 'disableFontStyles', 'disableThemeStyles' ];
+const TEMPLATE = [ 'template' ];
+const ITEM_TITLE = [ 'itemTitleLevel', 'itemTitleLines' ];
+const EXCERPT = [ 'excerptLines', 'excerptRadio' ];
+const MORE_LINK = [ 'excerptMoreText' ];
+const DATE_FORMAT = [ 'presetDateFormat', 'dateFormat', 'datePastTime' ];
+const THUMBNAIL = [ 'thumbW', 'thumbH', 'textDoNotWrapThumb' ];
+const THUMBNAIL_TOOLS = [ 'thumbHover', 'showPostFormat', 'everythingIsLink', 'thumbSymbols' ];
+const POST_DETAILS = [ ...TEMPLATE, ...ITEM_TITLE, ...EXCERPT, ...MORE_LINK, ...DATE_FORMAT, ...THUMBNAIL, ...THUMBNAIL_TOOLS ];
+
+// The entries a ToolsPanel shows only when chosen under "Tools", by the id they are
+// stored with in the shownTools attribute.
+const OPTIONAL_TOOLS = {
+	titleLevel: TITLE_LEVEL,
+	titleLink: TITLE_LINK,
+	order: ORDER,
+	status: STATUS,
+	numberOfPosts: NUMBER_OF_POSTS,
+	dateRange: DATE_RANGE,
+	excludeCurrentPost: EXCLUDE_CURRENT_POST,
+	hideNoThumb: HIDE_NO_THUMB,
+	sticky: STICKY,
+	loadMore: LOAD_MORE,
+	// One entry for each setting of the thumbnail, e.g. thumbHover.
+	...Object.fromEntries( THUMBNAIL_TOOLS.map( ( key ) => [ key, [ key ] ] ) ),
+};
+
+/**
+ * The defaults of attributes from block.json, to pass to setAttributes().
+ *
+ * @param {string[]} keys The attribute names.
+ * @return {Object} The default of each attribute by its name.
+ */
+const defaultsOf = ( keys ) => Object.fromEntries(
+	keys.map( ( key ) => [ key, metadata.attributes[ key ].default ] )
+);
+
+/**
+ * Whether one of the attributes differs from its default in block.json. Arrays and
+ * objects are compared by their content. A number field stores its value as a
+ * string, so "10" counts as the default 10.
+ *
+ * @param {Object}   attributes The block attributes.
+ * @param {string[]} keys       The attribute names.
+ * @return {boolean} True if one of them is set to another value.
+ */
+const differsFromDefault = ( attributes, keys ) => keys.some( ( key ) => {
+	const value = attributes[ key ];
+	const defaultValue = metadata.attributes[ key ].default;
+	if ( 'object' === typeof value || 'object' === typeof defaultValue ) {
+		return JSON.stringify( value ) !== JSON.stringify( defaultValue );
+	}
+	return String( value ) !== String( defaultValue );
+} );
 
 /**
  * A unit shown at the right end of a number field, as its suffix.
@@ -128,7 +211,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 		template, itemTitleLevel, itemTitleLines, excerptRadio, excerptLines, excerptMoreText,
 		thumbW, thumbH, thumbHover, thumbSymbols, showPostFormat, textDoNotWrapThumb, everythingIsLink, presetDateFormat, dateFormat, datePastTime,
 		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, loadmoreScrollTo, loadmoreText, loadingText,
-		footerLinkText, footerLink, footerLinkTarget, instanceId
+		footerLinkText, footerLink, footerLinkTarget, instanceId, shownTools
 	} = attributes;
 	const blockProps = useBlockProps({
 		className: disableThemeStyles ? 'widget-title' : '',
@@ -377,11 +460,43 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 		},
 	];
 
+	/*
+	 * A ToolsPanel shows an entry from "Tools" only while one of its values differs
+	 * from the default, so one chosen with its defaults would be gone after saving.
+	 * The shownTools attribute keeps it, and choosing it changes the block.
+	 */
+	const optionalTool = ( id ) => ( {
+		hasValue: () => shownTools.includes( id ) || differsFromDefault( attributes, OPTIONAL_TOOLS[ id ] ),
+		onSelect: () => setAttributes( { shownTools: [ ...shownTools, id ] } ),
+		onDeselect: () => setAttributes( {
+			...defaultsOf( OPTIONAL_TOOLS[ id ] ),
+			shownTools: shownTools.filter( ( shown ) => shown !== id ),
+		} ),
+	} );
+
+	// Which entries are shown does not change the preview, so it is not loaded again.
+	const { shownTools: omitted, ...previewAttributes } = attributes;
+
+	// "Reset all" of a ToolsPanel, which hides its entries from "Tools" as well.
+	const resetPanel = ( keys ) => setAttributes( {
+		...defaultsOf( keys ),
+		shownTools: shownTools.filter( ( id ) => ! ( OPTIONAL_TOOLS[ id ] || [] ).some( ( key ) => keys.includes( key ) ) ),
+	} );
+
 	return (
 		<>
 			<InspectorControls>
-				<Panel>
-					<PanelBody className="cpwp-settings-panel" title={__('Title', 'category-posts')} initialOpen={ false }>
+				<ToolsPanel
+					className="cpwp-tools-panel"
+					label={ __( 'Title', 'category-posts' ) }
+					resetAll={ () => resetPanel( [ ...TITLE, ...TITLE_LEVEL, ...TITLE_LINK ] ) }
+				>
+					<ToolsPanelItem
+						label={ __( 'Title', 'category-posts' ) }
+						hasValue={ () => differsFromDefault( attributes, TITLE ) }
+						onDeselect={ () => setAttributes( defaultsOf( TITLE ) ) }
+						isShownByDefault
+					>
 						<ToggleControl
 							label={__('Hide title', 'category-posts')}
 							checked={hideTitle}
@@ -393,75 +508,99 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 							__nextHasNoMarginBottom
 						/>
 						{ !hideTitle && (
-							<>
-								<TextControl
-									label={__('Title', 'category-posts')}
-									value={title}
-									onChange={(title) =>
-										setAttributes({
-											title,
-										})}
-									__next40pxDefaultSize
-									__nextHasNoMarginBottom
-								/>
-								<ToggleControl
-									label={__('Link the title', 'category-posts')}
-									checked={titleLink}
-									onChange={() =>
-										setAttributes({
-											titleLink: !titleLink,
-										})
-									}
-									__nextHasNoMarginBottom
-								/>
-								{ titleLink && (
-									<>
-										<TextControl
-											label={__('Title link URL', 'category-posts')}
-											value={titleLinkUrl}
-											onChange={(titleLinkUrl) =>
-												setAttributes({
-													titleLinkUrl,
-												})}
-											__next40pxDefaultSize
-											__nextHasNoMarginBottom
-										/>
-										<ToggleControl
-											label={__('Open title link in new tab', 'category-posts')}
-											checked={titleLinkTarget}
-											onChange={() =>
-												setAttributes({
-													titleLinkTarget: !titleLinkTarget,
-												})
-											}
-											__nextHasNoMarginBottom
-										/>
-									</>
-								) }
-								<ToggleGroupControl
-									label={__('Heading level', 'category-posts')}
-									value={titleLevel}
-									isBlock
-									isAdaptiveWidth
-									onChange={(titleLevel) =>
-										setAttributes({
-											titleLevel,
-										})}
-									__next40pxDefaultSize
-									__nextHasNoMarginBottom
-								>
-									<ToggleGroupControlOption value="Initial" label={__('Text', 'category-posts')} />
-									<ToggleGroupControlOption value="H1" label="H1" />
-									<ToggleGroupControlOption value="H2" label="H2" />
-									<ToggleGroupControlOption value="H3" label="H3" />
-									<ToggleGroupControlOption value="H4" label="H4" />
-									<ToggleGroupControlOption value="H5" label="H5" />
-									<ToggleGroupControlOption value="H6" label="H6" />
-								</ToggleGroupControl>
-							</>
+							<TextControl
+								label={__('Title', 'category-posts')}
+								value={title}
+								onChange={(title) =>
+									setAttributes({
+										title,
+									})}
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+							/>
 						) }
-					</PanelBody>
-					<PanelBody className="cpwp-settings-panel" title={__('Filter', 'category-posts')} initialOpen={ false }>
+					</ToolsPanelItem>
+					{/* A hidden title has neither a heading level nor a link. */}
+					{ !hideTitle && (
+						<ToolsPanelItem
+							label={ __( 'Heading level', 'category-posts' ) }
+							{ ...optionalTool( 'titleLevel' ) }
+						>
+							<ToggleGroupControl
+								label={__('Heading level', 'category-posts')}
+								value={titleLevel}
+								isBlock
+								isAdaptiveWidth
+								onChange={(titleLevel) =>
+									setAttributes({
+										titleLevel,
+									})}
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+							>
+								<ToggleGroupControlOption value="Initial" label={__('Text', 'category-posts')} />
+								<ToggleGroupControlOption value="H1" label="H1" />
+								<ToggleGroupControlOption value="H2" label="H2" />
+								<ToggleGroupControlOption value="H3" label="H3" />
+								<ToggleGroupControlOption value="H4" label="H4" />
+								<ToggleGroupControlOption value="H5" label="H5" />
+								<ToggleGroupControlOption value="H6" label="H6" />
+							</ToggleGroupControl>
+						</ToolsPanelItem>
+					) }
+					{ !hideTitle && (
+						<ToolsPanelItem
+							label={ __( 'Link the title', 'category-posts' ) }
+							{ ...optionalTool( 'titleLink' ) }
+						>
+							<ToggleControl
+								label={__('Link the title', 'category-posts')}
+								checked={titleLink}
+								onChange={() =>
+									setAttributes({
+										titleLink: !titleLink,
+									})
+								}
+								__nextHasNoMarginBottom
+							/>
+							{ titleLink && (
+								<>
+									<TextControl
+										label={__('Title link URL', 'category-posts')}
+										value={titleLinkUrl}
+										onChange={(titleLinkUrl) =>
+											setAttributes({
+												titleLinkUrl,
+											})}
+										__next40pxDefaultSize
+										__nextHasNoMarginBottom
+									/>
+									<ToggleControl
+										label={__('Open title link in new tab', 'category-posts')}
+										checked={titleLinkTarget}
+										onChange={() =>
+											setAttributes({
+												titleLinkTarget: !titleLinkTarget,
+											})
+										}
+										__nextHasNoMarginBottom
+									/>
+								</>
+							) }
+						</ToolsPanelItem>
+					) }
+				</ToolsPanel>
+				<ToolsPanel
+					className="cpwp-tools-panel"
+					label={ __( 'Filter', 'category-posts' ) }
+					resetAll={ () => resetPanel( FILTER ) }
+				>
+					<ToolsPanelItem
+						label={ __( 'Category', 'category-posts' ) }
+						hasValue={ () => differsFromDefault( attributes, CATEGORY ) }
+						onDeselect={ () => setAttributes( defaultsOf( CATEGORY ) ) }
+						isShownByDefault
+					>
 						<ComboboxControl
 							label={ __( 'Category', 'category-posts' ) }
 							options={ categoryOptions }
@@ -475,6 +614,11 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 						/>
+					</ToolsPanelItem>
+					<ToolsPanelItem
+						label={ __( 'Order', 'category-posts' ) }
+						{ ...optionalTool( 'order' ) }
+					>
 						<SelectControl
 							label={ __( 'Order By', 'category-posts' ) }
 							value={ orderBy }
@@ -492,29 +636,20 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 						/>
 						{/* A random order has no direction. */}
 						{ 'rand' !== orderBy && (
-							<ToggleGroupControl
+							<ToggleControl
 								label={ __( 'Order', 'category-posts' ) }
-								value={ order ? 'asc' : 'desc' }
-								isBlock
+								checked={ order }
 								onChange={(value) =>
-									setAttributes({ order: 'asc' === value })
+									setAttributes({ order: value })
 								}
-								__next40pxDefaultSize
 								__nextHasNoMarginBottom
-							>
-								{ 'date' === orderBy ? (
-									<>
-										<ToggleGroupControlOption value="desc" label={ __( 'Newest first', 'category-posts' ) } />
-										<ToggleGroupControlOption value="asc" label={ __( 'Oldest first', 'category-posts' ) } />
-									</>
-								) : (
-									<>
-										<ToggleGroupControlOption value="asc" label={ __( 'Ascending', 'category-posts' ) } />
-										<ToggleGroupControlOption value="desc" label={ __( 'Descending', 'category-posts' ) } />
-									</>
-								) }
-							</ToggleGroupControl>
+							/>
 						) }
+					</ToolsPanelItem>
+					<ToolsPanelItem
+						label={ __( 'Status', 'category-posts' ) }
+						{ ...optionalTool( 'status' ) }
+					>
 						<ComboboxControl
 							label={ __( 'Status', 'category-posts' ) }
 							options={ statusOptions }
@@ -528,6 +663,11 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 						/>
+					</ToolsPanelItem>
+					<ToolsPanelItem
+						label={ __( 'Number of posts / Start with post', 'category-posts' ) }
+						{ ...optionalTool( 'numberOfPosts' ) }
+					>
 						<ControlPair>
 							<NumberControl
 								label={ __( 'Number of posts to show', 'category-posts' ) }
@@ -554,6 +694,11 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 								__next40pxDefaultSize
 							/>
 						</ControlPair>
+					</ToolsPanelItem>
+					<ToolsPanelItem
+						label={ __( 'Date range', 'category-posts' ) }
+						{ ...optionalTool( 'dateRange' ) }
+					>
 						<ComboboxControl
 							label={ __( 'Date Range', 'category-posts' ) }
 							options={ dateRangeOptions }
@@ -582,8 +727,16 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 								__next40pxDefaultSize
 							/>
 						)}
-						{dateRange === 'between_dates' && (
-							<ControlPair>
+					</ToolsPanelItem>
+					{ 'between_dates' === dateRange && (
+						<>
+							<ToolsPanelItem
+								className="single-column"
+								label={ __( 'After', 'category-posts' ) }
+								hasValue={ () => differsFromDefault( attributes, START_DATE ) }
+								onDeselect={ () => setAttributes( defaultsOf( START_DATE ) ) }
+								isShownByDefault
+							>
 								<DateControl
 									id={ `cpwp-start-date-${ clientId }` }
 									label={ __( 'After', 'category-posts' ) }
@@ -595,6 +748,14 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 										})
 									}
 								/>
+							</ToolsPanelItem>
+							<ToolsPanelItem
+								className="single-column"
+								label={ __( 'Before', 'category-posts' ) }
+								hasValue={ () => differsFromDefault( attributes, END_DATE ) }
+								onDeselect={ () => setAttributes( defaultsOf( END_DATE ) ) }
+								isShownByDefault
+							>
 								<DateControl
 									id={ `cpwp-end-date-${ clientId }` }
 									label={ __( 'Before', 'category-posts' ) }
@@ -606,8 +767,13 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 										})
 									}
 								/>
-							</ControlPair>
-						)}
+							</ToolsPanelItem>
+						</>
+					) }
+					<ToolsPanelItem
+						label={ __( 'Exclude current post', 'category-posts' ) }
+						{ ...optionalTool( 'excludeCurrentPost' ) }
+					>
 						<ToggleControl
 							label={__('Exclude current post', 'category-posts')}
 							checked={excludeCurrentPost}
@@ -618,6 +784,11 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 							}
 							__nextHasNoMarginBottom
 						/>
+					</ToolsPanelItem>
+					<ToolsPanelItem
+						label={ __( 'Hide posts which have no thumbnail', 'category-posts' ) }
+						{ ...optionalTool( 'hideNoThumb' ) }
+					>
 						<ToggleControl
 							label={__('Hide posts which have no thumbnail', 'category-posts')}
 							checked={hideNoThumb}
@@ -628,6 +799,11 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 							}
 							__nextHasNoMarginBottom
 						/>
+					</ToolsPanelItem>
+					<ToolsPanelItem
+						label={ __( 'Start with sticky posts', 'category-posts' ) }
+						{ ...optionalTool( 'sticky' ) }
+					>
 						<ToggleControl
 							label={__('Start with sticky posts', 'category-posts')}
 							checked={sticky}
@@ -638,353 +814,111 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 							}
 							__nextHasNoMarginBottom
 						/>
-					</PanelBody>
-					<PanelBody className="cpwp-settings-panel" title={__('Post details', 'category-posts')} initialOpen={ false }>
-						<TemplateControl
-							label={__('Template', 'category-posts')}
-							help={__('Click a placeholder to insert it at the cursor position, or type % inside the field. In addition you can use text, HTML and Dashicons.', 'category-posts')}
-							value={ template }
-							onChange={( template ) =>
+					</ToolsPanelItem>
+				</ToolsPanel>
+				<ToolsPanel
+					className="cpwp-tools-panel"
+					label={ __( 'General', 'category-posts' ) }
+					resetAll={ () => resetPanel( [ ...NO_RESULTS, ...LOAD_MORE ] ) }
+				>
+					<ToolsPanelItem
+						label={ __( 'No results', 'category-posts' ) }
+						hasValue={ () => differsFromDefault( attributes, NO_RESULTS ) }
+						onDeselect={ () => setAttributes( defaultsOf( NO_RESULTS ) ) }
+						isShownByDefault
+					>
+						<SelectControl
+							label={ __( 'When there are no matches:', 'category-posts' ) }
+							value={ noMatchHandling }
+							onChange={( noMatchHandling ) =>
 								setAttributes( {
-									template
-								})}
-							rows={ 8 }
+									noMatchHandling
+								} )}
+							options={ [
+								{ value: 'nothing', label: __( 'Show an empty block', 'category-posts' ) },
+								{ value: 'hide', label: __( 'Hide the block', 'category-posts' ) },
+								{ value: 'text', label: __( 'Show text', 'category-posts' ) },
+							] }
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
 						/>
-						{ template && template.includes( '%title%' ) && (
-							<>
-						<PanelRow>{__('Title settings', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							<ToggleGroupControl
-								label={__('Item title heading level', 'category-posts')}
-								value={itemTitleLevel}
-								isBlock
-								isAdaptiveWidth
-								onChange={(itemTitleLevel) =>
-									setAttributes({
-										itemTitleLevel,
-									})}
-								__next40pxDefaultSize
+						{noMatchHandling === 'text' && (
+							<TextareaControl
 								__nextHasNoMarginBottom
-							>
-								<ToggleGroupControlOption value="Inline" label={__('Text', 'category-posts')} />
-								<ToggleGroupControlOption value="H1" label="H1" />
-								<ToggleGroupControlOption value="H2" label="H2" />
-								<ToggleGroupControlOption value="H3" label="H3" />
-								<ToggleGroupControlOption value="H4" label="H4" />
-								<ToggleGroupControlOption value="H5" label="H5" />
-								<ToggleGroupControlOption value="H6" label="H6" />
-							</ToggleGroupControl>
-							<NumberControl
-								label={__('Item title lines', 'category-posts')}
-								value={itemTitleLines || ''}
-								placeholder={__('No limit', 'category-posts')}
-								onChange={(itemTitleLines) => setAttributes({ itemTitleLines: parseInt(itemTitleLines) || 0 })}
-								min={0}
-								suffix={ unit( __( 'lines', 'category-posts' ) ) }
-								allowReset={false}
-								__next40pxDefaultSize
-							/>
-						</div>
-							</>
-						) }
-						{ template && template.includes( '%excerpt%' ) && (
-							<>
-						<PanelRow>{__('Excerpt settings', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							{/* The lines limit the full post as well, paragraph by paragraph. */}
-							<NumberControl
-								label={__('Excerpt lines', 'category-posts')}
-								value={excerptLines || ''}
-								placeholder={__('No limit', 'category-posts')}
-								onChange={(excerptLines) => setAttributes({ excerptLines: parseInt(excerptLines) || 0 })}
-								min={0}
-								suffix={ unit( __( 'lines', 'category-posts' ) ) }
-								allowReset={false}
-								__next40pxDefaultSize
-							/>
-							<RadioControl
-								label={ __( 'Content', 'category-posts' ) }
-								selected={ excerptRadio }
-								options={ [
-									{ label: __( 'Excerpt', 'category-posts' ), value: 'excerpt' },
-									{
-										label: __( 'Full post', 'category-posts' ),
-										value: 'full_post',
-									},
-								] }
-								onChange={ ( value ) =>
+								label={ __( 'Text', 'category-posts' ) }
+								value={ noMatchText }
+								onChange={( noMatchText ) =>
 									setAttributes( {
-										excerptRadio: value,
-									} )
-								}
+										noMatchText
+									})}
+								rows={ 4 }
 							/>
-						</div>
-							</>
-						) }
-						{ template && template.includes( '%more-link%' ) && (
+						)}
+					</ToolsPanelItem>
+					<ToolsPanelItem
+						label={ __( 'Load more', 'category-posts' ) }
+						{ ...optionalTool( 'loadMore' ) }
+					>
+						<ToggleControl
+							label={__('Enable Load More', 'category-posts')}
+							checked={enableLoadmore}
+							onChange={() =>
+								setAttributes({
+									enableLoadmore: !enableLoadmore,
+								})
+							}
+							__nextHasNoMarginBottom
+						/>
+						{enableLoadmore && (
 							<>
-						<PanelRow>{__('More Link settings', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							<TextControl
-								label={__('Read more text', 'category-posts')}
-								value={excerptMoreText}
-								onChange={(excerptMoreText) => setAttributes({ excerptMoreText })}
-								__next40pxDefaultSize
-								__nextHasNoMarginBottom
-							/>
-						</div>
-							</>
-						) }
-						{ template && template.includes( '%date%' ) && (
-							<>
-						<PanelRow>{__('Date format settings', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							<SelectControl
-								label={__('Date format', 'category-posts')}
-								value={presetDateFormat}
-								onChange={(presetDateFormat) => setAttributes({ presetDateFormat })}
-								options={[
-									{ label: __( 'Site date and time', 'category-posts' ), value: 'sitedateandtime' },
-									{ label: __( 'Site date', 'category-posts' ), value: 'sitedate' },
-									{ label: __( 'Reader\'s local date and time', 'category-posts' ), value: 'localsitedateandtime' },
-									{ label: __( 'Reader\'s local date', 'category-posts' ), value: 'localsitedate' },
-									{ label: __( 'PHP style format', 'category-posts' ), value: 'other' },
-								]}
-								__next40pxDefaultSize
-								__nextHasNoMarginBottom
-							/>
-							{ 'other' === presetDateFormat && (
-								<TextControl
-									label={__('PHP style date format', 'category-posts')}
-									value={dateFormat}
-									onChange={(dateFormat) => setAttributes({ dateFormat })}
-									__next40pxDefaultSize
-									__nextHasNoMarginBottom
-								/>
-							) }
-							<NumberControl
-								label={__('Relative date up to', 'category-posts')}
-								help={__( 'Shows the age of a post, e.g. "3 days", instead of its date while it is not older than this.', 'category-posts' )}
-								value={parseInt(datePastTime) || ''}
-								placeholder={__('Off', 'category-posts')}
-								onChange={(datePastTime) => setAttributes({ datePastTime: String(parseInt(datePastTime) || 0) })}
-								min={0}
-								suffix={ unit( __( 'days', 'category-posts' ) ) }
-								allowReset={false}
-								__next40pxDefaultSize
-							/>
-						</div>
-							</>
-						) }
-						{ template && template.includes( '%thumb%' ) && (
-							<>
-						<PanelRow>{__('Thumbnail settings', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							{/*
-							  * A 0 means "let the image decide this dimension". It is
-							  * shown as an empty field with "Auto" as its placeholder,
-							  * and an emptied field is saved as 0 again. Without the
-							  * fallback parseInt() hands back a NaN which the attribute
-							  * can not hold.
-							  */}
-							<ControlPair>
-								<NumberControl
-									label={__('Width', 'category-posts')}
-									value={thumbW || ''}
-									placeholder={__('Auto', 'category-posts')}
-									onChange={(thumbW) => setAttributes({ thumbW: parseInt(thumbW) || 0 })}
-									min={0}
-									suffix={ unit( 'px' ) }
-									allowReset={false}
-									__next40pxDefaultSize
-								/>
-								<NumberControl
-									label={__('Height', 'category-posts')}
-									value={thumbH || ''}
-									placeholder={__('Auto', 'category-posts')}
-									onChange={(thumbH) => setAttributes({ thumbH: parseInt(thumbH) || 0 })}
-									min={0}
-									suffix={ unit( 'px' ) }
-									allowReset={false}
-									__next40pxDefaultSize
-								/>
-							</ControlPair>
-							<SelectControl
-								label={__('Hover effect', 'category-posts')}
-								value={thumbHover}
-								onChange={(thumbHover) => setAttributes({ thumbHover })}
-								options={[
-									{ label: __( 'None', 'category-posts' ), value: 'none' },
-									{ label: __( 'Darker', 'category-posts' ), value: 'dark' },
-									{ label: __( 'Brighter', 'category-posts' ), value: 'white' },
-									{ label: __( 'Zoom in', 'category-posts' ), value: 'scale' },
-									{ label: __( 'Blur', 'category-posts' ), value: 'blur' },
-									{ label: __( 'Icon', 'category-posts' ), value: 'icon' },
-								]}
-								__next40pxDefaultSize
-								__nextHasNoMarginBottom
-							/>
-							<SelectControl
-								label={__('Post format indicator', 'category-posts')}
-								value={showPostFormat}
-								onChange={(showPostFormat) => setAttributes({ showPostFormat })}
-								options={[
-									{ label: __( 'None', 'category-posts' ), value: 'none' },
-									{ label: __( 'Top left', 'category-posts' ), value: 'topleft' },
-									{ label: __( 'Bottom left', 'category-posts' ), value: 'bottomleft' },
-									{ label: __( 'Center', 'category-posts' ), value: 'ceter' },
-									{ label: __( 'Top right', 'category-posts' ), value: 'topright' },
-									{ label: __( 'Bottom right', 'category-posts' ), value: 'bottomright' },
-									{ label: __( 'HTML without styling', 'category-posts' ), value: 'nocss' },
-								]}
-								__next40pxDefaultSize
-								__nextHasNoMarginBottom
-							/>
-							<ToggleControl
-								label={__('Do not wrap thumbnail with text', 'category-posts')}
-								checked={textDoNotWrapThumb}
-								onChange={() => setAttributes({ textDoNotWrapThumb: !textDoNotWrapThumb })}
-								__nextHasNoMarginBottom
-							/>
-							<ToggleControl
-								label={__('Everything is a link', 'category-posts')}
-								checked={everythingIsLink}
-								onChange={() => setAttributes({ everythingIsLink: !everythingIsLink })}
-								__nextHasNoMarginBottom
-							/>
-							<ToggleControl
-								label={__('Symbols', 'category-posts')}
-								checked={thumbSymbols}
-								onChange={() => setAttributes({ thumbSymbols: !thumbSymbols })}
-								__nextHasNoMarginBottom
-							/>
-						</div>
-							</>
-						) }
-					</PanelBody>
-					<PanelBody className="cpwp-settings-panel" title={__('General', 'category-posts')} initialOpen={ false }>
-						<PanelRow>{__('Styles', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							<ToggleControl
-								label={__('Disable the built-in CSS', 'category-posts')}
-								checked={disableCss}
-								onChange={() =>
-									setAttributes({
-										disableCss: !disableCss,
-									})
-								}
-								__nextHasNoMarginBottom
-							/>
-							{/* The font styles are part of the built-in CSS. */}
-							{ !disableCss && (
 								<ToggleControl
-									label={__('Disable only font styles', 'category-posts')}
-									checked={disableFontStyles}
+									label={__('Scroll to the loaded items', 'category-posts')}
+									checked={loadmoreScrollTo}
 									onChange={() =>
 										setAttributes({
-											disableFontStyles: !disableFontStyles,
+											loadmoreScrollTo: !loadmoreScrollTo,
 										})
 									}
 									__nextHasNoMarginBottom
 								/>
-							) }
-							{/*
-							  * Independent of the built-in CSS: it leaves out the class
-							  * names, like widget-title or post-date, the theme styles.
-							  */}
-							<ToggleControl
-								label={__('Disable Theme\'s styles', 'category-posts')}
-								checked={disableThemeStyles}
-								onChange={() =>
-									setAttributes({
-										disableThemeStyles: !disableThemeStyles,
-									})
-								}
-								__nextHasNoMarginBottom
-							/>
-						</div>
-						<PanelRow>{__('No results', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							<SelectControl
-								label={ __( 'When there are no matches:', 'category-posts' ) }
-								value={ noMatchHandling }
-								onChange={( noMatchHandling ) =>
-									setAttributes( {
-										noMatchHandling
-									} )}
-								options={ [
-									{ value: 'nothing', label: __( 'Show an empty block', 'category-posts' ) },
-									{ value: 'hide', label: __( 'Hide the block', 'category-posts' ) },
-									{ value: 'text', label: __( 'Show text', 'category-posts' ) },
-								] }
-								__next40pxDefaultSize
-								__nextHasNoMarginBottom
-							/>
-							{noMatchHandling === 'text' && (
-								<TextareaControl
-									__nextHasNoMarginBottom
-									label={ __( 'Text', 'category-posts' ) }
-									value={ noMatchText }
-									onChange={( noMatchText ) =>
-										setAttributes( {
-											noMatchText
+								<TextControl
+									label={__('Button text', 'category-posts')}
+									help={[
+										__('The following placeholders will be replaced with the relevant information: (%step% - Loaded items, %all% - All possible items for the set filter query)', 'category-posts'),
+									]}
+									value={loadmoreText}
+									onChange={(loadmoreText) =>
+										setAttributes({
+											loadmoreText,
 										})}
-									rows={ 4 }
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
 								/>
-							)}
-						</div>
-						<PanelRow>{__('Load more', 'category-posts')}</PanelRow>
-						<div className="cpwp-block-ident">
-							<ToggleControl
-								label={__('Enable Load More', 'category-posts')}
-								checked={enableLoadmore}
-								onChange={() =>
-									setAttributes({
-										enableLoadmore: !enableLoadmore,
-									})
-								}
-								__nextHasNoMarginBottom
-							/>
-							{enableLoadmore && (
-								<>
-									<ToggleControl
-										label={__('Scroll to the loaded items', 'category-posts')}
-										checked={loadmoreScrollTo}
-										onChange={() =>
-											setAttributes({
-												loadmoreScrollTo: !loadmoreScrollTo,
-											})
-										}
-										__nextHasNoMarginBottom
-									/>
-									<TextControl
-										label={__('Button text', 'category-posts')}
-										help={[
-											__('The following placeholders will be replaced with the relevant information: (%step% - Loaded items, %all% - All possible items for the set filter query)', 'category-posts'),
-										]}
-										value={loadmoreText}
-										onChange={(loadmoreText) =>
-											setAttributes({
-												loadmoreText,
-											})}
-										__next40pxDefaultSize
-										__nextHasNoMarginBottom
-									/>
-									<TextControl
-										label={__('Loading text', 'category-posts')}
-										value={loadingText}
-										onChange={(loadingText) =>
-											setAttributes({
-												loadingText,
-											})}
-										__next40pxDefaultSize
-										__nextHasNoMarginBottom
-									/>
-								</>
-							)}
-						</div>
-					</PanelBody>
-					<PanelBody className="cpwp-settings-panel" title={__('Footer', 'category-posts')} initialOpen={ false }>
+								<TextControl
+									label={__('Loading text', 'category-posts')}
+									value={loadingText}
+									onChange={(loadingText) =>
+										setAttributes({
+											loadingText,
+										})}
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+								/>
+							</>
+						)}
+					</ToolsPanelItem>
+				</ToolsPanel>
+				<ToolsPanel
+					className="cpwp-tools-panel"
+					label={ __( 'Footer', 'category-posts' ) }
+					resetAll={ () => setAttributes( defaultsOf( FOOTER_LINK ) ) }
+				>
+					<ToolsPanelItem
+						label={ __( 'Footer link', 'category-posts' ) }
+						hasValue={ () => differsFromDefault( attributes, FOOTER_LINK ) }
+						onDeselect={ () => setAttributes( defaultsOf( FOOTER_LINK ) ) }
+						isShownByDefault
+					>
 						<TextControl
 							label={__('Footer link text', 'category-posts')}
 							value={footerLinkText}
@@ -1023,8 +957,339 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 								/>
 							</>
 						) }
-					</PanelBody>
-				</Panel>
+					</ToolsPanelItem>
+				</ToolsPanel>
+			</InspectorControls>
+			<InspectorControls group="styles">
+				<ToolsPanel
+					className="cpwp-tools-panel"
+					label={ __( 'Post details', 'category-posts' ) }
+					resetAll={ () => resetPanel( POST_DETAILS ) }
+				>
+					<ToolsPanelItem
+						label={ __( 'Template', 'category-posts' ) }
+						hasValue={ () => differsFromDefault( attributes, TEMPLATE ) }
+						onDeselect={ () => setAttributes( defaultsOf( TEMPLATE ) ) }
+						isShownByDefault
+					>
+						<TemplateControl
+							label={__('Template', 'category-posts')}
+							help={__('Click a placeholder to insert it at the cursor position, or type % inside the field. In addition you can use text, HTML and Dashicons.', 'category-posts')}
+							value={ template }
+							onChange={( template ) =>
+								setAttributes( {
+									template
+								})}
+							rows={ 8 }
+						/>
+					</ToolsPanelItem>
+					{ template && template.includes( '%title%' ) && (
+						<ToolsPanelItem
+							label={ __( 'Item title', 'category-posts' ) }
+							hasValue={ () => differsFromDefault( attributes, ITEM_TITLE ) }
+							onDeselect={ () => setAttributes( defaultsOf( ITEM_TITLE ) ) }
+							isShownByDefault
+						>
+							<PanelRow>{__('Title settings', 'category-posts')}</PanelRow>
+							<div className="cpwp-block-ident">
+								<ToggleGroupControl
+									label={__('Item title heading level', 'category-posts')}
+									value={itemTitleLevel}
+									isBlock
+									isAdaptiveWidth
+									onChange={(itemTitleLevel) =>
+										setAttributes({
+											itemTitleLevel,
+										})}
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+								>
+									<ToggleGroupControlOption value="Inline" label={__('Text', 'category-posts')} />
+									<ToggleGroupControlOption value="H1" label="H1" />
+									<ToggleGroupControlOption value="H2" label="H2" />
+									<ToggleGroupControlOption value="H3" label="H3" />
+									<ToggleGroupControlOption value="H4" label="H4" />
+									<ToggleGroupControlOption value="H5" label="H5" />
+									<ToggleGroupControlOption value="H6" label="H6" />
+								</ToggleGroupControl>
+								<NumberControl
+									label={__('Item title lines', 'category-posts')}
+									value={itemTitleLines || ''}
+									placeholder={__('No limit', 'category-posts')}
+									onChange={(itemTitleLines) => setAttributes({ itemTitleLines: parseInt(itemTitleLines) || 0 })}
+									min={0}
+									suffix={ unit( __( 'lines', 'category-posts' ) ) }
+									allowReset={false}
+									__next40pxDefaultSize
+								/>
+							</div>
+						</ToolsPanelItem>
+					) }
+					{ template && template.includes( '%excerpt%' ) && (
+						<ToolsPanelItem
+							label={ __( 'Excerpt', 'category-posts' ) }
+							hasValue={ () => differsFromDefault( attributes, EXCERPT ) }
+							onDeselect={ () => setAttributes( defaultsOf( EXCERPT ) ) }
+							isShownByDefault
+						>
+							<PanelRow>{__('Excerpt settings', 'category-posts')}</PanelRow>
+							<div className="cpwp-block-ident">
+								{/* The lines limit the full post as well, paragraph by paragraph. */}
+								<NumberControl
+									label={__('Excerpt lines', 'category-posts')}
+									value={excerptLines || ''}
+									placeholder={__('No limit', 'category-posts')}
+									onChange={(excerptLines) => setAttributes({ excerptLines: parseInt(excerptLines) || 0 })}
+									min={0}
+									suffix={ unit( __( 'lines', 'category-posts' ) ) }
+									allowReset={false}
+									__next40pxDefaultSize
+								/>
+								<RadioControl
+									label={ __( 'Content', 'category-posts' ) }
+									selected={ excerptRadio }
+									options={ [
+										{ label: __( 'Excerpt', 'category-posts' ), value: 'excerpt' },
+										{
+											label: __( 'Full post', 'category-posts' ),
+											value: 'full_post',
+										},
+									] }
+									onChange={ ( value ) =>
+										setAttributes( {
+											excerptRadio: value,
+										} )
+									}
+								/>
+							</div>
+						</ToolsPanelItem>
+					) }
+					{ template && template.includes( '%more-link%' ) && (
+						<ToolsPanelItem
+							label={ __( 'More link', 'category-posts' ) }
+							hasValue={ () => differsFromDefault( attributes, MORE_LINK ) }
+							onDeselect={ () => setAttributes( defaultsOf( MORE_LINK ) ) }
+							isShownByDefault
+						>
+							<PanelRow>{__('More Link settings', 'category-posts')}</PanelRow>
+							<div className="cpwp-block-ident">
+								<TextControl
+									label={__('Read more text', 'category-posts')}
+									value={excerptMoreText}
+									onChange={(excerptMoreText) => setAttributes({ excerptMoreText })}
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+								/>
+							</div>
+						</ToolsPanelItem>
+					) }
+					{ template && template.includes( '%date%' ) && (
+						<ToolsPanelItem
+							label={ __( 'Date', 'category-posts' ) }
+							hasValue={ () => differsFromDefault( attributes, DATE_FORMAT ) }
+							onDeselect={ () => setAttributes( defaultsOf( DATE_FORMAT ) ) }
+							isShownByDefault
+						>
+							<PanelRow>{__('Date format settings', 'category-posts')}</PanelRow>
+							<div className="cpwp-block-ident">
+								<SelectControl
+									label={__('Date format', 'category-posts')}
+									value={presetDateFormat}
+									onChange={(presetDateFormat) => setAttributes({ presetDateFormat })}
+									options={[
+										{ label: __( 'Site date and time', 'category-posts' ), value: 'sitedateandtime' },
+										{ label: __( 'Site date', 'category-posts' ), value: 'sitedate' },
+										{ label: __( 'Reader\'s local date and time', 'category-posts' ), value: 'localsitedateandtime' },
+										{ label: __( 'Reader\'s local date', 'category-posts' ), value: 'localsitedate' },
+										{ label: __( 'PHP style format', 'category-posts' ), value: 'other' },
+									]}
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+								/>
+								{ 'other' === presetDateFormat && (
+									<TextControl
+										label={__('PHP style date format', 'category-posts')}
+										value={dateFormat}
+										onChange={(dateFormat) => setAttributes({ dateFormat })}
+										__next40pxDefaultSize
+										__nextHasNoMarginBottom
+									/>
+								) }
+								<NumberControl
+									label={__('Relative date up to', 'category-posts')}
+									help={__( 'Shows the age of a post, e.g. "3 days", instead of its date while it is not older than this.', 'category-posts' )}
+									value={parseInt(datePastTime) || ''}
+									placeholder={__('Off', 'category-posts')}
+									onChange={(datePastTime) => setAttributes({ datePastTime: String(parseInt(datePastTime) || 0) })}
+									min={0}
+									suffix={ unit( __( 'days', 'category-posts' ) ) }
+									allowReset={false}
+									__next40pxDefaultSize
+								/>
+							</div>
+						</ToolsPanelItem>
+					) }
+					{ template && template.includes( '%thumb%' ) && (
+						<ToolsPanelItem
+							label={ __( 'Thumbnail', 'category-posts' ) }
+							hasValue={ () => differsFromDefault( attributes, THUMBNAIL ) }
+							onDeselect={ () => setAttributes( defaultsOf( THUMBNAIL ) ) }
+							isShownByDefault
+						>
+							<PanelRow>{__('Thumbnail settings', 'category-posts')}</PanelRow>
+							<div className="cpwp-block-ident">
+								{/*
+								  * A 0 means "let the image decide this dimension". It is
+								  * shown as an empty field with "Auto" as its placeholder,
+								  * and an emptied field is saved as 0 again. Without the
+								  * fallback parseInt() hands back a NaN which the attribute
+								  * can not hold.
+								  */}
+								<ControlPair>
+									<NumberControl
+										label={__('Width', 'category-posts')}
+										value={thumbW || ''}
+										placeholder={__('Auto', 'category-posts')}
+										onChange={(thumbW) => setAttributes({ thumbW: parseInt(thumbW) || 0 })}
+										min={0}
+										suffix={ unit( 'px' ) }
+										allowReset={false}
+										__next40pxDefaultSize
+									/>
+									<NumberControl
+										label={__('Height', 'category-posts')}
+										value={thumbH || ''}
+										placeholder={__('Auto', 'category-posts')}
+										onChange={(thumbH) => setAttributes({ thumbH: parseInt(thumbH) || 0 })}
+										min={0}
+										suffix={ unit( 'px' ) }
+										allowReset={false}
+										__next40pxDefaultSize
+									/>
+								</ControlPair>
+								<ToolsPanelItem
+									label={ __( 'Hover effect', 'category-posts' ) }
+									{ ...optionalTool( 'thumbHover' ) }
+								>
+									<SelectControl
+										label={__('Hover effect', 'category-posts')}
+										value={thumbHover}
+										onChange={(thumbHover) => setAttributes({ thumbHover })}
+										options={[
+											{ label: __( 'None', 'category-posts' ), value: 'none' },
+											{ label: __( 'Darker', 'category-posts' ), value: 'dark' },
+											{ label: __( 'Brighter', 'category-posts' ), value: 'white' },
+											{ label: __( 'Zoom in', 'category-posts' ), value: 'scale' },
+											{ label: __( 'Blur', 'category-posts' ), value: 'blur' },
+											{ label: __( 'Icon', 'category-posts' ), value: 'icon' },
+										]}
+										__next40pxDefaultSize
+										__nextHasNoMarginBottom
+									/>
+								</ToolsPanelItem>
+								<ToolsPanelItem
+									label={ __( 'Post format indicator', 'category-posts' ) }
+									{ ...optionalTool( 'showPostFormat' ) }
+								>
+									<SelectControl
+										label={__('Post format indicator', 'category-posts')}
+										value={showPostFormat}
+										onChange={(showPostFormat) => setAttributes({ showPostFormat })}
+										options={[
+											{ label: __( 'None', 'category-posts' ), value: 'none' },
+											{ label: __( 'Top left', 'category-posts' ), value: 'topleft' },
+											{ label: __( 'Bottom left', 'category-posts' ), value: 'bottomleft' },
+											{ label: __( 'Center', 'category-posts' ), value: 'ceter' },
+											{ label: __( 'Top right', 'category-posts' ), value: 'topright' },
+											{ label: __( 'Bottom right', 'category-posts' ), value: 'bottomright' },
+											{ label: __( 'HTML without styling', 'category-posts' ), value: 'nocss' },
+										]}
+										__next40pxDefaultSize
+										__nextHasNoMarginBottom
+									/>
+								</ToolsPanelItem>
+								<ToggleControl
+									label={__('Do not wrap thumbnail with text', 'category-posts')}
+									checked={textDoNotWrapThumb}
+									onChange={() => setAttributes({ textDoNotWrapThumb: !textDoNotWrapThumb })}
+									__nextHasNoMarginBottom
+								/>
+								<ToolsPanelItem
+									label={ __( 'Everything is a link', 'category-posts' ) }
+									{ ...optionalTool( 'everythingIsLink' ) }
+								>
+									<ToggleControl
+										label={__('Everything is a link', 'category-posts')}
+										checked={everythingIsLink}
+										onChange={() => setAttributes({ everythingIsLink: !everythingIsLink })}
+										__nextHasNoMarginBottom
+									/>
+								</ToolsPanelItem>
+								<ToolsPanelItem
+									label={ __( 'Symbols', 'category-posts' ) }
+									{ ...optionalTool( 'thumbSymbols' ) }
+								>
+									<ToggleControl
+										label={__('Symbols', 'category-posts')}
+										checked={thumbSymbols}
+										onChange={() => setAttributes({ thumbSymbols: !thumbSymbols })}
+										__nextHasNoMarginBottom
+									/>
+								</ToolsPanelItem>
+							</div>
+						</ToolsPanelItem>
+					) }
+				</ToolsPanel>
+				<ToolsPanel
+					className="cpwp-tools-panel"
+					label={ __( 'Styles', 'category-posts' ) }
+					resetAll={ () => setAttributes( defaultsOf( BUILT_IN_CSS ) ) }
+				>
+					<ToolsPanelItem
+						label={ __( 'Styles', 'category-posts' ) }
+						hasValue={ () => differsFromDefault( attributes, BUILT_IN_CSS ) }
+						onDeselect={ () => setAttributes( defaultsOf( BUILT_IN_CSS ) ) }
+						isShownByDefault
+					>
+						<ToggleControl
+							label={__('Disable the built-in CSS', 'category-posts')}
+							checked={disableCss}
+							onChange={() =>
+								setAttributes({
+									disableCss: !disableCss,
+								})
+							}
+							__nextHasNoMarginBottom
+						/>
+						{/* The font styles are part of the built-in CSS. */}
+						{ !disableCss && (
+							<ToggleControl
+								label={__('Disable only font styles', 'category-posts')}
+								checked={disableFontStyles}
+								onChange={() =>
+									setAttributes({
+										disableFontStyles: !disableFontStyles,
+									})
+								}
+								__nextHasNoMarginBottom
+							/>
+						) }
+						{/*
+						  * Independent of the built-in CSS: it leaves out the class
+						  * names, like widget-title or post-date, the theme styles.
+						  */}
+						<ToggleControl
+							label={__('Disable Theme\'s styles', 'category-posts')}
+							checked={disableThemeStyles}
+							onChange={() =>
+								setAttributes({
+									disableThemeStyles: !disableThemeStyles,
+								})
+							}
+							__nextHasNoMarginBottom
+						/>
+					</ToolsPanelItem>
+				</ToolsPanel>
 			</InspectorControls>
 			<div
 				{...blockProps}
@@ -1042,7 +1307,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 				>
 					<ServerSideRender
 						block="tiptip/category-posts-block"
-						attributes={attributes}
+						attributes={ previewAttributes }
 					/>
 				</div>
 			</div>

@@ -136,29 +136,26 @@
 }
 
 /**
- * The fields of the inspector are set to __nextHasNoMarginBottom, so they bring no
- * spacing of their own. The panels space them out instead, the way the inspector of
- * the core blocks does. A field inside another one is spaced by the outer field.
+ * A ToolsPanel spaces out its entries. An entry with several fields, like "Load
+ * more", spaces them out the same way, and so does a highlighted group inside an
+ * entry, like the settings of the thumbnail. The gaps replace the margins the
+ * fields get elsewhere.
  */
-.cpwp-settings-panel {
+.cpwp-tools-panel {
 
-	.components-base-control {
-		margin-bottom: 16px;
-
-		.components-base-control {
-			margin-bottom: 0;
-		}
+	.components-tools-panel-item,
+	.cpwp-block-ident {
+		display: grid;
+		// One column that may get narrower than its content, like the heading
+		// levels, instead of growing beyond the sidebar.
+		grid-template-columns: minmax(0, 1fr);
+		gap: 16px;
 	}
 
-	// The highlight around a group pads its last field already.
-	.cpwp-block-ident {
-		margin-bottom: 16px;
-
-		&:last-child,
-		> .components-base-control:last-child,
-		> .components-flex:last-child .components-base-control {
-			margin-bottom: 0;
-		}
+	// A ToolsPanelItem takes the padding-bottom of its own fields away, which
+	// would leave a highlighted group without its padding below.
+	.components-tools-panel-item > .cpwp-block-ident {
+		padding-bottom: 5px;
 	}
 }
 
