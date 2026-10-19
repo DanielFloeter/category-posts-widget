@@ -5,6 +5,7 @@ import './style.scss';
 import Edit from './edit';
 import Save from './save';
 import transformToPro from './transform';
+import widgetToBlockAttributes from './widget-transform';
 import metadata from './../block.json';
 const { name } = metadata;
 
@@ -53,10 +54,7 @@ registerBlockType(name, {
 					return idBase === 'category-posts';
 				},
 				transform: ({ instance }) => {
-					return createBlock('tiptip/category-posts-block', {
-						instance,
-						order: instance.raw.asc_sort_order ? 'asc' : 'desc',
-					});
+					return createBlock('tiptip/category-posts-block', widgetToBlockAttributes(instance.raw));
 				},
 
 			},
