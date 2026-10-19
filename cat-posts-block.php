@@ -196,8 +196,27 @@ function render_category_posts_block( $attributes ) {
 		$current_post_id = get_the_ID();
 	}
 
+	// On the front end the block is rendered while the 'the_content' filter runs, and
+	// wp_get_loading_optimization_attributes() skips images built inside such a content
+	// blob altogether - the thumbnails get neither a 'loading' nor a 'sizes=auto'
+	// attribute there. No such filter runs for the REST request the editor preview is
+	// built from, so the very same thumbnails would come back lazily loaded and
+	// auto-sized instead. With the thumbnail width and height set to 0 nothing else
+	// gives the image a size, and a lazily loaded auto-sized image is laid out at the
+	// 300x150 default object size: the preview showed a cropped 300x150 thumbnail where
+	// the front end lays the image out at its full width. Take core's own skip branch
+	// for the preview so both start from the same markup.
+	$preview = defined( 'REST_REQUEST' ) && REST_REQUEST;
+	if ( $preview ) {
+		add_filter( 'pre_wp_get_loading_optimization_attributes', '__return_empty_array' );
+	}
+
 	$items = $widget->get_elements_HTML( $instance, $current_post_id, 0, 0 );
 	$ret   = '';
+
+	if ( $preview ) {
+		remove_filter( 'pre_wp_get_loading_optimization_attributes', '__return_empty_array' );
+	}
 
 	// Id of the wrapper element. $widget->number has to keep its 'block-' prefix
 	// because loadMoreHTML() relies on it, so use a separate variable for the DOM id.
