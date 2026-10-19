@@ -566,8 +566,9 @@ export default function Edit({ attributes, setAttributes }) {
 							</ToggleGroupControl>
 							<NumberControl
 								label={__('Item title lines', 'category-posts')}
-								value={itemTitleLines}
-								onChange={(itemTitleLines) => setAttributes({ itemTitleLines: parseInt(itemTitleLines) })}
+								value={itemTitleLines || ''}
+								placeholder={__('No limit', 'category-posts')}
+								onChange={(itemTitleLines) => setAttributes({ itemTitleLines: parseInt(itemTitleLines) || 0 })}
 								min={0}
 								allowReset={false}
 							/>
@@ -580,8 +581,9 @@ export default function Edit({ attributes, setAttributes }) {
 						<div className="cpwp-block-ident">
 							<NumberControl
 								label={__('Excerpt lines', 'category-posts')}
-								value={excerptLines}
-								onChange={(excerptLines) => setAttributes({ excerptLines: parseInt(excerptLines) })}
+								value={excerptLines || ''}
+								placeholder={__('No limit', 'category-posts')}
+								onChange={(excerptLines) => setAttributes({ excerptLines: parseInt(excerptLines) || 0 })}
 								min={0}
 								allowReset={false}
 							/>
@@ -639,8 +641,9 @@ export default function Edit({ attributes, setAttributes }) {
 							/>
 							<NumberControl
 								label={__('Show past time up to x-days', 'category-posts')}
-								value={datePastTime}
-								onChange={(datePastTime) => setAttributes({ datePastTime })}
+								value={parseInt(datePastTime) || ''}
+								placeholder={__('Off', 'category-posts')}
+								onChange={(datePastTime) => setAttributes({ datePastTime: String(parseInt(datePastTime) || 0) })}
 								min={0}
 								allowReset={false}
 							/>
