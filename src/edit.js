@@ -96,7 +96,7 @@ const OPTIONAL_TOOLS = {
 	excludeCurrentPost: EXCLUDE_CURRENT_POST,
 	hideNoThumb: HIDE_NO_THUMB,
 	sticky: STICKY,
-	loadMore: LOAD_MORE,
+	noResults: NO_RESULTS,
 	// One entry for each setting of the thumbnail, e.g. thumbHover.
 	...Object.fromEntries( THUMBNAIL_TOOLS.map( ( key ) => [ key, [ key ] ] ) ),
 };
@@ -820,9 +820,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 				>
 					<ToolsPanelItem
 						label={ __( 'No results', 'category-posts' ) }
-						hasValue={ () => differsFromDefault( attributes, NO_RESULTS ) }
-						onDeselect={ () => setAttributes( defaultsOf( NO_RESULTS ) ) }
-						isShownByDefault
+						{ ...optionalTool( 'noResults' ) }
 					>
 						<SelectControl
 							label={ __( 'When there are no matches:', 'category-posts' ) }
@@ -854,7 +852,9 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 					</ToolsPanelItem>
 					<ToolsPanelItem
 						label={ __( 'Load more', 'category-posts' ) }
-						{ ...optionalTool( 'loadMore' ) }
+						hasValue={ () => differsFromDefault( attributes, LOAD_MORE ) }
+						onDeselect={ () => setAttributes( defaultsOf( LOAD_MORE ) ) }
+						isShownByDefault
 					>
 						<ToggleControl
 							label={__('Enable Load More', 'category-posts')}
