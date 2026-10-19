@@ -661,22 +661,24 @@ export default function Edit({ attributes, setAttributes }) {
 							  * fallback parseInt() hands back a NaN which the attribute
 							  * can not hold.
 							  */}
-							<NumberControl
-								label={__('Thumbnail width', 'category-posts')}
-								value={thumbW || ''}
-								placeholder={__('Auto', 'category-posts')}
-								onChange={(thumbW) => setAttributes({ thumbW: parseInt(thumbW) || 0 })}
-								min={0}
-								allowReset={false}
-							/>
-							<NumberControl
-								label={__('Thumbnail height', 'category-posts')}
-								value={thumbH || ''}
-								placeholder={__('Auto', 'category-posts')}
-								onChange={(thumbH) => setAttributes({ thumbH: parseInt(thumbH) || 0 })}
-								min={0}
-								allowReset={false}
-							/>
+							<div className="cpwp-dimensions">
+								<NumberControl
+									label={__('Width', 'category-posts')}
+									value={thumbW || ''}
+									placeholder={__('Auto', 'category-posts')}
+									onChange={(thumbW) => setAttributes({ thumbW: parseInt(thumbW) || 0 })}
+									min={0}
+									allowReset={false}
+								/>
+								<NumberControl
+									label={__('Height', 'category-posts')}
+									value={thumbH || ''}
+									placeholder={__('Auto', 'category-posts')}
+									onChange={(thumbH) => setAttributes({ thumbH: parseInt(thumbH) || 0 })}
+									min={0}
+									allowReset={false}
+								/>
+							</div>
 							<SelectControl
 								label={__('Hover effect', 'category-posts')}
 								value={thumbHover}
