@@ -285,7 +285,8 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 			stage.classList.add( 'cpwp-wrap-text' );
 		};
 
-		// Port of cat_posts_namespace.layout_img_size.replace() (see cat-posts.php).
+		// Port of cat_posts_namespace.layout_img_size.replace() (see cat-posts.php). The
+		// ratio is handed to the browser rather than measured and written as a height.
 		const fixImageRatio = ( item ) => {
 			item.querySelectorAll( 'img' ).forEach( ( img ) => {
 				const originalWidth = parseInt( img.getAttribute( 'data-cat-posts-width' ), 10 );
@@ -294,12 +295,8 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 					return;
 				}
 
-				const width = img.getBoundingClientRect().width;
-				if ( width && width < originalWidth ) {
-					img.style.height = ( width * originalHeight / originalWidth ) + 'px';
-				} else {
-					img.style.height = '';
-				}
+				img.style.aspectRatio = originalWidth + ' / ' + originalHeight;
+				img.style.height = 'auto';
 			} );
 		};
 

@@ -546,34 +546,23 @@ function equal_cover_content_height( $number, $widgetsettings ) {
 					<?php	/* Handle replace */ echo "\r\n"; ?>
 					replace : function(_this){
 						var _that = jQuery(_this),
-						resp_w = _that.width(),
-						resp_h = _that.height(),
 						orig_w = _that.data('cat-posts-width'),
 						orig_h = _that.data('cat-posts-height');
-						<?php	/* replace height */ echo "\r\n"; ?>
-						if( resp_w < orig_w ){
-							_that.height( resp_w * orig_h / orig_w );
-						} else {
-							_that.height( '' );
+
+						if( ! orig_w || ! orig_h ){
+							return;
 						}
-						return;
-					},
-					<?php	/* Wait for image is loaded */ echo "\r\n"; ?>
-					handleLazyLoading : function(_this) {
-						var width = jQuery(_this).width();
-						<?php	/* image is loaded */ echo "\r\n"; ?>
-						if( 0 !== width ){
-							cat_posts_namespace.layout_img_size.replace(_this);
-						} else {
-							jQuery(_this).one("load", function(){
-								cat_posts_namespace.layout_img_size.replace(_this);
-							});
-						}
+						<?php	/* Hand the ratio to the browser instead of measuring the width here
+								and writing a height calculated from it: an image which is not
+								loaded or not displayed yet has no width to measure. The ratio
+								holds for such an image as well, and it keeps holding when the
+								width changes, without running again. */ echo "\r\n"; ?>
+						_that.css( { 'aspect-ratio' : orig_w + ' / ' + orig_h, 'height' : 'auto' } );
 						return;
 					},
 					setHeight : function (widget) {
 						jQuery(widget).find('.cat-post-item img').each(function(){
-							cat_posts_namespace.layout_img_size.handleLazyLoading(this);
+							cat_posts_namespace.layout_img_size.replace(this);
 						});
 						return;
 					}
