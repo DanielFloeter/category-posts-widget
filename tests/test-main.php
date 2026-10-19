@@ -764,6 +764,23 @@ class testWidgetFront extends WP_UnitTestCase {
 	}
 
 	/**
+	 * The block's "Exclude posts which have no thumbnail" reaches the query.
+	 * build_block_instance() used to store it as 'hide_no_thumb' while the
+	 * query reads 'hideNoThumb', so the block never excluded anything.
+	 */
+	public function testBlockHideNoThumb() {
+		$className = NS . '\Widget';
+		$widget    = new $className();
+
+		$instance = \categoryPosts\build_block_instance( array( 'hideNoThumb' => true ) );
+		$args     = $widget->queryArgs( $instance );
+		$this->assertSame( '_thumbnail_id', $args['meta_query'][0]['key'] );
+
+		$instance = \categoryPosts\build_block_instance( array( 'hideNoThumb' => false ) );
+		$this->assertArrayNotHasKey( 'meta_query', $widget->queryArgs( $instance ) );
+	}
+
+	/**
 	 * Test the post_thumbnail method of the widget
 	 *
 	 * @since 4.6
