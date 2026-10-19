@@ -651,17 +651,26 @@ export default function Edit({ attributes, setAttributes }) {
 							<>
 						<PanelRow>{__('Thumbnail settings', 'category-posts')}</PanelRow>
 						<div className="cpwp-block-ident">
+							{/*
+							  * A 0 means "let the image decide this dimension". It is
+							  * shown as an empty field with "Auto" as its placeholder,
+							  * and an emptied field is saved as 0 again. Without the
+							  * fallback parseInt() hands back a NaN which the attribute
+							  * can not hold.
+							  */}
 							<NumberControl
 								label={__('Thumbnail width', 'category-posts')}
-								value={thumbW}
-								onChange={(thumbW) => setAttributes({ thumbW: parseInt(thumbW) })}
+								value={thumbW || ''}
+								placeholder={__('Auto', 'category-posts')}
+								onChange={(thumbW) => setAttributes({ thumbW: parseInt(thumbW) || 0 })}
 								min={0}
 								allowReset={false}
 							/>
 							<NumberControl
 								label={__('Thumbnail height', 'category-posts')}
-								value={thumbH}
-								onChange={(thumbH) => setAttributes({ thumbH: parseInt(thumbH) })}
+								value={thumbH || ''}
+								placeholder={__('Auto', 'category-posts')}
+								onChange={(thumbH) => setAttributes({ thumbH: parseInt(thumbH) || 0 })}
 								min={0}
 								allowReset={false}
 							/>
