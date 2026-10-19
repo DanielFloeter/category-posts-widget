@@ -134,13 +134,39 @@
 		text-align: right;
 	}
 }
+
 /**
- * Width and height of a thumbnail side by side, the way the core image block
- * places its dimensions.
+ * The fields of the inspector are set to __nextHasNoMarginBottom, so they bring no
+ * spacing of their own. The panels space them out instead, the way the inspector of
+ * the core blocks does. A field inside another one is spaced by the outer field.
  */
-.cpwp-dimensions {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 16px;
-	align-items: start;
+.cpwp-settings-panel {
+
+	.components-base-control {
+		margin-bottom: 16px;
+
+		.components-base-control {
+			margin-bottom: 0;
+		}
+	}
+
+	// The highlight around a group pads its last field already.
+	.cpwp-block-ident {
+		margin-bottom: 16px;
+
+		&:last-child,
+		> .components-base-control:last-child,
+		> .components-flex:last-child .components-base-control {
+			margin-bottom: 0;
+		}
+	}
+}
+
+/**
+ * The button which opens the calendar of a date range field, as wide as the number
+ * fields next to it.
+ */
+.components-button.cpwp-date-control__toggle {
+	width: 100%;
+	justify-content: flex-start;
 }

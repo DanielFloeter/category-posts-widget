@@ -5,10 +5,10 @@
 /**
  * WordPress dependencies
  */
-import { useState, useEffect, useRef } from '@wordpress/element';
+import { Children, useEffect, useRef } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
 import { useInstanceId } from '@wordpress/compose';
-import { __ } from '@wordpress/i18n';
+import { __, sprintf } from '@wordpress/i18n';
 import {
 	ComboboxControl,
 	TextControl,
@@ -20,16 +20,20 @@ import {
 	__experimentalToggleGroupControl, ToggleGroupControl as stableToggleGroupControl,
 	__experimentalToggleGroupControlOption, ToggleGroupControlOption as stableToggleGroupControlOption,
 	__experimentalNumberControl, NumberControl as stableNumberControl,
+	__experimentalInputControlSuffixWrapper, InputControlSuffixWrapper as stableInputControlSuffixWrapper,
 	DatePicker,
-	Popover,
+	Dropdown,
 	Button,
 	Panel,
 	PanelBody,
 	PanelRow,
+	Flex,
+	FlexBlock,
+	BaseControl,
 } from '@wordpress/components';
 import { InspectorControls, RichText, useBlockProps } from '@wordpress/block-editor';
 import ServerSideRender from '@wordpress/server-side-render';
-import { dateI18n } from '@wordpress/date';
+import { dateI18n, getSettings as getDateSettings } from '@wordpress/date';
 
 /**
  * Internal dependencies
@@ -40,8 +44,84 @@ import './editor.scss';
 export const ToggleGroupControl = __experimentalToggleGroupControl || stableToggleGroupControl;
 export const ToggleGroupControlOption = __experimentalToggleGroupControlOption || stableToggleGroupControlOption;
 export const NumberControl = __experimentalNumberControl || stableNumberControl;
+const InputControlSuffixWrapper = __experimentalInputControlSuffixWrapper || stableInputControlSuffixWrapper || 'span';
 
-export default function Edit({ attributes, setAttributes }) {
+/**
+ * A unit shown at the right end of a number field, as its suffix.
+ *
+ * @param {string} text The unit, e.g. "px".
+ */
+const unit = ( text ) => <InputControlSuffixWrapper>{ text }</InputControlSuffixWrapper>;
+
+/**
+ * Two related fields side by side, e.g. a width and a height. A field left out by
+ * its condition leaves the other one the full width.
+ *
+ * @param {Object} props          The component props.
+ * @param {Array}  props.children The fields.
+ */
+function ControlPair( { children } ) {
+	return (
+		<Flex align="flex-end" gap={ 4 }>
+			{ Children.toArray( children ).map( ( child ) => (
+				<FlexBlock key={ child.key }>{ child }</FlexBlock>
+			) ) }
+		</Flex>
+	);
+}
+
+/**
+ * A date picked from a calendar which opens below a button, like the post date of
+ * the editor. The button shows the date in the date format of the site.
+ *
+ * @param {Object}   props             The component props.
+ * @param {string}   props.id          The id of the button, which the label is for.
+ * @param {string}   props.label       The label.
+ * @param {string}   props.buttonLabel What the button does, for screen readers.
+ * @param {string}   props.value       The date, empty when none is set.
+ * @param {Function} props.onChange    Called with the new date.
+ */
+function DateControl( { id, label, buttonLabel, value, onChange } ) {
+	const settings = getDateSettings();
+	const formatted = value ? dateI18n( settings.formats.date, value ) : '';
+
+	return (
+		<BaseControl id={ id } label={ label } __nextHasNoMarginBottom>
+			<Dropdown
+				popoverProps={ { placement: 'bottom-start' } }
+				renderToggle={ ( { isOpen, onToggle } ) => (
+					<Button
+						id={ id }
+						className="cpwp-date-control__toggle"
+						variant="secondary"
+						onClick={ onToggle }
+						aria-expanded={ isOpen }
+						aria-label={ formatted
+							? sprintf(
+								/* translators: 1: what the button does, e.g. "Choose start date". 2: the date. */
+								__( '%1$s, currently %2$s', 'category-posts' ),
+								buttonLabel,
+								formatted
+							)
+							: buttonLabel }
+						__next40pxDefaultSize
+					>
+						{ formatted || __( 'Not set', 'category-posts' ) }
+					</Button>
+				) }
+				renderContent={ () => (
+					<DatePicker
+						currentDate={ value }
+						onChange={ onChange }
+						startOfWeek={ settings.l10n.startOfWeek }
+					/>
+				) }
+			/>
+		</BaseControl>
+	);
+}
+
+export default function Edit({ attributes, setAttributes, clientId }) {
 	const {
 		hideTitle, title, titleLink, titleLinkUrl, titleLinkTarget, titleLevel,
 		order, orderBy, categories, status, num, offset, dateRange, startDate, endDate, daysAgo, excludeCurrentPost, hideNoThumb, sticky,
@@ -239,7 +319,7 @@ export default function Edit({ attributes, setAttributes }) {
 	const categoryOptions = [
 		{
 			value: '',
-			label: 'All Categories',
+			label: __( 'All Categories', 'category-posts' ),
 		},
 		...(categoriesList || []).map( ( category ) => ( {
 			label: category.name,
@@ -250,61 +330,58 @@ export default function Edit({ attributes, setAttributes }) {
 	const statusOptions = [
 		{
 			value: 'default',
-			label: 'WordPress Default',
+			label: __( 'WordPress Default', 'category-posts' ),
 		},
 		{
 			value: 'publish',
-			label: 'Published',
+			label: __( 'Published', 'category-posts' ),
 		},
 		{
 			value: 'future',
-			label: 'Scheduled',
+			label: __( 'Scheduled', 'category-posts' ),
 		},
 		{
 			value: 'private',
-			label: 'Private',
+			label: __( 'Private', 'category-posts' ),
 		},
 		{
 			value: 'publish,future',
-			label: 'Published or Scheduled',
+			label: __( 'Published or Scheduled', 'category-posts' ),
 		},
 		{
 			value: 'private,publish',
-			label: 'Published or Private',
+			label: __( 'Published or Private', 'category-posts' ),
 		},
 		{
 			value: 'private,future',
-			label: 'Private or Scheduled',
+			label: __( 'Private or Scheduled', 'category-posts' ),
 		},
 		{
 			value: 'private,publish,future',
-			label: 'Published, Private or Scheduled',
+			label: __( 'Published, Private or Scheduled', 'category-posts' ),
 		},
 	];
 
 	const dateRangeOptions = [
 		{
 			value: 'off',
-			label: 'Off',
+			label: __( 'Off', 'category-posts' ),
 		},
 		{
 			value: 'days_ago',
-			label: 'Days ago',
+			label: __( 'Days ago', 'category-posts' ),
 		},
 		{
 			value: 'between_dates',
-			label: 'Between dates',
+			label: __( 'Between dates', 'category-posts' ),
 		},
 	];
-
-	const [openStartDatePopup, setOpenStartDatePopup] = useState( false );
-	const [openEndDatePopup, setOpenEndDatePopup] = useState( false );
 
 	return (
 		<>
 			<InspectorControls>
 				<Panel>
-					<PanelBody title={__('Title', 'category-posts')} initialOpen={ false }>
+					<PanelBody className="cpwp-settings-panel" title={__('Title', 'category-posts')} initialOpen={ false }>
 						<ToggleControl
 							label={__('Hide title', 'category-posts')}
 							checked={hideTitle}
@@ -313,6 +390,7 @@ export default function Edit({ attributes, setAttributes }) {
 									hideTitle: !hideTitle,
 								})
 							}
+							__nextHasNoMarginBottom
 						/>
 						{ !hideTitle && (
 							<>
@@ -323,35 +401,45 @@ export default function Edit({ attributes, setAttributes }) {
 										setAttributes({
 											title,
 										})}
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
 								/>
 								<ToggleControl
-									label={__('Make block title link', 'category-posts')}
+									label={__('Link the title', 'category-posts')}
 									checked={titleLink}
 									onChange={() =>
 										setAttributes({
 											titleLink: !titleLink,
 										})
 									}
+									__nextHasNoMarginBottom
 								/>
-								<TextControl
-									label={__('Title link URL', 'category-posts')}
-									value={titleLinkUrl}
-									onChange={(titleLinkUrl) =>
-										setAttributes({
-											titleLinkUrl,
-										})}
-								/>
-								<ToggleControl
-									label={__('Open title link in new tab', 'category-posts')}
-									checked={titleLinkTarget}
-									onChange={() =>
-										setAttributes({
-											titleLinkTarget: !titleLinkTarget,
-										})
-									}
-								/>
+								{ titleLink && (
+									<>
+										<TextControl
+											label={__('Title link URL', 'category-posts')}
+											value={titleLinkUrl}
+											onChange={(titleLinkUrl) =>
+												setAttributes({
+													titleLinkUrl,
+												})}
+											__next40pxDefaultSize
+											__nextHasNoMarginBottom
+										/>
+										<ToggleControl
+											label={__('Open title link in new tab', 'category-posts')}
+											checked={titleLinkTarget}
+											onChange={() =>
+												setAttributes({
+													titleLinkTarget: !titleLinkTarget,
+												})
+											}
+											__nextHasNoMarginBottom
+										/>
+									</>
+								) }
 								<ToggleGroupControl
-									label="Heading level"
+									label={__('Heading level', 'category-posts')}
 									value={titleLevel}
 									isBlock
 									isAdaptiveWidth
@@ -359,8 +447,10 @@ export default function Edit({ attributes, setAttributes }) {
 										setAttributes({
 											titleLevel,
 										})}
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
 								>
-									<ToggleGroupControlOption value="Initial" label="Initial" />
+									<ToggleGroupControlOption value="Initial" label={__('Text', 'category-posts')} />
 									<ToggleGroupControlOption value="H1" label="H1" />
 									<ToggleGroupControlOption value="H2" label="H2" />
 									<ToggleGroupControlOption value="H3" label="H3" />
@@ -371,9 +461,9 @@ export default function Edit({ attributes, setAttributes }) {
 							</>
 						) }
 					</PanelBody>
-					<PanelBody title={__('Filter', 'category-posts', 'category-posts')} initialOpen={ false }>
+					<PanelBody className="cpwp-settings-panel" title={__('Filter', 'category-posts')} initialOpen={ false }>
 						<ComboboxControl
-							label={ __( 'Category' ) }
+							label={ __( 'Category', 'category-posts' ) }
 							options={ categoryOptions }
 							value={ categories }
 							onChange={( newCategory) =>
@@ -382,29 +472,51 @@ export default function Edit({ attributes, setAttributes }) {
 								})
 							}
 							allowReset={ false }
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
 						/>
 						<SelectControl
-							label="Order By"
+							label={ __( 'Order By', 'category-posts' ) }
 							value={ orderBy }
 							options={[
-								{ label: 'Date', value: 'date' },
-								{ label: 'Title', value: 'title' },
-								{ label: 'Number of comments', value: 'comment_count' },
-								{ label: 'Random', value: 'rand' },
+								{ label: __( 'Date', 'category-posts' ), value: 'date' },
+								{ label: __( 'Title', 'category-posts' ), value: 'title' },
+								{ label: __( 'Number of comments', 'category-posts' ), value: 'comment_count' },
+								{ label: __( 'Random', 'category-posts' ), value: 'rand' },
 							]}
 							onChange={(value) =>
 								setAttributes({ orderBy: value })
 							}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
 						/>
-						<ToggleControl
-							label="Order"
-							checked={ order }
-							onChange={(value) =>
-								setAttributes({ order: value })
-							}
-						/>
+						{/* A random order has no direction. */}
+						{ 'rand' !== orderBy && (
+							<ToggleGroupControl
+								label={ __( 'Order', 'category-posts' ) }
+								value={ order ? 'asc' : 'desc' }
+								isBlock
+								onChange={(value) =>
+									setAttributes({ order: 'asc' === value })
+								}
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
+							>
+								{ 'date' === orderBy ? (
+									<>
+										<ToggleGroupControlOption value="desc" label={ __( 'Newest first', 'category-posts' ) } />
+										<ToggleGroupControlOption value="asc" label={ __( 'Oldest first', 'category-posts' ) } />
+									</>
+								) : (
+									<>
+										<ToggleGroupControlOption value="asc" label={ __( 'Ascending', 'category-posts' ) } />
+										<ToggleGroupControlOption value="desc" label={ __( 'Descending', 'category-posts' ) } />
+									</>
+								) }
+							</ToggleGroupControl>
+						) }
 						<ComboboxControl
-							label={ __( 'Status' ) }
+							label={ __( 'Status', 'category-posts' ) }
 							options={ statusOptions }
 							value={ status }
 							onChange={( newStatus) =>
@@ -413,31 +525,37 @@ export default function Edit({ attributes, setAttributes }) {
 								})
 							}
 							allowReset={ false }
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
 						/>
-						<NumberControl
-							label={ __( 'Number of posts to show' ) }
-							onChange={( newNum) =>
-								setAttributes({
-									num: newNum,
-								})
-							}
-							value={ num }
-							min={1}
-							allowReset={ false }
-						/>
-						<NumberControl
-							label={ __( 'Start with post' ) }
-							onChange={( newOffset) =>
-								setAttributes({
-									offset: parseInt( newOffset ),
-								})
-							}
-							value={ offset }
-							min={1}
-							allowReset={ false }
-						/>
+						<ControlPair>
+							<NumberControl
+								label={ __( 'Number of posts to show', 'category-posts' ) }
+								onChange={( newNum) =>
+									setAttributes({
+										num: newNum,
+									})
+								}
+								value={ num }
+								min={1}
+								allowReset={ false }
+								__next40pxDefaultSize
+							/>
+							<NumberControl
+								label={ __( 'Start with post', 'category-posts' ) }
+								onChange={( newOffset) =>
+									setAttributes({
+										offset: parseInt( newOffset ) || 1,
+									})
+								}
+								value={ offset }
+								min={1}
+								allowReset={ false }
+								__next40pxDefaultSize
+							/>
+						</ControlPair>
 						<ComboboxControl
-							label={ __( 'Date Range' ) }
+							label={ __( 'Date Range', 'category-posts' ) }
 							options={ dateRangeOptions }
 							value={ dateRange }
 							onChange={( newDateRange) =>
@@ -446,63 +564,50 @@ export default function Edit({ attributes, setAttributes }) {
 								})
 							}
 							allowReset={ false }
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
 						/>
 						{dateRange === 'days_ago' && (
 							<NumberControl
-								label={ __( 'Up to' ) }
+								label={ __( 'Up to', 'category-posts' ) }
 								onChange={( newDaysAgo) =>
 									setAttributes({
-										daysAgo: parseInt( newDaysAgo ),
+										daysAgo: parseInt( newDaysAgo ) || 1,
 									})
 								}
 								value={ daysAgo }
 								min={1}
+								suffix={ unit( __( 'days', 'category-posts' ) ) }
 								allowReset={ false }
+								__next40pxDefaultSize
 							/>
 						)}
 						{dateRange === 'between_dates' && (
-							<div className="cpwp-block-ident">
-								<PanelRow>
-									<label>After</label>
-									<Button isLink={true} onClick={() => setOpenStartDatePopup( ! openStartDatePopup )}>
-										{ startDate ? dateI18n( 'j.m.Y', startDate ) : "tt.mm.jjjj" }
-									</Button>
-									{ openStartDatePopup && (
-										<Popover onClose={ setOpenStartDatePopup.bind( null, false )}>
-											<DatePicker
-												onChange={( newStartDate) =>
-													setAttributes({
-														startDate: newStartDate,
-													})
-												}
-												currentDate={ startDate }
-												startOfWeek={1}
-											/>
-										</Popover>
-									) }
-								</PanelRow>
-								<PanelRow>
-									<label>Before</label>
-									<Button isLink={true} onClick={() => setOpenEndDatePopup( ! openEndDatePopup )}>
-										{ endDate ? dateI18n( 'j.m.Y', endDate ) : "tt.mm.jjjj" }
-									</Button>
-									{ openEndDatePopup && (
-										<Popover onClose={ setOpenEndDatePopup.bind( null, false )}>
-											<DatePicker
-												onChange={( newEndDate) =>
-													setAttributes({
-														endDate: newEndDate,
-													})
-												}
-												currentDate={ endDate }
-												startOfWeek={1}
-											/>
-										</Popover>
-									) }
-								</PanelRow>
-							</div>
+							<ControlPair>
+								<DateControl
+									id={ `cpwp-start-date-${ clientId }` }
+									label={ __( 'After', 'category-posts' ) }
+									buttonLabel={ __( 'Choose start date', 'category-posts' ) }
+									value={ startDate }
+									onChange={( newStartDate) =>
+										setAttributes({
+											startDate: newStartDate,
+										})
+									}
+								/>
+								<DateControl
+									id={ `cpwp-end-date-${ clientId }` }
+									label={ __( 'Before', 'category-posts' ) }
+									buttonLabel={ __( 'Choose end date', 'category-posts' ) }
+									value={ endDate }
+									onChange={( newEndDate) =>
+										setAttributes({
+											endDate: newEndDate,
+										})
+									}
+								/>
+							</ControlPair>
 						)}
-						<br />
 						<ToggleControl
 							label={__('Exclude current post', 'category-posts')}
 							checked={excludeCurrentPost}
@@ -511,6 +616,7 @@ export default function Edit({ attributes, setAttributes }) {
 									excludeCurrentPost: !excludeCurrentPost,
 								})
 							}
+							__nextHasNoMarginBottom
 						/>
 						<ToggleControl
 							label={__('Hide posts which have no thumbnail', 'category-posts')}
@@ -520,6 +626,7 @@ export default function Edit({ attributes, setAttributes }) {
 									hideNoThumb: !hideNoThumb,
 								})
 							}
+							__nextHasNoMarginBottom
 						/>
 						<ToggleControl
 							label={__('Start with sticky posts', 'category-posts')}
@@ -529,9 +636,10 @@ export default function Edit({ attributes, setAttributes }) {
 									sticky: !sticky,
 								})
 							}
+							__nextHasNoMarginBottom
 						/>
 					</PanelBody>
-					<PanelBody title={__('Post details', 'category-posts')} initialOpen={ false }>
+					<PanelBody className="cpwp-settings-panel" title={__('Post details', 'category-posts')} initialOpen={ false }>
 						<TemplateControl
 							label={__('Template', 'category-posts')}
 							help={__('Click a placeholder to insert it at the cursor position, or type % inside the field. In addition you can use text, HTML and Dashicons.', 'category-posts')}
@@ -555,8 +663,10 @@ export default function Edit({ attributes, setAttributes }) {
 									setAttributes({
 										itemTitleLevel,
 									})}
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
 							>
-								<ToggleGroupControlOption value="Inline" label="Inline" />
+								<ToggleGroupControlOption value="Inline" label={__('Text', 'category-posts')} />
 								<ToggleGroupControlOption value="H1" label="H1" />
 								<ToggleGroupControlOption value="H2" label="H2" />
 								<ToggleGroupControlOption value="H3" label="H3" />
@@ -570,7 +680,9 @@ export default function Edit({ attributes, setAttributes }) {
 								placeholder={__('No limit', 'category-posts')}
 								onChange={(itemTitleLines) => setAttributes({ itemTitleLines: parseInt(itemTitleLines) || 0 })}
 								min={0}
+								suffix={ unit( __( 'lines', 'category-posts' ) ) }
 								allowReset={false}
+								__next40pxDefaultSize
 							/>
 						</div>
 							</>
@@ -579,21 +691,24 @@ export default function Edit({ attributes, setAttributes }) {
 							<>
 						<PanelRow>{__('Excerpt settings', 'category-posts')}</PanelRow>
 						<div className="cpwp-block-ident">
+							{/* The lines limit the full post as well, paragraph by paragraph. */}
 							<NumberControl
 								label={__('Excerpt lines', 'category-posts')}
 								value={excerptLines || ''}
 								placeholder={__('No limit', 'category-posts')}
 								onChange={(excerptLines) => setAttributes({ excerptLines: parseInt(excerptLines) || 0 })}
 								min={0}
+								suffix={ unit( __( 'lines', 'category-posts' ) ) }
 								allowReset={false}
+								__next40pxDefaultSize
 							/>
 							<RadioControl
-								label={ __( 'Intent', 'category-posts' ) }
+								label={ __( 'Content', 'category-posts' ) }
 								selected={ excerptRadio }
 								options={ [
 									{ label: __( 'Excerpt', 'category-posts' ), value: 'excerpt' },
 									{
-										label: __( 'Full Post', 'category-posts' ),
+										label: __( 'Full post', 'category-posts' ),
 										value: 'full_post',
 									},
 								] }
@@ -614,6 +729,8 @@ export default function Edit({ attributes, setAttributes }) {
 								label={__('Read more text', 'category-posts')}
 								value={excerptMoreText}
 								onChange={(excerptMoreText) => setAttributes({ excerptMoreText })}
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
 							/>
 						</div>
 							</>
@@ -627,25 +744,34 @@ export default function Edit({ attributes, setAttributes }) {
 								value={presetDateFormat}
 								onChange={(presetDateFormat) => setAttributes({ presetDateFormat })}
 								options={[
-									{ label: 'Site date and time', value: 'sitedateandtime' },
-									{ label: 'Site date', value: 'sitedate' },
-									{ label: 'Reader\'s local date and time', value: 'localsitedateandtime' },
-									{ label: 'Reader\'s local date', value: 'localsitedate' },
-									{ label: 'PHP style format', value: 'other' },
+									{ label: __( 'Site date and time', 'category-posts' ), value: 'sitedateandtime' },
+									{ label: __( 'Site date', 'category-posts' ), value: 'sitedate' },
+									{ label: __( 'Reader\'s local date and time', 'category-posts' ), value: 'localsitedateandtime' },
+									{ label: __( 'Reader\'s local date', 'category-posts' ), value: 'localsitedate' },
+									{ label: __( 'PHP style format', 'category-posts' ), value: 'other' },
 								]}
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
 							/>
-							<TextControl
-								label={__('PHP style date format', 'category-posts')}
-								value={dateFormat}
-								onChange={(dateFormat) => setAttributes({ dateFormat })}
-							/>
+							{ 'other' === presetDateFormat && (
+								<TextControl
+									label={__('PHP style date format', 'category-posts')}
+									value={dateFormat}
+									onChange={(dateFormat) => setAttributes({ dateFormat })}
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+								/>
+							) }
 							<NumberControl
-								label={__('Show past time up to x-days', 'category-posts')}
+								label={__('Relative date up to', 'category-posts')}
+								help={__( 'Shows the age of a post, e.g. "3 days", instead of its date while it is not older than this.', 'category-posts' )}
 								value={parseInt(datePastTime) || ''}
 								placeholder={__('Off', 'category-posts')}
 								onChange={(datePastTime) => setAttributes({ datePastTime: String(parseInt(datePastTime) || 0) })}
 								min={0}
+								suffix={ unit( __( 'days', 'category-posts' ) ) }
 								allowReset={false}
+								__next40pxDefaultSize
 							/>
 						</div>
 							</>
@@ -661,14 +787,16 @@ export default function Edit({ attributes, setAttributes }) {
 							  * fallback parseInt() hands back a NaN which the attribute
 							  * can not hold.
 							  */}
-							<div className="cpwp-dimensions">
+							<ControlPair>
 								<NumberControl
 									label={__('Width', 'category-posts')}
 									value={thumbW || ''}
 									placeholder={__('Auto', 'category-posts')}
 									onChange={(thumbW) => setAttributes({ thumbW: parseInt(thumbW) || 0 })}
 									min={0}
+									suffix={ unit( 'px' ) }
 									allowReset={false}
+									__next40pxDefaultSize
 								/>
 								<NumberControl
 									label={__('Height', 'category-posts')}
@@ -676,57 +804,66 @@ export default function Edit({ attributes, setAttributes }) {
 									placeholder={__('Auto', 'category-posts')}
 									onChange={(thumbH) => setAttributes({ thumbH: parseInt(thumbH) || 0 })}
 									min={0}
+									suffix={ unit( 'px' ) }
 									allowReset={false}
+									__next40pxDefaultSize
 								/>
-							</div>
+							</ControlPair>
 							<SelectControl
 								label={__('Hover effect', 'category-posts')}
 								value={thumbHover}
 								onChange={(thumbHover) => setAttributes({ thumbHover })}
 								options={[
-									{ label: 'None', value: 'none' },
-									{ label: 'Darker', value: 'dark' },
-									{ label: 'Brighter', value: 'white' },
-									{ label: 'Zoom in', value: 'scale' },
-									{ label: 'Blur', value: 'blur' },
-									{ label: 'Icon', value: 'icon' },
+									{ label: __( 'None', 'category-posts' ), value: 'none' },
+									{ label: __( 'Darker', 'category-posts' ), value: 'dark' },
+									{ label: __( 'Brighter', 'category-posts' ), value: 'white' },
+									{ label: __( 'Zoom in', 'category-posts' ), value: 'scale' },
+									{ label: __( 'Blur', 'category-posts' ), value: 'blur' },
+									{ label: __( 'Icon', 'category-posts' ), value: 'icon' },
 								]}
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
 							/>
 							<SelectControl
 								label={__('Post format indicator', 'category-posts')}
 								value={showPostFormat}
 								onChange={(showPostFormat) => setAttributes({ showPostFormat })}
 								options={[
-									{ label: 'None', value: 'none' },
-									{ label: 'Top left', value: 'topleft' },
-									{ label: 'Bottom left', value: 'bottomleft' },
-									{ label: 'Center', value: 'ceter' },
-									{ label: 'Top right', value: 'topright' },
-									{ label: 'Bottom right', value: 'bottomright' },
-									{ label: 'HTML without styling', value: 'nocss' },
+									{ label: __( 'None', 'category-posts' ), value: 'none' },
+									{ label: __( 'Top left', 'category-posts' ), value: 'topleft' },
+									{ label: __( 'Bottom left', 'category-posts' ), value: 'bottomleft' },
+									{ label: __( 'Center', 'category-posts' ), value: 'ceter' },
+									{ label: __( 'Top right', 'category-posts' ), value: 'topright' },
+									{ label: __( 'Bottom right', 'category-posts' ), value: 'bottomright' },
+									{ label: __( 'HTML without styling', 'category-posts' ), value: 'nocss' },
 								]}
+								__next40pxDefaultSize
+								__nextHasNoMarginBottom
 							/>
 							<ToggleControl
 								label={__('Do not wrap thumbnail with text', 'category-posts')}
 								checked={textDoNotWrapThumb}
 								onChange={() => setAttributes({ textDoNotWrapThumb: !textDoNotWrapThumb })}
+								__nextHasNoMarginBottom
 							/>
 							<ToggleControl
 								label={__('Everything is a link', 'category-posts')}
 								checked={everythingIsLink}
 								onChange={() => setAttributes({ everythingIsLink: !everythingIsLink })}
+								__nextHasNoMarginBottom
 							/>
 							<ToggleControl
 								label={__('Symbols', 'category-posts')}
 								checked={thumbSymbols}
 								onChange={() => setAttributes({ thumbSymbols: !thumbSymbols })}
+								__nextHasNoMarginBottom
 							/>
 						</div>
 							</>
 						) }
 					</PanelBody>
-					<PanelBody title={__('General', 'category-posts')} initialOpen={ false }>
-						<PanelRow>Inherited CSS</PanelRow>
+					<PanelBody className="cpwp-settings-panel" title={__('General', 'category-posts')} initialOpen={ false }>
+						<PanelRow>{__('Styles', 'category-posts')}</PanelRow>
 						<div className="cpwp-block-ident">
 							<ToggleControl
 								label={__('Disable the built-in CSS', 'category-posts')}
@@ -736,16 +873,25 @@ export default function Edit({ attributes, setAttributes }) {
 										disableCss: !disableCss,
 									})
 								}
+								__nextHasNoMarginBottom
 							/>
-							<ToggleControl
-								label={__('Disable only font styles', 'category-posts')}
-								checked={disableFontStyles}
-								onChange={() =>
-									setAttributes({
-										disableFontStyles: !disableFontStyles,
-									})
-								}
-							/>
+							{/* The font styles are part of the built-in CSS. */}
+							{ !disableCss && (
+								<ToggleControl
+									label={__('Disable only font styles', 'category-posts')}
+									checked={disableFontStyles}
+									onChange={() =>
+										setAttributes({
+											disableFontStyles: !disableFontStyles,
+										})
+									}
+									__nextHasNoMarginBottom
+								/>
+							) }
+							{/*
+							  * Independent of the built-in CSS: it leaves out the class
+							  * names, like widget-title or post-date, the theme styles.
+							  */}
 							<ToggleControl
 								label={__('Disable Theme\'s styles', 'category-posts')}
 								checked={disableThemeStyles}
@@ -754,20 +900,21 @@ export default function Edit({ attributes, setAttributes }) {
 										disableThemeStyles: !disableThemeStyles,
 									})
 								}
+								__nextHasNoMarginBottom
 							/>
 						</div>
-						<PanelRow>Interim text</PanelRow>
+						<PanelRow>{__('No results', 'category-posts')}</PanelRow>
 						<div className="cpwp-block-ident">
 							<SelectControl
 								label={ __( 'When there are no matches:', 'category-posts' ) }
 								value={ noMatchHandling }
-								onChange={( noMatchHandling ) => 
+								onChange={( noMatchHandling ) =>
 									setAttributes( {
 										noMatchHandling
 									} )}
 								options={ [
-									{ value: 'nothing', label: __( 'Display empty widget', 'category-posts' ) },
-									{ value: 'hide', label: __( 'Hide Widget', 'category-posts' ) },
+									{ value: 'nothing', label: __( 'Show an empty block', 'category-posts' ) },
+									{ value: 'hide', label: __( 'Hide the block', 'category-posts' ) },
 									{ value: 'text', label: __( 'Show text', 'category-posts' ) },
 								] }
 								__next40pxDefaultSize
@@ -776,9 +923,9 @@ export default function Edit({ attributes, setAttributes }) {
 							{noMatchHandling === 'text' && (
 								<TextareaControl
 									__nextHasNoMarginBottom
-									label="Text"
+									label={ __( 'Text', 'category-posts' ) }
 									value={ noMatchText }
-									onChange={( noMatchText ) => 
+									onChange={( noMatchText ) =>
 										setAttributes( {
 											noMatchText
 										})}
@@ -786,7 +933,7 @@ export default function Edit({ attributes, setAttributes }) {
 								/>
 							)}
 						</div>
-						<PanelRow>Ajax API</PanelRow>
+						<PanelRow>{__('Load more', 'category-posts')}</PanelRow>
 						<div className="cpwp-block-ident">
 							<ToggleControl
 								label={__('Enable Load More', 'category-posts')}
@@ -796,6 +943,7 @@ export default function Edit({ attributes, setAttributes }) {
 										enableLoadmore: !enableLoadmore,
 									})
 								}
+								__nextHasNoMarginBottom
 							/>
 							{enableLoadmore && (
 								<>
@@ -807,7 +955,7 @@ export default function Edit({ attributes, setAttributes }) {
 												loadmoreScrollTo: !loadmoreScrollTo,
 											})
 										}
-									
+										__nextHasNoMarginBottom
 									/>
 									<TextControl
 										label={__('Button text', 'category-posts')}
@@ -819,6 +967,8 @@ export default function Edit({ attributes, setAttributes }) {
 											setAttributes({
 												loadmoreText,
 											})}
+										__next40pxDefaultSize
+										__nextHasNoMarginBottom
 									/>
 									<TextControl
 										label={__('Loading text', 'category-posts')}
@@ -827,12 +977,14 @@ export default function Edit({ attributes, setAttributes }) {
 											setAttributes({
 												loadingText,
 											})}
+										__next40pxDefaultSize
+										__nextHasNoMarginBottom
 									/>
 								</>
 							)}
 						</div>
 					</PanelBody>
-					<PanelBody title={__('Footer', 'category-posts')} initialOpen={ false }>
+					<PanelBody className="cpwp-settings-panel" title={__('Footer', 'category-posts')} initialOpen={ false }>
 						<TextControl
 							label={__('Footer link text', 'category-posts')}
 							value={footerLinkText}
@@ -840,24 +992,37 @@ export default function Edit({ attributes, setAttributes }) {
 								setAttributes({
 									footerLinkText,
 								})}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
 						/>
-						<TextControl
-							label={__('Footer link URL', 'category-posts')}
-							value={footerLink}
-							onChange={(footerLink) =>
-								setAttributes({
-									footerLink,
-								})}
-						/>
-						<ToggleControl
-							label={__('Open footer link in new tab', 'category-posts')}
-							checked={footerLinkTarget}
-							onChange={() =>
-								setAttributes({
-									footerLinkTarget: !footerLinkTarget,
-								})
-							}
-						/>
+						{/*
+						  * footerHTML() shows a URL without a text as its own text, so a
+						  * block saved that way keeps its URL field.
+						  */}
+						{ ( footerLinkText || footerLink ) && (
+							<>
+								<TextControl
+									label={__('Footer link URL', 'category-posts')}
+									value={footerLink}
+									onChange={(footerLink) =>
+										setAttributes({
+											footerLink,
+										})}
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+								/>
+								<ToggleControl
+									label={__('Open footer link in new tab', 'category-posts')}
+									checked={footerLinkTarget}
+									onChange={() =>
+										setAttributes({
+											footerLinkTarget: !footerLinkTarget,
+										})
+									}
+									__nextHasNoMarginBottom
+								/>
+							</>
+						) }
 					</PanelBody>
 				</Panel>
 			</InspectorControls>
