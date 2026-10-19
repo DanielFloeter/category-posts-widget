@@ -4,7 +4,7 @@ Donate link: https://wordpress.org/support/plugin/category-posts/reviews/
 Tags: recent posts, latest posts, post list, post thumbnails, load more
 Requires at least: 6.6
 Tested up to: 7.1
-Stable tag: 5.1.1
+Stable tag: 5.1.2
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -110,6 +110,12 @@ Is 'All categories' selected in the Filter panel: Use the text field 'Title link
 
 == Changelog ==
 [Read more on our blog ...](https://tiptoppress.com/category/category-posts-widget)
+
+= 5.1.2 - October 19th 2026 =
+* Block settings split into Settings and Styles
+* More uniform block settings
+* Thumbnail ratio kept by CSS
+* Bugfixes
 
 = 5.1.1 - September 21st 2026 =
 * Transform to Term and Category Posts based Block

@@ -12,7 +12,7 @@ Plugin Name: Category Posts Block
 Plugin URI: https://wordpress.org/plugins/category-posts/
 Description: Shows a list of recent posts from a category - with thumbnails, excerpt and a load more button.
 Author: TipTopPress
-Version: 5.1.1
+Version: 5.1.2
 Author URI: https://tiptoppress.com
 Text Domain: category-posts
 Domain Path: /languages
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-const VERSION        	= '5.1.1';
+const VERSION        	= '5.1.2';
 const DOC_URL        	= 'https://tiptoppress.com/category-posts-widget/documentation-5-0/';
 const PRO_URL        	= 'https://demo.tiptoppress.com/';
 const SUPPORT_URL    	= 'https://wordpress.org/support/plugin/category-posts/';

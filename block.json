@@ -233,7 +233,7 @@
 		},
 		"ver": {
 			"type": "string",
-			"default": "5.1.1"
+			"default": "5.1.2"
 		},
 		"instanceId": {
 			"type": "number"
