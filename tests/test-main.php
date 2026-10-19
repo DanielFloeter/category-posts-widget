@@ -2110,13 +2110,14 @@ class testVirtualwidget extends WP_UnitTestCase {
 			'twentyseventeen, shortcode' => array( 'test8', array(), true, $expect( $default_shortcode, 'test8' ) ),
 
 			// thumb_symbols ("Symbols"): symbols/logos must stay whole, so
-			// the thumbnail is fitted with object-fit: contain instead of
-			// the cropping default cover. Everything else is unchanged.
+			// the thumbnail is fitted with object-fit: contain into a square
+			// instead of the cropping default cover. Everything else is
+			// unchanged.
 			'thumb_symbols, widget' => array(
 				'test9', array( 'thumb_symbols' => true ), false,
 				$expect(
 					$default_widget, 'test9-internal', array(
-						'thumb_crop' => '#%1$s .cat-post-thumbnail .cat-post-crop img {object-fit: contain; max-width: 100%%; display: block;}',
+						'thumb_crop' => '#%1$s .cat-post-thumbnail .cat-post-crop img {object-fit: contain; aspect-ratio: 1; max-width: 100%%; display: block;}',
 					)
 				),
 			),
@@ -2124,7 +2125,7 @@ class testVirtualwidget extends WP_UnitTestCase {
 				'test9', array( 'thumb_symbols' => true ), true,
 				$expect(
 					$default_shortcode, 'test9', array(
-						'thumb_crop' => '#%1$s .cat-post-thumbnail .cat-post-crop img {object-fit: contain; max-width: 100%%; display: block;}',
+						'thumb_crop' => '#%1$s .cat-post-thumbnail .cat-post-crop img {object-fit: contain; aspect-ratio: 1; max-width: 100%%; display: block;}',
 					)
 				),
 			),
