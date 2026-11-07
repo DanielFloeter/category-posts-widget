@@ -243,14 +243,51 @@ class Widget extends \WP_Widget {
 	}
 
 	/**
+	 * The ID of the post to leave out when "Exclude current post" is active.
+	 *
+	 * On a singular page that is the current post. A "load more" request is a
+	 * REST request without a singular context, there the ID the first page was
+	 * rendered for is passed in. It comes from the client, so it is only taken
+	 * when it belongs to a published post of a publicly viewable post type.
+	 *
+	 * @param array      $instance    Array which contains the various settings.
+	 * @param int|string $singular_id The ID of the post the list was rendered in,
+	 *                                empty or 0 if there is none.
+	 *
+	 * @return int The ID of the post to exclude, 0 if none.
+	 *
+	 * @since 5.1.3
+	 */
+	public function excluded_post_id( $instance, $singular_id = 0 ) {
+		if ( empty( $instance['exclude_current_post'] ) ) {
+			return 0;
+		}
+
+		if ( is_singular() ) {
+			return (int) get_the_ID();
+		}
+
+		$singular_id = (int) $singular_id;
+		if ( 0 < $singular_id
+				&& 'publish' === get_post_status( $singular_id )
+				&& is_post_type_viewable( get_post_type( $singular_id ) ) ) {
+			return $singular_id;
+		}
+
+		return 0;
+	}
+
+	/**
 	 * Calculate the wp-query arguments matching the filter settings of the widget
 	 *
-	 * @param  array $instance Array which contains the various settings.
+	 * @param  array      $instance    Array which contains the various settings.
+	 * @param  int|string $singular_id The ID of the post the list was rendered in, used
+	 *                                 to exclude it when loading more items. Optional.
 	 * @return array The array that can be fed to wp_Query to get the relevant posts
 	 *
 	 * @since 4.6
 	 */
-	public function queryArgs( $instance ) {
+	public function queryArgs( $instance, $singular_id = 0 ) {
 		$valid_sort_orders = array(
 								'date', 'title', 'comment_count', 'rand'
 							);
@@ -300,8 +337,9 @@ class Widget extends \WP_Widget {
 			}
 		}
 
-		if ( is_singular() && isset( $instance['exclude_current_post'] ) && $instance['exclude_current_post'] ) {
-			$args['post__not_in'] = array( get_the_ID() );
+		$exclude_current_post = $this->excluded_post_id( $instance, $singular_id );
+		if ( $exclude_current_post ) {
+			$args['post__not_in'] = array( $exclude_current_post );
 		}
 
 		if ( isset( $instance['hideNoThumb'] ) && $instance['hideNoThumb'] ) {
@@ -1240,7 +1278,7 @@ class Widget extends \WP_Widget {
 		if ( 0 < $number ) {
 			$instance['num'] = $number;
 		}
-		$args = $this->queryArgs( $instance );
+		$args = $this->queryArgs( $instance, $singular_id );
 		$cat_posts = new \WP_Query( $args );
 
 		if( isset( $instance['enable_loadmore'] ) && $instance['enable_loadmore'] ) {

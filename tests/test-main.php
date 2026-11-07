@@ -2160,3 +2160,108 @@ class testVirtualwidget extends WP_UnitTestCase {
 		$this->assertEquals( $expected, $test[0] );
 	}
 }
+
+/**
+ * "Exclude current post" while loading more items.
+ *
+ * "Load more" is a REST request, there is_singular() is false. The ID of the
+ * post the list was rendered in comes along as the request context and has to
+ * be used for the exclusion, otherwise the current post shows up among the
+ * loaded items and the offset shifts by one.
+ */
+class testLoadMoreExcludeCurrentPost extends WP_UnitTestCase {
+
+	/**
+	 * Six published posts, newest first.
+	 *
+	 * @var int[]
+	 */
+	private $posts = array();
+
+	public function setUp(): void {
+		parent::setUp();
+		$this->posts = array();
+		foreach ( range( 1, 6 ) as $i ) {
+			$this->posts[] = $this->factory->post->create(
+				array(
+					'post_title'  => 'p' . $i,
+					'post_status' => 'publish',
+					'post_date'   => sprintf( '2020-01-%02d 00:00:00', 10 - $i ),
+				)
+			);
+		}
+	}
+
+	private function widget() {
+		$className = NS . '\Widget';
+		return new $className();
+	}
+
+	/**
+	 * The titles get_elements_HTML() returns for a page of items.
+	 */
+	private function titles( $exclude, $singular_id, $start, $number ) {
+		$instance = array_merge(
+			call_user_func( NS . '\default_settings' ),
+			array(
+				'num'                  => 2,
+				'enable_loadmore'      => true,
+				'exclude_current_post' => $exclude,
+				'template'             => '%title%',
+			)
+		);
+		$items = $this->widget()->get_elements_HTML( $instance, $singular_id, $start, $number );
+
+		return array_map(
+			function ( $html ) {
+				preg_match( '/>(p\d)</', $html, $m );
+				return $m[1];
+			},
+			$items
+		);
+	}
+
+	public function testLoadMoreExcludesTheCurrentPost() {
+		$current = $this->posts[0];
+
+		// First page, rendered on the post itself.
+		$this->go_to( get_permalink( $current ) );
+		$this->assertSame( array( 'p2', 'p3' ), $this->titles( true, $current, 0, 0 ) );
+
+		// "Load more": no singular context, the ID comes from the request.
+		$this->go_to( '/' );
+		$this->assertSame( array( 'p4', 'p5' ), $this->titles( true, $current, 3, 2 ) );
+	}
+
+	public function testLoadMoreKeepsTheCurrentPostWhenNotExcluded() {
+		$current = $this->posts[0];
+
+		$this->go_to( get_permalink( $current ) );
+		$this->assertSame( array( 'p1', 'p2' ), $this->titles( false, $current, 0, 0 ) );
+
+		$this->go_to( '/' );
+		$this->assertSame( array( 'p3', 'p4' ), $this->titles( false, $current, 3, 2 ) );
+	}
+
+	public function testInvalidOrNonPublicIdIsIgnored() {
+		$draft = $this->factory->post->create( array( 'post_status' => 'draft' ) );
+		$this->go_to( '/' );
+
+		foreach ( array( 0, '0', '', 999999, $draft ) as $id ) {
+			$args = $this->widget()->queryArgs( array( 'exclude_current_post' => true ), $id );
+			$this->assertArrayNotHasKey( 'post__not_in', $args, var_export( $id, true ) );
+		}
+	}
+
+	public function testIdIsIgnoredWhenSettingIsOff() {
+		$this->go_to( '/' );
+		$args = $this->widget()->queryArgs( array( 'exclude_current_post' => false ), $this->posts[0] );
+		$this->assertArrayNotHasKey( 'post__not_in', $args );
+	}
+
+	public function testSingularPageUsesTheQueriedPost() {
+		$this->go_to( get_permalink( $this->posts[1] ) );
+		$args = $this->widget()->queryArgs( array( 'exclude_current_post' => true ), $this->posts[0] );
+		$this->assertSame( array( $this->posts[1] ), $args['post__not_in'] );
+	}
+}
