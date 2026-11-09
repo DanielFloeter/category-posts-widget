@@ -34,6 +34,20 @@ class Widget extends \WP_Widget {
 	public $instance = array();
 
 	/**
+	 * The page of the list shown, set by get_elements_HTML() for pagination.
+	 *
+	 * @var int
+	 */
+	public $current_page = 1;
+
+	/**
+	 * The number of pages of the list, set by get_elements_HTML() for pagination.
+	 *
+	 * @var int
+	 */
+	public $total_pages = 0;
+
+	/**
 	 * Widget constructor.
 	 */
 	public function __construct() {
@@ -513,6 +527,102 @@ class Widget extends \WP_Widget {
 	}
 
 	/**
+	 * The ID of this list as used by "load more" and the pagination, like
+	 * 'widget-3', 'block-2' or 'shortcode-12'.
+	 *
+	 * @return string The ID.
+	 *
+	 * @since 5.1.3
+	 */
+	public function list_id() {
+		// We rely on the widget number to be properly set.
+		// but need a slight different handling for proper widgets.
+		if ( is_int( $this->number ) ) {
+			// it is a proper widget, add the prefix.
+			$id = 'widget-' . $this->number;
+		} else {
+			$id = str_replace( WIDGET_BASE_ID . '-', '', $this->number );
+		}
+		if ( 0 === strpos( (string) $this->number, 'block-' ) ) {
+			$id = 'block-' . substr( $this->number, 6 );
+		}
+
+		return (string) $id;
+	}
+
+	/**
+	 * The name of the URL parameter holding the page of this list.
+	 *
+	 * Each list gets its own parameter rather than /page/N/, so several lists
+	 * on one page are paged independently, and on a single post the page of
+	 * the post itself (<!--nextpage-->) is not touched.
+	 *
+	 * @return string The parameter name, like 'cpwp-block-2-page'.
+	 *
+	 * @since 5.1.3
+	 */
+	public function pagination_param() {
+		return 'cpwp-' . $this->list_id() . '-page';
+	}
+
+	/**
+	 * The page of this list requested in the URL, 1 if none.
+	 *
+	 * @return int The page number.
+	 *
+	 * @since 5.1.3
+	 */
+	public function current_page() {
+		$param = $this->pagination_param();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read only, public pagination.
+		$page = isset( $_GET[ $param ] ) ? (int) $_GET[ $param ] : 1;
+
+		return max( 1, $page );
+	}
+
+	/**
+	 * Calculate the HTML of the pagination below the list.
+	 *
+	 * Page numbers with a previous and a next link. Relies on get_elements_HTML()
+	 * having run for the first page of the list, it sets the current and the
+	 * total number of pages.
+	 *
+	 * @param array $instance Array which contains the various settings.
+	 *
+	 * @return string The HTML of the pagination, empty if there is only one page.
+	 *
+	 * @since 5.1.3
+	 */
+	public function paginationHTML( $instance ) {
+		$total   = (int) $this->total_pages;
+		$current = min( (int) $this->current_page, $total );
+		if ( 2 > $total ) {
+			return '';
+		}
+
+		$param = $this->pagination_param();
+		$base  = remove_query_arg( $param );
+
+		$links = paginate_links(
+			array(
+				'base'      => add_query_arg( $param, '%#%', $base ),
+				'format'    => '',
+				'current'   => $current,
+				'total'     => $total,
+				'prev_text' => esc_html__( '« Previous', 'category-posts' ),
+				'next_text' => esc_html__( 'Next »', 'category-posts' ),
+			)
+		);
+		// paginate_links() builds the link to the first page from the base too,
+		// the first page has no parameter.
+		$links = str_replace( '"' . esc_url( add_query_arg( $param, 1, $base ) ) . '"', '"' . esc_url( $base ) . '"', $links );
+
+		return '<nav class="' . __NAMESPACE__ . '-pagination" aria-label="' . esc_attr__( 'Posts pagination', 'category-posts' ) . '">' .
+				$links .
+			'</nav>';
+	}
+
+	/**
 	 * Calculate the HTML of the load more button based on the widget settings
 	 *
 	 * @param  array $instance Array which contains the various settings.
@@ -537,17 +647,7 @@ class Widget extends \WP_Widget {
 		wp_enqueue_script( 'jquery' );
 		add_action( 'wp_footer', __NAMESPACE__ . '\embed_loadmore_scripts', 100 );
 
-		// We rely on the widget number to be properly set.
-		// but need a slight different handling for proper widgets.
-		if ( is_int( $this->number ) ) {
-			// it is a proper widget, add the prefix.
-			$id = 'widget-' . $this->number;
-		} else {
-			$id = str_replace( WIDGET_BASE_ID . '-', '', $this->number );
-		}
-		if ( 0 === strpos( $this->number, 'block-' ) ) {
-			$id = 'block-' . substr( $this->number, 6 );
-		}
+		$id = $this->list_id();
 
 		// Placeholder
 		$placeholder_text = $instance['loadmore_text'] !== '' ? $instance['loadmore_text'] : sprintf( esc_attr__( 'Load More (%s/%s)', 'category-posts' ), '%step%', '%all%');
@@ -1279,7 +1379,22 @@ class Widget extends \WP_Widget {
 			$instance['num'] = $number;
 		}
 		$args = $this->queryArgs( $instance, $singular_id );
+
+		// Pagination: the page comes from the list's own URL parameter. The offset
+		// is set explicitly, WP_Query ignores 'paged' as soon as there is one.
+		$paginate = ( 'pages' === pagination_type( $instance ) ) && 0 === (int) $start && 0 < (int) $instance['num'];
+		if ( $paginate ) {
+			$base_offset           = isset( $args['offset'] ) ? (int) $args['offset'] : 0;
+			$this->current_page    = $this->current_page();
+			$args['offset']        = $base_offset + ( $this->current_page - 1 ) * (int) $instance['num'];
+			$args['no_found_rows'] = false;
+		}
+
 		$cat_posts = new \WP_Query( $args );
+
+		if ( $paginate ) {
+			$this->total_pages = (int) ceil( max( 0, $cat_posts->found_posts - $base_offset ) / (int) $instance['num'] );
+		}
 
 		if( isset( $instance['enable_loadmore'] ) && $instance['enable_loadmore'] ) {
 			$args['showposts'] = 0;

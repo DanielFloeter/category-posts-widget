@@ -390,6 +390,9 @@ class Virtual_Widget {
 				$ret['loadmore_scrollTo'] = '#' . $widget_id . ' {overflow-y:scroll;}';
 			}
 		}
+		if ( isset( $settings['pagination_type'] ) && 'pages' === $settings['pagination_type'] ) {
+			$ret['pagination'] = '#' . $this->id . ' .' . __NAMESPACE__ . '-pagination {display:flex;flex-wrap:wrap;justify-content:center;gap:0.5em;margin-top:10px}';
+		}
 		$rules[] = $ret;
 	}
 

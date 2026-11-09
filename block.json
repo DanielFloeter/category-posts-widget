@@ -187,6 +187,10 @@
 			"type": "boolean",
 			"default": false
 		},
+		"paginationType": {
+			"type": "string",
+			"default": ""
+		},
 		"enableLoadmore": {
 			"type": "boolean",
 			"default": false

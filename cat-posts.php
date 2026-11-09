@@ -385,6 +385,27 @@ function upgrade_settings( $settings ) {
 }
 
 /**
+ * How the list offers more posts: 'none', 'loadmore' or 'pages'.
+ *
+ * The choice exists for the block only. Widgets, shortcodes and blocks saved
+ * before it existed only have the "Enable Load More" checkbox, an empty or
+ * unknown choice is derived from it.
+ *
+ * @param array $settings The widget or block settings.
+ *
+ * @return string 'none', 'loadmore' or 'pages'.
+ *
+ * @since 5.1.3
+ */
+function pagination_type( $settings ) {
+	if ( isset( $settings['pagination_type'] ) && in_array( $settings['pagination_type'], array( 'none', 'loadmore', 'pages' ), true ) ) {
+		return $settings['pagination_type'];
+	}
+
+	return ( isset( $settings['enable_loadmore'] ) && $settings['enable_loadmore'] ) ? 'loadmore' : 'none';
+}
+
+/**
  * Convert pre 4.8 settings into template
  *
  * @param  array $instance Array which contains the various settings.

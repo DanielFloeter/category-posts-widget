@@ -57,7 +57,7 @@ const TITLE = [ 'hideTitle', 'title' ];
 const TITLE_LEVEL = [ 'titleLevel' ];
 const TITLE_LINK = [ 'titleLink', 'titleLinkUrl', 'titleLinkTarget' ];
 const NO_RESULTS = [ 'noMatchHandling', 'noMatchText' ];
-const LOAD_MORE = [ 'enableLoadmore', 'loadmoreScrollTo', 'loadmoreText', 'loadingText' ];
+const LOAD_MORE = [ 'paginationType', 'enableLoadmore', 'loadmoreScrollTo', 'loadmoreText', 'loadingText' ];
 const FOOTER_LINK = [ 'footerLinkText', 'footerLink', 'footerLinkTarget' ];
 const CATEGORY = [ 'categories' ];
 const ORDER = [ 'orderBy', 'order' ];
@@ -210,9 +210,14 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 		order, orderBy, categories, status, num, offset, dateRange, startDate, endDate, daysAgo, excludeCurrentPost, hideNoThumb, sticky,
 		template, itemTitleLevel, itemTitleLines, excerptRadio, excerptLines, excerptMoreText,
 		thumbW, thumbH, thumbHover, thumbSymbols, showPostFormat, textDoNotWrapThumb, everythingIsLink, presetDateFormat, dateFormat, datePastTime,
-		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, loadmoreScrollTo, loadmoreText, loadingText,
+		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, paginationType, loadmoreScrollTo, loadmoreText, loadingText,
 		footerLinkText, footerLink, footerLinkTarget, instanceId, shownTools
 	} = attributes;
+	// "More posts" replaced the "Enable Load More" toggle. Blocks saved before
+	// have no choice yet, it follows the old toggle then (see pagination_type()).
+	const morePosts = [ 'none', 'loadmore', 'pages' ].includes( paginationType )
+		? paginationType
+		: ( enableLoadmore ? 'loadmore' : 'none' );
 	const blockProps = useBlockProps({
 		className: disableThemeStyles ? 'widget-title' : '',
 	});
@@ -851,22 +856,29 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 						)}
 					</ToolsPanelItem>
 					<ToolsPanelItem
-						label={ __( 'Load more', 'category-posts' ) }
+						label={ __( 'More posts', 'category-posts' ) }
 						hasValue={ () => differsFromDefault( attributes, LOAD_MORE ) }
 						onDeselect={ () => setAttributes( defaultsOf( LOAD_MORE ) ) }
 						isShownByDefault
 					>
-						<ToggleControl
-							label={__('Enable Load More', 'category-posts')}
-							checked={enableLoadmore}
-							onChange={() =>
-								setAttributes({
-									enableLoadmore: !enableLoadmore,
-								})
-							}
+						<ToggleGroupControl
+							label={ __( 'More posts', 'category-posts' ) }
+							value={ morePosts }
+							isBlock
+							onChange={ ( value ) =>
+								setAttributes( {
+									paginationType: value,
+									// Kept in sync, the load more code reads it.
+									enableLoadmore: 'loadmore' === value,
+								} ) }
+							__next40pxDefaultSize
 							__nextHasNoMarginBottom
-						/>
-						{enableLoadmore && (
+						>
+							<ToggleGroupControlOption value="none" label={ __( 'None', 'category-posts' ) } />
+							<ToggleGroupControlOption value="loadmore" label={ __( 'Load more', 'category-posts' ) } />
+							<ToggleGroupControlOption value="pages" label={ __( 'Pagination', 'category-posts' ) } />
+						</ToggleGroupControl>
+						{'loadmore' === morePosts && (
 							<>
 								<ToggleControl
 									label={__('Scroll to the loaded items', 'category-posts')}

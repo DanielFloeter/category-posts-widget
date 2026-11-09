@@ -2311,3 +2311,163 @@ class testLoadMoreExcludeCurrentPost extends WP_UnitTestCase {
 		$this->assertSame( array( $this->posts[1] ), $args['post__not_in'] );
 	}
 }
+
+/**
+ * "More posts" of the block: none / load more / pagination.
+ *
+ * Pagination uses a URL parameter per list and counts the matches with
+ * found_posts. Widgets and shortcodes keep the "Enable Load More" checkbox
+ * and are not touched.
+ */
+class testPagination extends WP_UnitTestCase {
+
+	/**
+	 * Five published posts, newest first.
+	 *
+	 * @var int[]
+	 */
+	private $posts = array();
+
+	public function setUp(): void {
+		parent::setUp();
+		$GLOBALS['before_title'] = '';
+		$GLOBALS['after_title']  = '';
+		$this->posts = array();
+		foreach ( range( 1, 5 ) as $i ) {
+			$this->posts[] = $this->factory->post->create(
+				array(
+					'post_title'  => 'p' . $i,
+					'post_status' => 'publish',
+					'post_date'   => sprintf( '2020-01-%02d 00:00:00', 10 - $i ),
+				)
+			);
+		}
+	}
+
+	public function tearDown(): void {
+		unset( $_GET['cpwp-block-7-page'], $_GET['cpwp-block-8-page'] );
+		parent::tearDown();
+	}
+
+	private function render( $attributes, $page = null ) {
+		if ( null !== $page ) {
+			$_GET['cpwp-block-7-page'] = (string) $page;
+		}
+
+		return \categoryPosts\render_category_posts_block(
+			array_merge(
+				array(
+					'num'        => 2,
+					'template'   => '%title%',
+					'instanceId' => 7,
+				),
+				$attributes
+			)
+		);
+	}
+
+	private function titles( $html ) {
+		preg_match_all( '/>(p\d)</', $html, $m );
+		return $m[1];
+	}
+
+	/**
+	 * Blocks saved without the choice follow the old toggle, and the toggle
+	 * is kept in sync with the choice.
+	 */
+	public function testBlockMigrationFromTheLoadMoreToggle() {
+		$this->assertSame( 'loadmore', \categoryPosts\build_block_instance( array( 'enableLoadmore' => true ) )['pagination_type'] );
+		$this->assertSame( 'none', \categoryPosts\build_block_instance( array() )['pagination_type'] );
+		$this->assertSame( 'loadmore', \categoryPosts\build_block_instance( array( 'paginationType' => 'bogus', 'enableLoadmore' => true ) )['pagination_type'] );
+
+		$pages = \categoryPosts\build_block_instance( array( 'paginationType' => 'pages', 'enableLoadmore' => true ) );
+		$this->assertSame( 'pages', $pages['pagination_type'] );
+		$this->assertFalse( $pages['enable_loadmore'] );
+
+		$this->assertTrue( \categoryPosts\build_block_instance( array( 'paginationType' => 'loadmore' ) )['enable_loadmore'] );
+
+		// And it survives upgrade_settings(), which the block runs afterwards.
+		$upgraded = \categoryPosts\upgrade_settings( $pages );
+		$this->assertSame( 'pages', $upgraded['pagination_type'] );
+		$this->assertFalse( $upgraded['enable_loadmore'] );
+	}
+
+	/**
+	 * Widget settings are left as they are: no choice is added, and the
+	 * checkbox decides as before.
+	 */
+	public function testWidgetSettingsAreNotTouched() {
+		$this->assertArrayNotHasKey( 'pagination_type', \categoryPosts\upgrade_settings( array() ) );
+		$this->assertArrayNotHasKey( 'pagination_type', \categoryPosts\default_settings() );
+
+		$widget = \categoryPosts\upgrade_settings( array( 'enable_loadmore' => 'on' ) );
+		$this->assertSame( 'on', $widget['enable_loadmore'] );
+		$this->assertArrayNotHasKey( 'pagination_type', $widget );
+	}
+
+	public function testPagesFollowTheUrlParameter() {
+		$this->go_to( '/' );
+
+		$first = $this->render( array( 'paginationType' => 'pages' ) );
+		$this->assertSame( array( 'p1', 'p2' ), $this->titles( $first ) );
+		$this->assertStringContainsString( 'categoryPosts-pagination', $first );
+		$this->assertStringContainsString( 'cpwp-block-7-page=2', $first );
+		$this->assertStringContainsString( 'cpwp-block-7-page=3', $first );
+		$this->assertStringNotContainsString( 'cpwp-block-7-page=4', $first );
+		$this->assertStringNotContainsString( '-loadmore', $first );
+
+		$this->assertSame( array( 'p3', 'p4' ), $this->titles( $this->render( array( 'paginationType' => 'pages' ), 2 ) ) );
+
+		// The last page is not full, the pagination stays.
+		$last = $this->render( array( 'paginationType' => 'pages' ), 3 );
+		$this->assertSame( array( 'p5' ), $this->titles( $last ) );
+		$this->assertStringContainsString( 'categoryPosts-pagination', $last );
+		$this->assertStringContainsString( 'class="prev page-numbers"', $last );
+		// The link back to the first page carries no parameter.
+		$this->assertStringNotContainsString( 'cpwp-block-7-page=1', $last );
+	}
+
+	public function testPagesRespectTheStartOffset() {
+		$this->go_to( '/' );
+
+		// Start with the 2nd post: p2..p5 are paged, two pages.
+		$this->assertSame( array( 'p2', 'p3' ), $this->titles( $this->render( array( 'paginationType' => 'pages', 'offset' => 2 ) ) ) );
+		$second = $this->render( array( 'paginationType' => 'pages', 'offset' => 2 ), 2 );
+		$this->assertSame( array( 'p4', 'p5' ), $this->titles( $second ) );
+		$this->assertStringNotContainsString( 'cpwp-block-7-page=3', $second );
+	}
+
+	public function testInvalidPageFallsBackToTheFirst() {
+		$this->go_to( '/' );
+		foreach ( array( '0', '-3', 'abc' ) as $page ) {
+			$this->assertSame( array( 'p1', 'p2' ), $this->titles( $this->render( array( 'paginationType' => 'pages' ), $page ) ), $page );
+		}
+	}
+
+	public function testNoPaginationForASinglePage() {
+		$this->go_to( '/' );
+		$html = $this->render( array( 'paginationType' => 'pages', 'num' => 10 ) );
+
+		$this->assertCount( 5, $this->titles( $html ) );
+		$this->assertStringNotContainsString( 'categoryPosts-pagination', $html );
+	}
+
+	public function testLoadMoreAndNoneAreUnchanged() {
+		$this->go_to( '/' );
+
+		$loadmore = $this->render( array( 'paginationType' => 'loadmore' ) );
+		$this->assertStringContainsString( '-loadmore', $loadmore );
+		$this->assertStringNotContainsString( '-pagination', $loadmore );
+
+		// The old toggle alone still means load more.
+		$this->assertStringContainsString( '-loadmore', $this->render( array( 'enableLoadmore' => true ) ) );
+
+		$none = $this->render( array( 'paginationType' => 'none' ) );
+		$this->assertStringNotContainsString( '-loadmore', $none );
+		$this->assertStringNotContainsString( '-pagination', $none );
+
+		// Other lists' parameters do not page this one.
+		$_GET['cpwp-block-8-page'] = '2';
+		$this->assertSame( array( 'p1', 'p2' ), $this->titles( $this->render( array( 'paginationType' => 'pages' ) ) ) );
+	}
+}

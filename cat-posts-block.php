@@ -69,6 +69,16 @@ function build_block_instance( $attributes ) {
 	$instance['template']               = isset( $attributes['template'] ) ? $attributes['template'] : "%title%\n\n%thumb%\n%excerpt%";
 	$instance['text_do_not_wrap_thumb'] = isset( $attributes['textDoNotWrapThumb'] ) ? $attributes['textDoNotWrapThumb'] : false;
 	$instance['enable_loadmore']        = isset( $attributes['enableLoadmore'] ) ? $attributes['enableLoadmore'] : false;
+	// "More posts" (none / load more / pagination) replaced the "Enable Load More"
+	// toggle of the block in 5.1.3. Blocks saved before have no choice, it follows
+	// the toggle then. enable_loadmore is kept in sync, the load more code reads it.
+	$instance['pagination_type']        = pagination_type(
+		array(
+			'pagination_type' => isset( $attributes['paginationType'] ) ? $attributes['paginationType'] : '',
+			'enable_loadmore' => $instance['enable_loadmore'],
+		)
+	);
+	$instance['enable_loadmore']        = ( 'loadmore' === $instance['pagination_type'] );
 	$instance['loadmore_scrollTo']      = isset( $attributes['loadmoreScrollTo'] ) ? $attributes['loadmoreScrollTo'] : false;
 	$instance['loadmore_text']          = isset( $attributes['loadmoreText'] ) ? $attributes['loadmoreText'] : 'Load More (%step%/%all%)';
 	$instance['loading_text']           = isset( $attributes['loadingText'] ) ? $attributes['loadingText'] : 'Loading...';
@@ -227,8 +237,10 @@ function render_category_posts_block( $attributes ) {
 
 		$ret .= '<ul>' . implode( $items ) . '</ul>';
 
-		// Load more only if we think we have more items.
-		if ( count( $items ) === (int) $instance['num'] ) {
+		if ( 'pages' === $instance['pagination_type'] ) {
+			$ret .= $widget->paginationHTML( $instance );
+		} elseif ( count( $items ) === (int) $instance['num'] ) {
+			// Load more only if we think we have more items.
 			$ret .= $widget->loadMoreHTML( $instance );
 		}
 
