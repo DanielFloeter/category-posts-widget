@@ -1,11 +1,14 @@
 import { registerBlockType } from '@wordpress/blocks';
 import { createBlock } from '@wordpress/blocks';
+import { select } from '@wordpress/data';
+import { store as blockEditorStore } from '@wordpress/block-editor';
 import { __ } from '@wordpress/i18n';
 import './style.scss';
 import Edit from './edit';
 import Save from './save';
 import transformToPro from './transform';
 import widgetToBlockAttributes from './widget-transform';
+import queryToBlockAttributes, { isRepresentable } from './query-transform';
 import metadata from './../block.json';
 const { name } = metadata;
 
@@ -57,6 +60,22 @@ registerBlockType(name, {
 					return createBlock('tiptip/category-posts-block', widgetToBlockAttributes(instance.raw));
 				},
 
+			},
+			{
+				// A query loop block, as long as this block can show the same posts.
+				type: 'block',
+				blocks: [ 'core/query' ],
+				isMatch: ( attributes ) => isRepresentable( attributes ),
+				transform: ( attributes, innerBlocks ) => {
+					// The sizes the thumbnail is measured against.
+					const settings = select( blockEditorStore ).getSettings();
+					const layout = settings.__experimentalFeatures?.layout || {};
+					return createBlock( 'tiptip/category-posts-block', queryToBlockAttributes( attributes, innerBlocks, {
+						imageDimensions: settings.imageDimensions,
+						contentSize: layout.contentSize,
+						wideSize: layout.wideSize,
+					} ) );
+				},
 			},
 		],
 		to: [ transformToPro ],
