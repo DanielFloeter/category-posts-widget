@@ -48,6 +48,29 @@ class Widget extends \WP_Widget {
 	public $total_pages = 0;
 
 	/**
+	 * What the editor preview stands in for the page the list is on, resolved
+	 * from the template or post being edited, see preview_context().
+	 *
+	 * @var array|null
+	 */
+	public $preview_context = null;
+
+	/**
+	 * The slug of the template the editor preview is for, empty if none.
+	 *
+	 * @var string
+	 */
+	public $preview_template_slug = '';
+
+	/**
+	 * The query variables of the page, for "load more" of a list which took
+	 * over the query of the page, see inherited_query().
+	 *
+	 * @var array|null
+	 */
+	public $inherited_vars = null;
+
+	/**
 	 * Widget constructor.
 	 */
 	public function __construct() {
@@ -600,12 +623,20 @@ class Widget extends \WP_Widget {
 			return '';
 		}
 
-		$param = $this->pagination_param();
-		$base  = remove_query_arg( $param );
+		$inherit = ! empty( $instance['inherit_query'] );
+		$param   = $this->pagination_param();
+		$base    = remove_query_arg( $param );
+		$link    = function ( $page ) use ( $param, $base, $inherit ) {
+			if ( $inherit ) {
+				// The pages of the page itself, /page/N/ or ?paged=N.
+				return esc_url( get_pagenum_link( $page ) );
+			}
+			return esc_url( 1 === $page ? $base : add_query_arg( $param, $page, $base ) );
+		};
 
 		$links = paginate_links(
 			array(
-				'base'      => add_query_arg( $param, '%#%', $base ),
+				'base'      => $inherit ? str_replace( '999999999', '%#%', $link( 999999999 ) ) : add_query_arg( $param, '%#%', $base ),
 				'format'    => '',
 				'current'   => $current,
 				'total'     => $total,
@@ -615,11 +646,238 @@ class Widget extends \WP_Widget {
 		);
 		// paginate_links() builds the link to the first page from the base too,
 		// the first page has no parameter.
-		$links = str_replace( '"' . esc_url( add_query_arg( $param, 1, $base ) ) . '"', '"' . esc_url( $base ) . '"', $links );
+		$first = $inherit ? str_replace( '999999999', '1', $link( 999999999 ) ) : esc_url( add_query_arg( $param, 1, $base ) );
+		$links = str_replace( '"' . $first . '"', '"' . $link( 1 ) . '"', $links );
 
 		return '<nav class="' . __NAMESPACE__ . '-pagination" aria-label="' . esc_attr__( 'Posts pagination', 'category-posts' ) . '">' .
 				$links .
 			'</nav>';
+	}
+
+	/**
+	 * Whether the list is rendered for the editor preview, a REST request
+	 * without a page of its own.
+	 *
+	 * @return bool True in the editor preview.
+	 *
+	 * @since 5.1.3
+	 */
+	protected function is_editor_preview() {
+		return defined( 'REST_REQUEST' ) && REST_REQUEST;
+	}
+
+	/**
+	 * The query type of a list: 'custom' or 'default' (the query of the page).
+	 *
+	 * @param array $instance Array which contains the various settings.
+	 *
+	 * @return string The query type.
+	 *
+	 * @since 5.1.3
+	 */
+	public function query_type( $instance ) {
+		if ( isset( $instance['query_type'] ) && in_array( $instance['query_type'], array( 'custom', 'default' ), true ) ) {
+			return $instance['query_type'];
+		}
+
+		return empty( $instance['inherit_query'] ) ? 'custom' : 'default';
+	}
+
+	/**
+	 * The posts of a list which took over the query of the page it is on
+	 * ("Query type: Default").
+	 *
+	 * On the front end the posts the page already has, without another query.
+	 * For "load more" a query from the signed query variables of the page,
+	 * see sign_inherited_query(), and nothing without them. In the editor
+	 * preview, which has no page, a query for what the edited template stands
+	 * for, see preview_query_vars().
+	 *
+	 * @param array $instance Array which contains the various settings.
+	 * @param int   $start    The start element for "load more", 1 based, 0 for the first page.
+	 * @param int   $number   The number of elements for "load more".
+	 *
+	 * @return \WP_Query The query.
+	 *
+	 * @since 5.1.3
+	 */
+	public function inherited_query( $instance, $start = 0, $number = 0 ) {
+		$per_page = max( 1, (int) $instance['num'] );
+
+		if ( 0 < (int) $start ) {
+			if ( ! is_array( $this->inherited_vars ) ) {
+				return new \WP_Query();
+			}
+			$vars                        = $this->inherited_vars;
+			$vars['posts_per_page']      = 0 < (int) $number ? (int) $number : $per_page;
+			$vars['offset']              = max( 0, (int) $start - 1 );
+			$vars['ignore_sticky_posts'] = true;
+			return new \WP_Query( $vars );
+		}
+
+		if ( $this->is_editor_preview() ) {
+			return new \WP_Query(
+				array_merge(
+					$this->preview_query_vars(),
+					array(
+						'posts_per_page'      => $per_page,
+						'ignore_sticky_posts' => true,
+					)
+				)
+			);
+		}
+
+		// The posts the page already has, in a query of its own so the loop of the
+		// list does not move the main loop.
+		global $wp_query;
+		$query                = new \WP_Query();
+		$query->query         = $wp_query->query;
+		$query->query_vars    = $wp_query->query_vars;
+		$query->posts         = $wp_query->posts;
+		$query->post_count    = count( (array) $wp_query->posts );
+		$query->found_posts   = (int) $wp_query->found_posts;
+		$query->max_num_pages = (int) $wp_query->max_num_pages;
+
+		return $query;
+	}
+
+	/**
+	 * The query the editor preview of a list which took over the query of the
+	 * page uses: the posts of what the edited template stands for.
+	 *
+	 * @return array The query variables.
+	 *
+	 * @since 5.1.3
+	 */
+	public function preview_query_vars() {
+		$context = $this->preview_context;
+		$vars    = array( 'post_type' => 'post' );
+
+		if ( $context ) {
+			switch ( $context['type'] ) {
+				case 'term':
+					$taxonomy          = get_taxonomy( $context['object']->taxonomy );
+					$vars['post_type'] = $taxonomy ? $taxonomy->object_type : 'post';
+					$vars['tax_query'] = array(
+						array(
+							'taxonomy' => $context['object']->taxonomy,
+							'field'    => 'term_id',
+							'terms'    => (int) $context['object']->term_id,
+						),
+					);
+					break;
+				case 'author':
+					$vars['author'] = (int) $context['object']->ID;
+					break;
+				case 'post':
+					$vars['p']         = (int) $context['object']->ID;
+					$vars['post_type'] = $context['object']->post_type;
+					break;
+			}
+		} elseif ( preg_match( '/^archive-(.+)$/', (string) $this->preview_template_slug, $m ) && post_type_exists( $m[1] ) ) {
+			$vars['post_type'] = $m[1];
+		}
+
+		return $vars;
+	}
+
+	/**
+	 * What the page an edited template or post stands for, for the editor
+	 * preview, which has no page of its own.
+	 *
+	 * Templates for one term, author or post ('category-{slug}', 'tag-{slug}',
+	 * 'taxonomy-{taxonomy}-{slug}', 'author-{nicename}', 'single-{type}-{slug}',
+	 * 'page-{slug}') name it. Templates for all of them ('archive', 'category',
+	 * 'tag', 'taxonomy-{taxonomy}', 'date', 'author', 'single',
+	 * 'single-{type}', 'page') stand for nothing in particular, like in the
+	 * preview of the core Query Loop, which shows the latest posts there. In
+	 * the post editor, without a template, the post being edited.
+	 *
+	 * @param string $slug    The template slug, empty outside the site editor.
+	 * @param int    $post_id The post being edited, 0 if none.
+	 *
+	 * @return array|null Array with 'type' ('term', 'author' or 'post') and
+	 *                    'object', null for a template for all terms, authors
+	 *                    or posts.
+	 *
+	 * @since 5.1.3
+	 */
+	public function preview_context( $slug, $post_id = 0 ) {
+		$slug = (string) $slug;
+
+		if ( '' === $slug ) {
+			$post = $post_id ? get_post( $post_id ) : null;
+			return $post ? array( 'type' => 'post', 'object' => $post ) : null;
+		}
+
+		// Terms.
+		$taxonomy = '';
+		$name     = null;
+		if ( preg_match( '/^(category|tag)(?:-(.+))?$/', $slug, $m ) ) {
+			$taxonomy = ( 'tag' === $m[1] ) ? 'post_tag' : 'category';
+			$name     = isset( $m[2] ) ? $m[2] : '';
+		} elseif ( 0 === strpos( $slug, 'taxonomy-' ) ) {
+			$taxonomy = $this->longest_prefix( substr( $slug, strlen( 'taxonomy-' ) ), get_taxonomies() );
+			$name     = ( '' === $taxonomy ) ? null : (string) substr( $slug, strlen( 'taxonomy-' . $taxonomy ) + 1 );
+		}
+		if ( null !== $name ) {
+			if ( '' === $name || ! taxonomy_exists( $taxonomy ) ) {
+				return null;
+			}
+			$term = get_term_by( 'slug', $name, $taxonomy );
+			if ( ! $term ) {
+				$term = get_term_by( 'slug', sanitize_title( urldecode( $name ) ), $taxonomy );
+			}
+			return $term ? array( 'type' => 'term', 'object' => $term ) : null;
+		}
+
+		// Authors.
+		if ( preg_match( '/^author-(.+)$/', $slug, $m ) ) {
+			$user = get_user_by( 'slug', $m[1] );
+			if ( ! $user && ctype_digit( $m[1] ) ) {
+				$user = get_user_by( 'id', (int) $m[1] );
+			}
+			return $user ? array( 'type' => 'author', 'object' => $user ) : null;
+		}
+
+		// Single posts and pages.
+		$type = null;
+		$name = '';
+		if ( 0 === strpos( $slug, 'single-' ) ) {
+			$type = $this->longest_prefix( substr( $slug, strlen( 'single-' ) ), get_post_types() );
+			$name = ( '' === $type ) ? '' : (string) substr( $slug, strlen( 'single-' . $type ) + 1 );
+		} elseif ( preg_match( '/^page(?:-(.+))?$/', $slug, $m ) ) {
+			$type = 'page';
+			$name = isset( $m[1] ) ? $m[1] : '';
+		}
+		if ( null === $type || '' === $name ) {
+			return null;
+		}
+		$post = get_page_by_path( $name, OBJECT, $type ? $type : 'post' );
+
+		return $post ? array( 'type' => 'post', 'object' => $post ) : null;
+	}
+
+	/**
+	 * The longest name that the text is or starts with, followed by a dash.
+	 * Taxonomy and post type names may contain dashes themselves.
+	 *
+	 * @param string   $text  The text.
+	 * @param string[] $names The candidate names.
+	 *
+	 * @return string The name, empty if none fits.
+	 *
+	 * @since 5.1.3
+	 */
+	private function longest_prefix( $text, $names ) {
+		$found = '';
+		foreach ( $names as $name ) {
+			if ( ( $text === $name || 0 === strpos( $text, $name . '-' ) ) && strlen( $name ) > strlen( $found ) ) {
+				$found = $name;
+			}
+		}
+
+		return $found;
 	}
 
 	/**
@@ -635,6 +893,11 @@ class Widget extends \WP_Widget {
 		global $post_count;
 
 		if ( ! $instance['enable_loadmore'] || $post_count <= $instance['num'] ) {
+			return '';
+		}
+
+		// On the last page of the page whose query the list took over, nothing more to load.
+		if ( ! empty( $instance['inherit_query'] ) && (int) $instance['offset'] + (int) $instance['num'] > $post_count ) {
 			return '';
 		}
 
@@ -662,7 +925,15 @@ class Widget extends \WP_Widget {
 		$loading  = $instance['loading_text'] !== '' ? $instance['loading_text'] : esc_attr__( 'Loading...', 'category-posts' );
 		$scrollTo = isset( $instance['loadmore_scrollTo'] ) && $instance['loadmore_scrollTo'];
 
-		$ret .= '<button type="button" data-loading="' . esc_attr( $loading ) . '" data-id="' . esc_attr( $id ) .
+		// A list which took over the query of the page loads more of that query.
+		$inherited = '';
+		if ( ! empty( $instance['inherit_query'] ) ) {
+			global $wp_query;
+			$signed    = sign_inherited_query( (array) $wp_query->query );
+			$inherited = ' data-query="' . esc_attr( $signed['query'] ) . '" data-sig="' . esc_attr( $signed['sig'] ) . '"';
+		}
+
+		$ret .= '<button type="button"' . $inherited . ' data-loading="' . esc_attr( $loading ) . '" data-id="' . esc_attr( $id ) .
 					'" data-start="' . esc_attr( $start ) . '" data-context="' . esc_attr( $context ) . '" data-number="' . esc_attr( $number ) . 
 					'" data-post-count="' . esc_attr( $post_count ) . '" data-placeholder="' . esc_attr( $placeholder_text ) . '" data-scrollto="' . esc_html( $scrollTo ) . '">' . 
 					esc_html( $loadmore_text ) .
@@ -1378,28 +1649,40 @@ class Widget extends \WP_Widget {
 		if ( 0 < $number ) {
 			$instance['num'] = $number;
 		}
-		$args = $this->queryArgs( $instance, $singular_id );
+		if ( 'default' === $this->query_type( $instance ) ) {
+			// The query of the page: its pages are those of the page, /page/N/.
+			$cat_posts = $this->inherited_query( $instance, $start, $number );
+			if ( 0 === (int) $start ) {
+				$this->current_page = max( 1, (int) $cat_posts->get( 'paged' ) );
+				$this->total_pages  = (int) $cat_posts->max_num_pages;
+			}
+			if ( isset( $instance['enable_loadmore'] ) && $instance['enable_loadmore'] ) {
+				$post_count = (int) $cat_posts->found_posts;
+			}
+		} else {
+			$args = $this->queryArgs( $instance, $singular_id );
 
-		// Pagination: the page comes from the list's own URL parameter. The offset
-		// is set explicitly, WP_Query ignores 'paged' as soon as there is one.
-		$paginate = ( 'pages' === pagination_type( $instance ) ) && 0 === (int) $start && 0 < (int) $instance['num'];
-		if ( $paginate ) {
-			$base_offset           = isset( $args['offset'] ) ? (int) $args['offset'] : 0;
-			$this->current_page    = $this->current_page();
-			$args['offset']        = $base_offset + ( $this->current_page - 1 ) * (int) $instance['num'];
-			$args['no_found_rows'] = false;
-		}
+			// Pagination: the page comes from the list's own URL parameter. The offset
+			// is set explicitly, WP_Query ignores 'paged' as soon as there is one.
+			$paginate = ( 'pages' === pagination_type( $instance ) ) && 0 === (int) $start && 0 < (int) $instance['num'];
+			if ( $paginate ) {
+				$base_offset           = isset( $args['offset'] ) ? (int) $args['offset'] : 0;
+				$this->current_page    = $this->current_page();
+				$args['offset']        = $base_offset + ( $this->current_page - 1 ) * (int) $instance['num'];
+				$args['no_found_rows'] = false;
+			}
 
-		$cat_posts = new \WP_Query( $args );
+			$cat_posts = new \WP_Query( $args );
 
-		if ( $paginate ) {
-			$this->total_pages = (int) ceil( max( 0, $cat_posts->found_posts - $base_offset ) / (int) $instance['num'] );
-		}
+			if ( $paginate ) {
+				$this->total_pages = (int) ceil( max( 0, $cat_posts->found_posts - $base_offset ) / (int) $instance['num'] );
+			}
 
-		if( isset( $instance['enable_loadmore'] ) && $instance['enable_loadmore'] ) {
-			$args['showposts'] = 0;
-			$args['nopaging'] = true;
-			$post_count = ( new \WP_Query( $args ) )->post_count; // May there is a better workflow to count the loadable items
+			if ( isset( $instance['enable_loadmore'] ) && $instance['enable_loadmore'] ) {
+				$args['showposts'] = 0;
+				$args['nopaging']  = true;
+				$post_count        = ( new \WP_Query( $args ) )->post_count; // May there is a better workflow to count the loadable items
+			}
 		}
 
 		$current_post_id = null;

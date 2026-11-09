@@ -48,6 +48,49 @@ function normalize_block_loadmore_id( $id ) {
 }
 
 /**
+ * The query variables of a page, signed, for "load more" of a list which took
+ * over the query of the page.
+ *
+ * @param array  $vars The query variables of the request of the page.
+ * @param string $kind What the signature is for, a signature of one kind is
+ *                     not valid for another.
+ *
+ * @return array Array with 'query' (JSON) and 'sig'.
+ *
+ * @since 5.1.3
+ */
+function sign_inherited_query( $vars, $kind = 'inherited-query' ) {
+	$vars = (array) $vars;
+	unset( $vars['paged'], $vars['page'], $vars['offset'], $vars['posts_per_page'] );
+	$query = wp_json_encode( $vars );
+
+	return array(
+		'query' => $query,
+		'sig'   => wp_hash( 'cpwp-' . $kind . '|' . $query ),
+	);
+}
+
+/**
+ * The query variables of a signed query, see sign_inherited_query().
+ *
+ * @param string $query The query variables as JSON.
+ * @param string $sig   The signature.
+ * @param string $kind  What the signature is for.
+ *
+ * @return array|null The query variables, null if the signature does not match.
+ *
+ * @since 5.1.3
+ */
+function verify_inherited_query( $query, $sig, $kind = 'inherited-query' ) {
+	if ( '' === $query || ! hash_equals( wp_hash( 'cpwp-' . $kind . '|' . $query ), $sig ) ) {
+		return null;
+	}
+	$vars = json_decode( $query, true );
+
+	return is_array( $vars ) ? $vars : null;
+}
+
+/**
  * Generate the JSON response which includes additional element as a response
  * to a "load more" request.
  *
@@ -106,7 +149,16 @@ function get_next_elements( \WP_REST_Request $request ) {
 					$settings = get_block_loadmore_settings( $block_id );
 					if ( false !== $settings ) {
 						$instance = build_block_instance( $settings );
-						$widget = new Widget();
+						$widget   = new Widget();
+						if ( $instance['inherit_query'] ) {
+							// The query of the page the list is on, signed by loadMoreHTML().
+							// Without a valid signature nothing is loaded, rather than posts from
+							// everywhere.
+							$widget->inherited_vars = verify_inherited_query( (string) $request['query'], (string) $request['sig'] );
+							if ( null === $widget->inherited_vars ) {
+								break;
+							}
+						}
 						$ret = $widget->get_elements_HTML( $instance, $context, $start, $number );
 					}
 				}

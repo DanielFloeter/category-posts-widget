@@ -30,6 +30,7 @@ import {
 	Flex,
 	FlexBlock,
 	BaseControl,
+	Notice,
 } from '@wordpress/components';
 import { InspectorControls, RichText, useBlockProps } from '@wordpress/block-editor';
 import ServerSideRender from '@wordpress/server-side-render';
@@ -70,8 +71,11 @@ const END_DATE = [ 'endDate' ];
 const EXCLUDE_CURRENT_POST = [ 'excludeCurrentPost' ];
 const HIDE_NO_THUMB = [ 'hideNoThumb' ];
 const STICKY = [ 'sticky' ];
+const QUERY_TYPE = [ 'queryType' ];
+// Templates of a single view: a post, a page. "Query type: Default" has no posts to take over there.
+const SINGULAR_TEMPLATE = /^(single|page)(-|$)/;
 const FILTER = [
-	...CATEGORY, ...ORDER, ...STATUS, ...NUMBER_OF_POSTS, ...DATE_RANGE,
+	...QUERY_TYPE, ...CATEGORY, ...ORDER, ...STATUS, ...NUMBER_OF_POSTS, ...DATE_RANGE,
 	...EXCLUDE_CURRENT_POST, ...HIDE_NO_THUMB, ...STICKY,
 ];
 const BUILT_IN_CSS = [ 'disableCss', 'disableFontStyles', 'disableThemeStyles' ];
@@ -204,7 +208,7 @@ function DateControl( { id, label, buttonLabel, value, onChange } ) {
 	);
 }
 
-export default function Edit({ attributes, setAttributes, clientId }) {
+export default function Edit({ attributes, setAttributes, clientId, context }) {
 	const {
 		hideTitle, title, titleLink, titleLinkUrl, titleLinkTarget, titleLevel,
 		order, orderBy, categories, status, num, offset, dateRange, startDate, endDate, daysAgo, excludeCurrentPost, hideNoThumb, sticky,
@@ -213,6 +217,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, paginationType, loadmoreScrollTo, loadmoreText, loadingText,
 		footerLinkText, footerLink, footerLinkTarget, instanceId, shownTools
 	} = attributes;
+	const queryType = 'default' === attributes.queryType ? 'default' : 'custom';
 	// "More posts" replaced the "Enable Load More" toggle. Blocks saved before
 	// have no choice yet, it follows the old toggle then (see pagination_type()).
 	const morePosts = [ 'none', 'loadmore', 'pages' ].includes( paginationType )
@@ -479,6 +484,26 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 	// Which entries are shown does not change the preview, so it is not loaded again.
 	const { shownTools: omitted, ...previewAttributes } = attributes;
 
+	// The slug of the template being edited in the site editor, so the preview can
+	// stand in for the page the list is shown on. The post being edited in the post
+	// editor, or the entry of a Query Loop the block sits in. Only for the preview,
+	// never saved.
+	const previewQueryArgs = {};
+	if ( context?.templateSlug ) {
+		previewQueryArgs.cpwp_template_slug = context.templateSlug;
+	}
+	if ( context?.postId && ( ! context?.templateSlug || undefined !== context?.queryId ) ) {
+		previewQueryArgs.cpwp_post_id = context.postId;
+	}
+
+	// "Query type: Default" takes over the posts of the page, a single view (a post,
+	// a page, 404) has none to take over: on the post editor and in single and page
+	// templates, also inside a Query Loop there, the query of the page stays the
+	// single one. Like the core Query Loop says it, but on the canvas, where the
+	// otherwise empty list is.
+	const defaultOnSingular = 'default' === queryType
+		&& ( ! context?.templateSlug || SINGULAR_TEMPLATE.test( context.templateSlug ) );
+
 	// "Reset all" of a ToolsPanel, which hides its entries from "Tools" as well.
 	const resetPanel = ( keys ) => setAttributes( {
 		...defaultsOf( keys ),
@@ -597,6 +622,31 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 					label={ __( 'Filter', 'category-posts' ) }
 					resetAll={ () => resetPanel( FILTER ) }
 				>
+					<ToolsPanelItem
+						label={ __( 'Query type', 'category-posts' ) }
+						hasValue={ () => 'custom' !== queryType }
+						onDeselect={ () => setAttributes( { queryType: undefined } ) }
+						isShownByDefault
+					>
+						{ /* The choice of "Query type" of the core query loop block. */ }
+						<ToggleGroupControl
+							label={ __( 'Query type', 'category-posts' ) }
+							value={ queryType }
+							isBlock
+							onChange={ ( value ) => setAttributes( { queryType: value } ) }
+							help={ {
+								default: __( 'Display exactly the posts of the page the list is on.', 'category-posts' ),
+								custom: __( 'Display posts based on the settings below only.', 'category-posts' ),
+							}[ queryType ] }
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						>
+							<ToggleGroupControlOption value="default" label={ __( 'Default', 'category-posts' ) } />
+							<ToggleGroupControlOption value="custom" label={ __( 'Custom', 'category-posts' ) } />
+						</ToggleGroupControl>
+					</ToolsPanelItem>
+					{ /* With the query of the page taken over, the filters have no effect. */ }
+					{ 'default' !== queryType && ( <>
 					<ToolsPanelItem
 						label={ __( 'Category', 'category-posts' ) }
 						hasValue={ () => differsFromDefault( attributes, CATEGORY ) }
@@ -817,6 +867,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 							__nextHasNoMarginBottom
 						/>
 					</ToolsPanelItem>
+					</> ) }
 				</ToolsPanel>
 				<ToolsPanel
 					className="cpwp-tools-panel"
@@ -1309,6 +1360,11 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 				  * off :hover as well, so the thumbnail hover effect could not be seen in
 				  * the editor. Keep the pointer events and just swallow the clicks instead.
 				  */}
+				{ defaultOnSingular && (
+					<Notice status="warning" isDismissible={ false } className="cpwp-block-notice">
+						{ __( 'Query type "Default" shows the posts of the page the list is on. A single view (e.g. post, page, 404) has no posts to take over, use "Custom" here, or place the list in an archive template.', 'category-posts' ) }
+					</Notice>
+				) }
 				<div
 					className="cpwp-block-preview"
 					ref={ previewRef }
@@ -1317,6 +1373,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
 					<ServerSideRender
 						block="tiptip/category-posts-block"
 						attributes={ previewAttributes }
+						urlQueryArgs={ previewQueryArgs }
 					/>
 				</div>
 			</div>

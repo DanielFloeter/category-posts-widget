@@ -2471,3 +2471,168 @@ class testPagination extends WP_UnitTestCase {
 		$this->assertSame( array( 'p1', 'p2' ), $this->titles( $this->render( array( 'paginationType' => 'pages' ) ) ) );
 	}
 }
+
+/**
+ * "Query type: Default": the block takes over the query of the page it is on,
+ * with its pages and "load more", and the preview from the edited template.
+ */
+class testInheritQuery extends WP_UnitTestCase {
+
+	/**
+	 * Categories: News with five posts, Other with two.
+	 *
+	 * @var int[]
+	 */
+	private $cats = array();
+
+	public function setUp(): void {
+		parent::setUp();
+		$GLOBALS['before_title'] = '';
+		$GLOBALS['after_title']  = '';
+		update_option( 'posts_per_page', 2 );
+		$this->cats = array(
+			'News'  => $this->factory->category->create( array( 'name' => 'News' ) ),
+			'Other' => $this->factory->category->create( array( 'name' => 'Other' ) ),
+		);
+		foreach ( range( 1, 5 ) as $i ) {
+			$this->factory->post->create( array( 'post_title' => 'n' . $i, 'post_date' => sprintf( '2024-01-%02d 00:00:00', 10 - $i ), 'post_category' => array( $this->cats['News'] ) ) );
+		}
+		foreach ( range( 1, 2 ) as $i ) {
+			$this->factory->post->create( array( 'post_title' => 'o' . $i, 'post_date' => sprintf( '2025-01-%02d 00:00:00', 10 - $i ), 'post_category' => array( $this->cats['Other'] ) ) );
+		}
+	}
+
+	private function render( $attributes = array() ) {
+		return \categoryPosts\render_category_posts_block(
+			array_merge(
+				array(
+					'num'        => 10,
+					'template'   => '%title%',
+					'instanceId' => 4,
+					'queryType'  => 'default',
+				),
+				$attributes
+			)
+		);
+	}
+
+	private function titles( $html ) {
+		preg_match_all( '/>([no]\d)</', $html, $m );
+		return $m[1];
+	}
+
+	public function testTakesThePostsOfTheArchive() {
+		$this->go_to( get_term_link( $this->cats['News'] ) );
+		$this->assertSame( array( 'n1', 'n2' ), $this->titles( $this->render() ) );
+
+		// The filters of the block have no effect then.
+		$this->assertSame( array( 'n1', 'n2' ), $this->titles( $this->render( array( 'categories' => (string) $this->cats['Other'], 'num' => 1 ) ) ) );
+
+		// Without, the own query as before.
+		$this->assertSame( array( 'o1', 'o2', 'n1' ), array_slice( $this->titles( $this->render( array( 'queryType' => 'custom' ) ) ), 0, 3 ) );
+		$this->assertSame( array( 'o1', 'o2', 'n1' ), array_slice( $this->titles( $this->render( array( 'queryType' => null ) ) ), 0, 3 ) );
+	}
+
+	public function testTheMainLoopIsNotMoved() {
+		$this->go_to( get_term_link( $this->cats['News'] ) );
+		global $wp_query; // After go_to(), which puts a new query in place.
+		$before = $wp_query->current_post;
+		$this->render();
+		$this->assertSame( $before, $wp_query->current_post );
+		$this->assertSame( 2, $wp_query->post_count );
+	}
+
+	public function testPaginationUsesThePagesOfThePage() {
+		$this->go_to( get_term_link( $this->cats['News'] ) );
+		$html = $this->render( array( 'paginationType' => 'pages' ) );
+		$this->assertStringContainsString( 'href="' . esc_url( get_pagenum_link( 2 ) ) . '"', $html );
+		$this->assertStringContainsString( 'href="' . esc_url( get_pagenum_link( 3 ) ) . '"', $html );
+		$this->assertStringNotContainsString( 'cpwp-block-4-page', $html );
+
+		$this->go_to( add_query_arg( 'paged', 2, get_term_link( $this->cats['News'] ) ) );
+		$html = $this->render( array( 'paginationType' => 'pages' ) );
+		$this->assertSame( array( 'n3', 'n4' ), $this->titles( $html ) );
+		$this->assertStringContainsString( '<span aria-current="page" class="page-numbers current">2</span>', $html );
+		// The first page is the archive itself, not page 1.
+		$this->assertStringContainsString( 'href="' . esc_url( get_term_link( $this->cats['News'] ) ) . '"', $html );
+		$this->assertStringNotContainsString( 'paged=1', $html );
+
+		// On the last page nothing more to load.
+		$this->go_to( add_query_arg( 'paged', 3, get_term_link( $this->cats['News'] ) ) );
+		$this->assertStringNotContainsString( '-loadmore', $this->render( array( 'paginationType' => 'loadmore' ) ) );
+	}
+
+	public function testLoadMoreLoadsMoreOfThePage() {
+		$this->go_to( get_term_link( $this->cats['News'] ) );
+		$html = $this->render( array( 'paginationType' => 'loadmore' ) );
+		$this->assertSame( 1, preg_match( '/data-query="([^"]*)" data-sig="([^"]*)"[^>]*data-start="(\d+)"[^>]*data-number="(\d+)"[^>]*data-post-count="(\d+)"/', $html, $m ) );
+		$query = html_entity_decode( $m[1], ENT_QUOTES );
+		$this->assertSame( '3', $m[3] );
+		$this->assertSame( '2', $m[4] );
+		$this->assertSame( '5', $m[5] );
+
+		$request = function ( $query, $sig ) use ( $m ) {
+			$r = new WP_REST_Request( 'GET', '/categoryPosts/loadmore' );
+			$r->set_url_params( array( 'id' => 'block-4', 'start' => $m[3], 'number' => $m[4], 'context' => '0' ) );
+			$r->set_query_params( array( 'query' => $query, 'sig' => $sig ) );
+			return \categoryPosts\get_next_elements( $r )->get_data();
+		};
+
+		// The next posts of News, not of everything.
+		$this->go_to( '/' );
+		$this->assertSame( array( 'n3', 'n4' ), $this->titles( implode( $request( $query, $m[2] ) ) ) );
+
+		// A changed query or signature loads nothing.
+		$forged = str_replace( (string) $this->cats['News'], (string) $this->cats['Other'], $query );
+		$this->assertSame( array(), $request( $forged, $m[2] ) );
+		$this->assertSame( array(), $request( $query, 'nope' ) );
+		$this->assertSame( array(), $request( '', '' ) );
+	}
+
+	/**
+	 * The editor preview, a REST request, for a template.
+	 */
+	private function preview( $slug, $post_id = 0 ) {
+		$preview = new class() extends \categoryPosts\Widget {
+			protected function is_editor_preview() {
+				return true;
+			}
+		};
+		$preview->preview_template_slug = $slug;
+		$preview->preview_context       = $preview->preview_context( $slug, $post_id );
+
+		return $preview;
+	}
+
+	public function testPreviewShowsThePostsOfTheTemplate() {
+		$this->go_to( '/' );
+		$instance = \categoryPosts\upgrade_settings( \categoryPosts\build_block_instance( array( 'queryType' => 'default', 'template' => '%title%', 'num' => 2 ) ) );
+		$titles   = function ( $widget ) use ( $instance ) {
+			return $this->titles( implode( $widget->get_elements_HTML( $instance, '', 0, 0 ) ) );
+		};
+
+		// A template for one term: its posts.
+		$this->assertSame( array( 'n1', 'n2' ), $titles( $this->preview( 'category-' . get_term( $this->cats['News'] )->slug ) ) );
+
+		// Templates for all terms and without a page to stand for: the latest posts,
+		// like the core Query Loop.
+		$this->assertSame( array( 'o1', 'o2' ), $titles( $this->preview( 'category' ) ) );
+		$this->assertSame( array( 'o1', 'o2' ), $titles( $this->preview( 'index' ) ) );
+	}
+
+	public function testPreviewContextFromTheTemplateSlug() {
+		$widget = new \categoryPosts\Widget();
+		$news   = get_term( $this->cats['News'] );
+		$post   = $this->factory->post->create( array( 'post_name' => 'hello-there' ) );
+		$author = $this->factory->user->create( array( 'user_nicename' => 'jane' ) );
+
+		$this->assertSame( (int) $news->term_id, (int) $widget->preview_context( 'category-' . $news->slug )['object']->term_id );
+		$this->assertSame( $author, (int) $widget->preview_context( 'author-jane' )['object']->ID );
+		$this->assertSame( $post, (int) $widget->preview_context( 'single-post-hello-there' )['object']->ID );
+		$this->assertSame( $post, (int) $widget->preview_context( '', $post )['object']->ID );
+
+		foreach ( array( 'category', 'tag', 'archive', 'single', 'page', 'index', 'category-nope' ) as $slug ) {
+			$this->assertNull( $widget->preview_context( $slug ), $slug );
+		}
+	}
+}

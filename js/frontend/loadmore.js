@@ -39,11 +39,15 @@ if (typeof jQuery !== 'undefined') {
                 loadmoreText = _this.data('placeholder'),
                 widgetNumber = container.attr('id') || jQuery(this).closest("[id*='" + id + "']").attr('id'),
                 scrollHeight = _ul.prop('scrollHeight'),
-                useScrollTo = _this.data('scrollto');
+                useScrollTo = _this.data('scrollto'),
+                // A list which took over the query of the page sends that query along,
+                // signed. attr() and not data(), which would parse the JSON.
+                inheritedQuery = _this.attr('data-query'),
+                inheritedArgs = inheritedQuery ? '?query=' + encodeURIComponent(inheritedQuery) + '&sig=' + encodeURIComponent(_this.attr('data-sig')) : '';
 
             _this.text(loadingText);
 
-            jQuery.getJSON(url + '/' + id + '/' + start + '/' + number + '/' + context + '/', function(data) {
+            jQuery.getJSON(url + '/' + id + '/' + start + '/' + number + '/' + context + '/' + inheritedArgs, function(data) {
                 jQuery.each(data, function(key, li) {
                     _ul.append(li);
                     _ul.children().last().trigger('catposts.load_more');

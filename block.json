@@ -5,6 +5,7 @@
 	"category": "widgets",
 	"icon": "admin-post",
 	"description": "Shows a list of recent posts from a category - with thumbnails, excerpt and a load more button.",
+	"usesContext": [ "templateSlug", "postId", "queryId" ],
 	"textdomain": "category-posts",
 	"attributes": {
 		"title": {
@@ -186,6 +187,10 @@
 		"textDoNotWrapThumb": {
 			"type": "boolean",
 			"default": false
+		},
+		"queryType": {
+			"type": "string",
+			"enum": [ "custom", "default" ]
 		},
 		"paginationType": {
 			"type": "string",

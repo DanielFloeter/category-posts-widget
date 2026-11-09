@@ -167,3 +167,12 @@
 	width: 100%;
 	justify-content: flex-start;
 }
+
+// Notes of the block on the canvas, e.g. "Query type: Default" in a single
+// view. In the font of the editor, not of the theme, they are not part of the page.
+.cpwp-block-notice.components-notice {
+	margin: 0 0 1em;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	font-size: 13px;
+	line-height: 1.5;
+}

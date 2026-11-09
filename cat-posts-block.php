@@ -79,6 +79,14 @@ function build_block_instance( $attributes ) {
 		)
 	);
 	$instance['enable_loadmore']        = ( 'loadmore' === $instance['pagination_type'] );
+	// "Query type": 'custom', or 'default', which takes over the query of the page
+	// (see Widget::inherited_query()).
+	$query_type = isset( $attributes['queryType'] ) ? $attributes['queryType'] : '';
+	if ( ! in_array( $query_type, array( 'custom', 'default' ), true ) ) {
+		$query_type = 'custom';
+	}
+	$instance['query_type']             = $query_type;
+	$instance['inherit_query']          = ( 'default' === $query_type );
 	$instance['loadmore_scrollTo']      = isset( $attributes['loadmoreScrollTo'] ) ? $attributes['loadmoreScrollTo'] : false;
 	$instance['loadmore_text']          = isset( $attributes['loadmoreText'] ) ? $attributes['loadmoreText'] : 'Load More (%step%/%all%)';
 	$instance['loading_text']           = isset( $attributes['loadingText'] ) ? $attributes['loadingText'] : 'Loading...';
@@ -200,6 +208,29 @@ function render_category_posts_block( $attributes ) {
 	store_block_loadmore_settings( $block_id, $attributes );
 	$widget->number = $block_id;
 
+	// The preview has no page of its own. In the site editor it gets the slug of
+	// the template being edited, in the post editor the post being edited
+	// (src/edit.js), which stand in for the page the block is shown on.
+	// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Read only, preview.
+	if ( defined( 'REST_REQUEST' ) && REST_REQUEST && ( ! empty( $_GET['cpwp_template_slug'] ) || ! empty( $_GET['cpwp_post_id'] ) ) ) {
+		$widget->preview_template_slug = isset( $_GET['cpwp_template_slug'] ) ? sanitize_text_field( wp_unslash( $_GET['cpwp_template_slug'] ) ) : '';
+		$widget->preview_context       = $widget->preview_context(
+			$widget->preview_template_slug,
+			isset( $_GET['cpwp_post_id'] ) ? absint( $_GET['cpwp_post_id'] ) : 0
+		);
+	}
+	// phpcs:enable WordPress.Security.NonceVerification.Recommended
+
+	// With the query of the page taken over, a page holds as many posts as the
+	// page does, and the list starts where the page starts, for "load more".
+	if ( $instance['inherit_query'] ) {
+		$per_page = (int) get_query_var( 'posts_per_page' );
+		if ( $per_page < 1 || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+			$per_page = max( 1, (int) get_option( 'posts_per_page' ) );
+		}
+		$instance['num']    = $per_page;
+		$instance['offset'] = 1 + ( max( 1, (int) get_query_var( 'paged' ) ) - 1 ) * $per_page;
+	}
 
 	$current_post_id = '';
 	if ( is_singular() ) {
