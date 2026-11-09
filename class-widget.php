@@ -461,13 +461,21 @@ class Widget extends \WP_Widget {
 			}
 		}
 
-		if ( ! ( isset( $instance['hide_title'] ) && $instance['hide_title'] ) ) {
-			$ret = $before_title;
+		$hidden = isset( $instance['hide_title'] ) && $instance['hide_title'];
+		$title  = '';
+		if ( ! $hidden ) {
 			if ( isset( $instance['is_shortcode'] ) ) {
 				$title = esc_html( $instance['title'] );
 			} else {
 				$title = apply_filters( 'widget_title', $instance['title'], $instance, WIDGET_BASE_ID );
 			}
+			// Without an archive the placeholders are empty, a title left without
+			// text is dropped.
+			$title = $this->replace_archive_placeholders( (string) $title );
+		}
+
+		if ( '' !== trim( wp_strip_all_tags( $title ) ) ) {
+			$ret = $before_title;
 
 			if ( isset( $instance['title_link'] ) && $instance['title_link'] ) {
 				$new_tab_attr = '';
@@ -486,13 +494,155 @@ class Widget extends \WP_Widget {
 			}
 
 			$ret .= $after_title;
-		}
-
-		if ( ! ( isset( $instance['hide_title'] ) && $instance['hide_title'] ) ) {
-			$ret = $this->add_heading_level( $instance, $ret, 'title_level' );
+			$ret  = $this->add_heading_level( $instance, $ret, 'title_level' );
 		}
 
 		return $ret;
+	}
+
+	/**
+	 * The placeholders of the title, which stand for the page the list is on.
+	 *
+	 * @return string[] The placeholders.
+	 *
+	 * @since 5.1.3
+	 */
+	public static function archive_placeholders() {
+		return array( '%archive_title%', '%archive_name%' );
+	}
+
+	/**
+	 * Replace the placeholders of the page the list is on in a text, see
+	 * archive_placeholder_values().
+	 *
+	 * @param string $text The text, already escaped.
+	 *
+	 * @return string The text with the placeholders replaced.
+	 *
+	 * @since 5.1.3
+	 */
+	public function replace_archive_placeholders( $text ) {
+		$text  = (string) $text;
+		$found = false;
+		foreach ( self::archive_placeholders() as $placeholder ) {
+			if ( false !== strpos( $text, $placeholder ) ) {
+				$found = true;
+				break;
+			}
+		}
+
+		return $found ? strtr( $text, $this->archive_placeholder_values() ) : $text;
+	}
+
+	/**
+	 * The values of the placeholders of the page the list is on, as HTML.
+	 *
+	 * %archive_title%: the title of the archive as the theme shows it, from
+	 * get_the_archive_title(), like "Category: News". %archive_name%: the same
+	 * without the prefix, like "News". Empty where the page is no archive.
+	 *
+	 * @return string[] The values, keyed by placeholder.
+	 *
+	 * @since 5.1.3
+	 */
+	public function archive_placeholder_values() {
+		if ( $this->is_editor_preview() ) {
+			return $this->preview_archive_placeholder_values();
+		}
+
+		$values = array_fill_keys( self::archive_placeholders(), '' );
+
+		if ( is_archive() ) {
+			$values['%archive_title%'] = get_the_archive_title();
+
+			// The same title without prefix, so the title of every kind of archive
+			// still comes from core.
+			$no_prefix = function () {
+				return '';
+			};
+			add_filter( 'get_the_archive_title_prefix', $no_prefix, PHP_INT_MAX );
+			$values['%archive_name%'] = get_the_archive_title();
+			remove_filter( 'get_the_archive_title_prefix', $no_prefix, PHP_INT_MAX );
+		}
+
+		return $values;
+	}
+
+	/**
+	 * The values of the placeholders of the page in the editor preview, which
+	 * has no archive.
+	 *
+	 * They are built from what the edited template stands for, see
+	 * preview_context(), without the filter get_the_archive_title, which needs
+	 * the real archive. A template for one term, author or post type gets its
+	 * title like on the front end. A template for all of them gets the kind of
+	 * archive with "Name", like the core query title block, so it is clear the
+	 * front end shows the term of the page there.
+	 *
+	 * @return string[] The values, keyed by placeholder.
+	 *
+	 * @since 5.1.3
+	 */
+	protected function preview_archive_placeholder_values() {
+		$context = $this->preview_context;
+		$label   = ''; // The kind of archive, for templates for all of them.
+		$prefix  = '';
+		$name    = '';
+
+		// phpcs:disable WordPress.WP.I18n.MissingArgDomain -- The strings of core, so the preview reads like the front end.
+		if ( $context && 'term' === $context['type'] ) {
+			$term     = $context['object'];
+			$taxonomy = get_taxonomy( $term->taxonomy );
+			$name     = esc_html( $term->name );
+			if ( 'category' === $term->taxonomy ) {
+				$prefix = _x( 'Category:', 'category archive title prefix' );
+			} elseif ( 'post_tag' === $term->taxonomy ) {
+				$prefix = _x( 'Tag:', 'tag archive title prefix' );
+			} elseif ( $taxonomy ) {
+				/* translators: %s: Taxonomy singular name. */
+				$prefix = sprintf( _x( '%s:', 'taxonomy term archive title prefix' ), $taxonomy->labels->singular_name );
+			}
+		} elseif ( $context && 'author' === $context['type'] ) {
+			$name   = esc_html( $context['object']->display_name );
+			$prefix = _x( 'Author:', 'author archive title prefix' );
+		} elseif ( preg_match( '/^archive-(.+)$/', (string) $this->preview_template_slug, $m ) && post_type_exists( $m[1] ) ) {
+			$name   = esc_html( get_post_type_object( $m[1] )->labels->name );
+			$prefix = _x( 'Archives:', 'post type archive title prefix' );
+		} else {
+			$slug     = (string) $this->preview_template_slug;
+			$taxonomy = null;
+			if ( 'category' === $slug || 'tag' === $slug ) {
+				$taxonomy = get_taxonomy( 'tag' === $slug ? 'post_tag' : 'category' );
+			} elseif ( 0 === strpos( $slug, 'taxonomy-' ) ) {
+				$taxonomy = get_taxonomy( substr( $slug, strlen( 'taxonomy-' ) ) );
+			}
+			if ( $taxonomy ) {
+				$label = $taxonomy->labels->singular_name;
+			} elseif ( 'date' === $slug ) {
+				$label = __( 'Date', 'category-posts' );
+			} elseif ( 'author' === $slug ) {
+				$label = __( 'Author', 'category-posts' );
+			}
+		}
+
+		if ( '' !== $name ) {
+			/* translators: 1: Title prefix. 2: Title. */
+			$title = sprintf( _x( '%1$s %2$s', 'archive title' ), esc_html( $prefix ), '<span>' . $name . '</span>' );
+		} elseif ( '' !== $label ) {
+			/* translators: %s: Kind of archive, like "Category" or "Author". */
+			$title = esc_html( sprintf( __( '%s: Name', 'category-posts' ), $label ) );
+			/* translators: %s: Kind of archive, like "Category" or "Author". */
+			$name = esc_html( sprintf( __( '%s name', 'category-posts' ), $label ) );
+		} else {
+			$title = esc_html__( 'Archive type: Name', 'category-posts' );
+			$name  = esc_html__( 'Archive title', 'category-posts' );
+		}
+		// phpcs:enable WordPress.WP.I18n.MissingArgDomain
+
+		return array(
+			'%archive_title%' => $title,
+			'%archive_name%'  => $name,
+		);
 	}
 
 	/**
@@ -1753,7 +1903,7 @@ class Widget extends \WP_Widget {
 	<div class="cpwp_ident">
 		<?php echo $this->get_checkbox_block_html( $instance, 'hide_title', esc_html__( 'Hide title', 'category-posts' ), true ); ?>
 		<div class="categoryposts-data-panel-title-settings" <?php echo ( $hide_title ) ? 'style="display:none"' : ''; ?>>
-			<?php echo $this->get_text_input_block_html( $instance, 'title', esc_html__( 'Title', 'category-posts' ), '', true ); ?>
+			<?php echo $this->get_text_input_block_html( $instance, 'title', esc_html__( 'Title', 'category-posts' ), '', true, $this->archive_placeholder_menu_html() ); ?>
 			<?php echo $this->get_checkbox_block_html( $instance, 'title_link', esc_html__( 'Make block title link', 'category-posts' ), 0 !== $cat ); ?>
 			<?php echo $this->get_text_input_block_html( $instance, 'title_link_url', esc_html__( 'Title link URL', 'category-posts' ), '', 0 === $cat ); ?>
 			<?php echo $this->get_radio_buttons_block_html( $instance, 'title_level', array( 'Initial', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6' ), esc_html__( 'Heading Level', 'category-posts' ) . ":" .
@@ -1948,6 +2098,32 @@ class Widget extends \WP_Widget {
 	}
 
 	/**
+	 * The "+ Add Placeholder" button with its menu, as for the template, for
+	 * the placeholders of the page the list is on (archive_placeholders()).
+	 *
+	 * @return string HTML of the button and the menu.
+	 *
+	 * @since 5.1.3
+	 */
+	private function archive_placeholder_menu_html() {
+		$descriptions = array(
+			'archive_title' => __( 'Title of the archive the list is on, e.g. "Category: News"', 'category-posts' ),
+			'archive_name'  => __( 'The same without prefix, e.g. "News"', 'category-posts' ),
+		);
+
+		$ret = '<span class="cat-post-add_premade_templates ' . ( is_customize_preview() ? 'customizer' : 'admin-panel' ) . '">' .
+					'<button type="button" class="button cpwp-open-placholder-dropdown-menu"> + ' . esc_html__( 'Add Placeholder', 'category-posts' ) . '</button>' .
+					'<span class="cpwp-placeholder-dropdown-menu">' .
+						'<i class="cpwp-close-placeholder-dropdown-menu dashicons dashicons-no-alt"></i>';
+		foreach ( $descriptions as $value => $description ) {
+			$ret .= '<span data-value="' . esc_attr( $value ) . '" title="' . esc_attr( $description ) . '">%' . esc_html( $value ) . '%</span>';
+		}
+		$ret .= '</span></span>';
+
+		return $ret;
+	}
+
+	/**
 	 * Generate a form P element containing a text input
 	 *
 	 * @since 4.8
@@ -1957,16 +2133,17 @@ class Widget extends \WP_Widget {
 	 *                          Should be html escaped.
 	 * @param string $placeholder The placeholder to use in the input. should be attribute escaped.
 	 * @param bool   $visible   Indicates if the element should be visible when rendered.
+	 * @param string $after_label HTML after the label, like archive_placeholder_menu_html().
 	 *
 	 * @return string HTML a P element contaning the input, its label, class based on the key
 	 *                and style set to display:none if visibility is off.
 	 */
-	private function get_text_input_block_html( $instance, $key, $label, $placeholder, $visible ) {
+	private function get_text_input_block_html( $instance, $key, $label, $placeholder, $visible, $after_label = '' ) {
 
 		$value = isset( $instance[ $key ] ) ? $instance[ $key ] : '';
 
 		$ret = '<label for="' . $this->get_field_id( $key ) . "\">\n" .
-					$label . ":\n" .
+					$label . ":\n" . $after_label .
 					'<input placeholder="' . $placeholder . '" id="' . $this->get_field_id( $key ) . '" name="' . $this->get_field_name( $key ) . '" type="text" value="' . esc_attr( $value ) . '" autocomplete="off"/>' . "\n" .
 				"</label>\n";
 

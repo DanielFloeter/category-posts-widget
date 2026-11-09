@@ -47,6 +47,14 @@
 		line-height: 1.6;
 	}
 
+	// One line variant, e.g. the title.
+	input.components-text-control__input {
+		width: 100%;
+		min-height: 40px;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		font-size: 13px;
+	}
+
 	// Chip row below the textarea.
 	.cpwp-template-control__placeholders {
 		display: flex;

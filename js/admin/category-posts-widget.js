@@ -361,7 +361,7 @@ var cwp_namespace = {
                     break;
             }
             var _div = this.parentElement.parentElement.parentElement;
-            var textarea = jQuery(_div).find('textarea');
+            var textarea = jQuery(_div).find('textarea, input[type="text"]').first();
             var textareaPos = textarea[0].selectionStart;
             var textareaTxt = textarea.val();
             textarea.val(textareaTxt.substring(0, textareaPos) + text + textareaTxt.substring(textareaPos));

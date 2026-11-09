@@ -86,9 +86,25 @@ export const PLACEHOLDERS = [
 ];
 
 /**
- * Only the real `%tag%` placeholders, used by the autocomplete.
+ * The placeholders of the title, which stand for the page the list is on,
+ * replaced in replace_archive_placeholders().
+ *
+ * @type {Array<{id: string, insert: string, label: string, description: string}>}
  */
-const TAGS = PLACEHOLDERS.filter( ( placeholder ) => ! placeholder.meta );
+export const ARCHIVE_PLACEHOLDERS = [
+	{
+		id: 'archive_title',
+		insert: '%archive_title%',
+		label: '%archive_title%',
+		description: __( 'Title of the archive the list is on, e.g. "Category: News"', 'category-posts' ),
+	},
+	{
+		id: 'archive_name',
+		insert: '%archive_name%',
+		label: '%archive_name%',
+		description: __( 'The same without prefix, e.g. "News"', 'category-posts' ),
+	},
+];
 
 /**
  * Find the placeholder token the caret currently sits in.
@@ -120,17 +136,20 @@ function findToken( text, caret ) {
 }
 
 /**
- * Textarea for the post details template with two ways to add placeholders:
+ * Text field with placeholders, by default the textarea for the post details
+ * template, with two ways to add placeholders:
  *
- * 1. A row of buttons below the textarea, inserting at the caret position.
+ * 1. A row of buttons below the field, inserting at the caret position.
  * 2. An autocomplete list that opens while typing `%`.
  *
  * @param {Object}   props
- * @param {string}   props.label    Control label.
- * @param {string}   props.help     Help text below the control.
- * @param {string}   props.value    Current template.
- * @param {number}   props.rows     Number of textarea rows.
- * @param {Function} props.onChange Called with the new template.
+ * @param {string}   props.label        Control label.
+ * @param {string}   props.help         Help text below the control.
+ * @param {string}   props.value        Current text.
+ * @param {number}   props.rows         Number of textarea rows.
+ * @param {Array}    props.placeholders The placeholders offered, see PLACEHOLDERS.
+ * @param {boolean}  props.singleLine   A one line text input instead of the textarea.
+ * @param {Function} props.onChange     Called with the new text.
  * @return {JSX.Element} Element.
  */
 export default function TemplateControl( {
@@ -138,8 +157,12 @@ export default function TemplateControl( {
 	help,
 	value = '',
 	rows = 8,
+	placeholders = PLACEHOLDERS,
+	singleLine = false,
 	onChange,
 } ) {
+	// Only the real `%tag%` placeholders, used by the autocomplete.
+	const tags = placeholders.filter( ( placeholder ) => ! placeholder.meta );
 	const instanceId = useInstanceId( TemplateControl, 'cpwp-template-control' );
 	const textareaRef = useRef( null );
 	// { pos, expected } – caret to restore once the controlled value has landed.
@@ -202,7 +225,7 @@ export default function TemplateControl( {
 			return;
 		}
 
-		const items = TAGS.filter(
+		const items = tags.filter(
 			( placeholder ) =>
 				placeholder.insert.substring( 1 ).toLowerCase().indexOf( token.query ) === 0
 		);
@@ -279,6 +302,7 @@ export default function TemplateControl( {
 	};
 
 	const suggestionsId = `${ instanceId }-suggestions`;
+	const FieldTag = singleLine ? 'input' : 'textarea';
 
 	return (
 		<BaseControl
@@ -286,14 +310,18 @@ export default function TemplateControl( {
 			id={ instanceId }
 			label={ label }
 			help={ help }
-			className="cpwp-template-control"
+			className={ 'cpwp-template-control' + ( singleLine ? ' is-single-line' : '' ) }
 		>
 			<div className="cpwp-template-control__field">
-				<textarea
+				<FieldTag
 					ref={ textareaRef }
 					id={ instanceId }
-					className="components-textarea-control__input"
-					rows={ rows }
+					className={
+						singleLine
+							? 'components-text-control__input'
+							: 'components-textarea-control__input'
+					}
+					{ ...( singleLine ? { type: 'text' } : { rows } ) }
 					value={ value }
 					onChange={ onTextareaChange }
 					onKeyDown={ onTextareaKeyDown }
@@ -346,7 +374,7 @@ export default function TemplateControl( {
 				) }
 			</div>
 			<div className="cpwp-template-control__placeholders">
-				{ PLACEHOLDERS.map( ( placeholder ) => (
+				{ placeholders.map( ( placeholder ) => (
 					<Button
 						key={ placeholder.id }
 						variant="secondary"

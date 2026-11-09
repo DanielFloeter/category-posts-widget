@@ -39,7 +39,7 @@ import { dateI18n, getSettings as getDateSettings } from '@wordpress/date';
 /**
  * Internal dependencies
  */
-import TemplateControl from './template-control';
+import TemplateControl, { ARCHIVE_PLACEHOLDERS } from './template-control';
 import metadata from './../block.json';
 import './editor.scss';
 
@@ -535,15 +535,13 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 							__nextHasNoMarginBottom
 						/>
 						{ !hideTitle && (
-							<TextControl
-								label={__('Title', 'category-posts')}
-								value={title}
-								onChange={(title) =>
-									setAttributes({
-										title,
-									})}
-								__next40pxDefaultSize
-								__nextHasNoMarginBottom
+							<TemplateControl
+								label={ __( 'Title', 'category-posts' ) }
+								help={ __( 'Without an archive the placeholders stay empty.', 'category-posts' ) }
+								value={ title }
+								placeholders={ ARCHIVE_PLACEHOLDERS }
+								singleLine
+								onChange={ ( title ) => setAttributes( { title } ) }
 							/>
 						) }
 					</ToolsPanelItem>
