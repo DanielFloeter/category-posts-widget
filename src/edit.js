@@ -33,6 +33,7 @@ import {
 	Notice,
 } from '@wordpress/components';
 import { InspectorControls, RichText, useBlockProps } from '@wordpress/block-editor';
+import { hasContentTab } from './editor-features';
 import ServerSideRender from '@wordpress/server-side-render';
 import { dateI18n, getSettings as getDateSettings } from '@wordpress/date';
 
@@ -512,7 +513,13 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 
 	return (
 		<>
-			<InspectorControls>
+			{/*
+			  * What is shown goes to the "Content" tab, how it looks to "Settings", so
+			  * the "Styles" tab is left to the color, typography, dimensions and border
+			  * panels of WordPress, which it always puts first. Without the "Content" tab
+			  * the arrangement stays the one before: "Settings" and "Styles".
+			  */}
+			<InspectorControls group={ hasContentTab ? 'content' : 'default' }>
 				<ToolsPanel
 					className="cpwp-tools-panel"
 					label={ __( 'Title', 'category-posts' ) }
@@ -1018,7 +1025,7 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 					</ToolsPanelItem>
 				</ToolsPanel>
 			</InspectorControls>
-			<InspectorControls group="styles">
+			<InspectorControls group={ hasContentTab ? 'default' : 'styles' }>
 				<ToolsPanel
 					className="cpwp-tools-panel"
 					label={ __( 'Post details', 'category-posts' ) }
@@ -1371,6 +1378,9 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 					<ServerSideRender
 						block="tiptip/category-posts-block"
 						attributes={ previewAttributes }
+						// Colors, spacing, typography and border already sit on the wrapper
+						// above (useBlockProps), the preview would apply them a second time.
+						skipBlockSupportAttributes
 						urlQueryArgs={ previewQueryArgs }
 					/>
 				</div>

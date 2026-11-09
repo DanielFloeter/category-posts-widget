@@ -1033,13 +1033,15 @@ class Widget extends \WP_Widget {
 	/**
 	 * Calculate the HTML of the load more button based on the widget settings
 	 *
-	 * @param  array $instance Array which contains the various settings.
+	 * @param  array    $instance        Array which contains the various settings.
+	 * @param  int|null $current_post_id The post the list is shown for, null to
+	 *                                   take the post of a single post page.
 	 *
 	 * @return string The HTML for the load more area
 	 *
 	 * @since 4.9
 	 */
-	public function loadMoreHTML( $instance ) {
+	public function loadMoreHTML( $instance, $current_post_id = null ) {
 		global $post_count;
 
 		if ( ! $instance['enable_loadmore'] || $post_count <= $instance['num'] ) {
@@ -1052,9 +1054,10 @@ class Widget extends \WP_Widget {
 		}
 
 		$ret = '<div class="' . __NAMESPACE__ . '-loadmore">';
-		$context = 0;
-		if ( is_singular() ) {
-			$context = get_the_ID();
+		if ( null !== $current_post_id ) {
+			$context = (int) $current_post_id;
+		} else {
+			$context = is_singular() ? get_the_ID() : 0;
 		}
 
 		wp_enqueue_script( 'jquery' );

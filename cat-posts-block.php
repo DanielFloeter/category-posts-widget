@@ -186,15 +186,88 @@ function block_preview_config( $instance ) {
 }
 
 /**
+ * How deep the rendering currently is inside Post Template blocks, the entries
+ * of a Query Loop. Counted up before a Post Template renders its entries and
+ * down again once it is done, see the two filters below.
+ *
+ * @param int $change 1 or -1 to change the depth, 0 to just read it.
+ *
+ * @return int The depth.
+ */
+function post_template_depth( $change = 0 ) {
+	static $depth = 0;
+
+	$depth = max( 0, $depth + $change );
+	return $depth;
+}
+
+add_filter(
+	'render_block_data',
+	function ( $parsed_block ) {
+		if ( isset( $parsed_block['blockName'] ) && 'core/post-template' === $parsed_block['blockName'] ) {
+			post_template_depth( 1 );
+		}
+		return $parsed_block;
+	}
+);
+
+add_filter(
+	'render_block_core/post-template',
+	function ( $block_content ) {
+		post_template_depth( -1 );
+		return $block_content;
+	}
+);
+
+/**
+ * The post the block is shown for, the one "Exclude current post" leaves out.
+ *
+ * Inside a Query Loop it is the post of the loop entry, from the context. The
+ * context does not tell whether the block is inside a Query Loop: the Post
+ * Template hands its entries only 'postId' and 'postType', not the 'queryId'
+ * of the Query Loop, and outside a loop core fills 'postId' from the global
+ * $post, which on an archive page is just one of the archive's posts. So the
+ * Post Templates are counted while they render (post_template_depth()).
+ * Outside a loop only a single post page has a current post.
+ *
+ * The editor preview has no page, it takes the post being edited, or the post
+ * the template being edited stands for (Widget::preview_context()).
+ *
+ * @param \WP_Block|null $block  The block instance.
+ * @param Widget         $widget The widget the block is rendered with, with
+ *                               its preview context already set.
+ *
+ * @return int The post ID, 0 if there is none.
+ */
+function current_post_id_of_block( $block, $widget ) {
+	$context = ( $block instanceof \WP_Block ) ? $block->context : array();
+
+	if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read only, preview.
+		$post_id = isset( $_GET['cpwp_post_id'] ) ? absint( $_GET['cpwp_post_id'] ) : 0;
+		if ( 0 === $post_id && isset( $widget->preview_context['type'] ) && 'post' === $widget->preview_context['type'] ) {
+			$post_id = (int) $widget->preview_context['object']->ID;
+		}
+		return $post_id;
+	}
+
+	if ( isset( $context['postId'] ) && 0 < post_template_depth() ) {
+		return (int) $context['postId'];
+	}
+
+	return is_singular() ? (int) get_the_ID() : 0;
+}
+
+/**
  * Renders the `tiptip/category-posts-block` on server.
  *
- * @see WP_Widget_Archives
+ * @param array          $attributes The block attributes.
+ * @param string         $content    The block content, empty for this block.
+ * @param \WP_Block|null $block      The block instance, for its context.
  *
- * @param array $attributes The block attributes.
- *
- * @return string Returns the post content with archives added.
+ * @return string Returns the HTML of the block.
  */
-function render_category_posts_block( $attributes ) {
+function render_category_posts_block( $attributes, $content = '', $block = null ) {
 	global $attr, $before_title, $after_title;
 
 	$attr = $attributes;
@@ -232,10 +305,7 @@ function render_category_posts_block( $attributes ) {
 		$instance['offset'] = 1 + ( max( 1, (int) get_query_var( 'paged' ) ) - 1 ) * $per_page;
 	}
 
-	$current_post_id = '';
-	if ( is_singular() ) {
-		$current_post_id = get_the_ID();
-	}
+	$current_post_id = current_post_id_of_block( $block, $widget );
 
 	// On the front end the block is rendered while the 'the_content' filter runs, and
 	// wp_get_loading_optimization_attributes() skips images built inside such a content
@@ -252,8 +322,18 @@ function render_category_posts_block( $attributes ) {
 		add_filter( 'pre_wp_get_loading_optimization_attributes', '__return_empty_array' );
 	}
 
+	// The loop of the list moves the global post. Put back the one before, not
+	// that of the main query (wp_reset_postdata()): inside a Query Loop it is the
+	// post of the loop entry, which the blocks after this one rely on.
+	$previous_post = isset( $GLOBALS['post'] ) ? $GLOBALS['post'] : null;
+
 	$items = $widget->get_elements_HTML( $instance, $current_post_id, 0, 0 );
 	$ret   = '';
+
+	$GLOBALS['post'] = $previous_post; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Restoring it.
+	if ( $previous_post instanceof \WP_Post ) {
+		setup_postdata( $previous_post );
+	}
 
 	if ( $preview ) {
 		remove_filter( 'pre_wp_get_loading_optimization_attributes', '__return_empty_array' );
@@ -272,7 +352,7 @@ function render_category_posts_block( $attributes ) {
 			$ret .= $widget->paginationHTML( $instance );
 		} elseif ( count( $items ) === (int) $instance['num'] ) {
 			// Load more only if we think we have more items.
-			$ret .= $widget->loadMoreHTML( $instance );
+			$ret .= $widget->loadMoreHTML( $instance, $current_post_id );
 		}
 
 		$ret .= $widget->footerHTML( $instance );
@@ -350,8 +430,12 @@ function render_category_posts_block( $attributes ) {
 		)
 	);
 
-	return ( '' !== $css ? '<style>' . $css . '</style>' : '' ) .
-		'<div ' . $wrapper_attributes . '>' . $ret . '</div>';
+	// The style island goes inside the wrapper: core adds some classes to the
+	// first tag of a block's markup (e.g. 'wp-elements-…' for the link color),
+	// which has to be the wrapper.
+	return '<div ' . $wrapper_attributes . '>' .
+		( '' !== $css ? '<style>' . $css . '</style>' : '' ) .
+		$ret . '</div>';
 }
 
 /**
@@ -379,11 +463,36 @@ function category_posts_block_init() {
 	);
 	wp_set_script_translations( 'tiptip-category-posts-block-editor', 'category-posts' );
 
-	register_block_type_from_metadata(
+	$block_type = register_block_type_from_metadata(
 		__DIR__,
 		array(
 			'render_callback' => __NAMESPACE__ . '\render_category_posts_block',
 		)
 	);
+
+	// src/editor-features.js reads it while the script loads, in registerBlockType().
+	if ( $block_type && ! empty( $block_type->editor_script_handles ) ) {
+		wp_add_inline_script(
+			$block_type->editor_script_handles[0],
+			'window.cpwpBlockEditor = ' . wp_json_encode( array( 'hasContentTab' => editor_has_content_tab() ) ) . ';',
+			'before'
+		);
+	}
+}
+
+/**
+ * Whether the block editor has the "Content" tab in the block sidebar, which a
+ * block fills through <InspectorControls group="content">.
+ *
+ * WordPress has it since 7.0, the Gutenberg plugin since 22.4. Before, the
+ * editor does not know the group and shows nothing of what is put into it, so
+ * src/edit.js keeps the old arrangement there. The editor itself does not tell
+ * which groups it knows, hence the versions.
+ *
+ * @return bool
+ */
+function editor_has_content_tab() {
+	return version_compare( get_bloginfo( 'version' ), '7.0-alpha', '>=' )
+		|| ( defined( 'GUTENBERG_VERSION' ) && version_compare( GUTENBERG_VERSION, '22.4', '>=' ) );
 }
 add_action( 'init', __NAMESPACE__ . '\category_posts_block_init' );

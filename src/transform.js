@@ -48,6 +48,21 @@ const NOT_COPIED_VERBATIM = [
 ];
 
 /**
+ * The attributes the block supports add, see "supports" in block.json.
+ */
+const SUPPORT_ATTRIBUTES = [
+	'align',
+	'className',
+	'style',
+	'backgroundColor',
+	'textColor',
+	'gradient',
+	'fontSize',
+	'fontFamily',
+	'borderColor',
+];
+
+/**
  * Maps this block's attributes onto the premium block's attributes.
  *
  * @param {Object} attributes This block's attributes.
@@ -55,7 +70,10 @@ const NOT_COPIED_VERBATIM = [
  * @return {Object} Attributes for the premium block.
  */
 function transformAttributes( attributes ) {
-	const proAttributes = Object.keys( metadata.attributes ).reduce( ( accumulator, name ) => {
+	// The attributes of the block supports (alignment, colors, spacing, typography,
+	// border) are not in block.json, both blocks support the same.
+	const names = [ ...Object.keys( metadata.attributes ), ...SUPPORT_ATTRIBUTES ];
+	const proAttributes = names.reduce( ( accumulator, name ) => {
 		if ( ! NOT_COPIED_VERBATIM.includes( name ) && undefined !== attributes[ name ] ) {
 			accumulator[ name ] = attributes[ name ];
 		}

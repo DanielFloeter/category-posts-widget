@@ -10,7 +10,22 @@ import transformToPro from './transform';
 import widgetToBlockAttributes from './widget-transform';
 import queryToBlockAttributes, { isRepresentable } from './query-transform';
 import metadata from './../block.json';
+import { hasContentTab } from './editor-features';
 const { name } = metadata;
+
+// block.json shows some fields of the color and typography panels right away,
+// as "Latest Posts" does: the "Styles" tab holds only these panels, ours are
+// under "Content" and "Settings". Without the "Content" tab ours are in the
+// "Styles" tab as well, below these panels, which WordPress puts first. Only
+// their headers then, to leave room for ours. The empty color defaults close
+// the "Elements" panel (link color) as well.
+const supports = hasContentTab
+	? metadata.supports
+	: {
+		...metadata.supports,
+		color: { ...metadata.supports.color, __experimentalDefaultControls: {} },
+		typography: { ...metadata.supports.typography, __experimentalDefaultControls: {} },
+	};
 
 /**
  * Every block starts by registering a new block type definition.
@@ -19,6 +34,7 @@ const { name } = metadata;
  */
 registerBlockType(name, {
 	...metadata,
+	supports,
 	keywords: [
 		__('category'),
 		__('categories'),
@@ -80,6 +96,21 @@ registerBlockType(name, {
 		],
 		to: [ transformToPro ],
 	},
+	// The block itself stays among the widgets, next to "Latest Posts". With the
+	// query of the page taken over it is a list for templates, so it is offered
+	// there too, in the "Theme" category of the Query Loop.
+	variations: [
+		{
+			name: 'inherited-query',
+			title: __( 'Category Posts of the Page', 'category-posts' ),
+			description: __( 'Shows the posts of the archive or search page the block is on, with the layout of Category Posts.', 'category-posts' ),
+			category: 'theme',
+			attributes: { queryType: 'default' },
+			keywords: [ __( 'archive', 'category-posts' ), __( 'search', 'category-posts' ), __( 'template', 'category-posts' ) ],
+			scope: [ 'inserter' ],
+			isActive: ( attributes ) => 'default' === attributes.queryType,
+		},
+	],
 	edit: Edit,
 	save: Save,
 });

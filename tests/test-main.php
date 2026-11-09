@@ -2711,3 +2711,49 @@ class testArchivePlaceholders extends WP_UnitTestCase {
 		);
 	}
 }
+
+/**
+ * Block supports and the current post of a block inside a Query Loop.
+ */
+class testBlockSupportsAndQueryLoop extends WP_UnitTestCase {
+
+	private $posts = array();
+
+	public function setUp(): void {
+		parent::setUp();
+		$GLOBALS['before_title'] = '';
+		$GLOBALS['after_title']  = '';
+		$this->posts = array();
+		foreach ( range( 1, 3 ) as $i ) {
+			$this->posts[] = $this->factory->post->create( array( 'post_title' => 'p' . $i, 'post_date' => sprintf( '2020-01-%02d 00:00:00', 10 - $i ) ) );
+		}
+	}
+
+	public function testColorAndStyleIslandOnTheWrapper() {
+		$this->go_to( '/' );
+		$html = do_blocks( '<!-- wp:tiptip/category-posts-block {"instanceId":9501,"backgroundColor":"black","style":{"spacing":{"padding":{"top":"10px"}}}} /-->' );
+
+		$this->assertMatchesRegularExpression( '/^<div [^>]*class="[^"]*has-black-background-color/', $html );
+		$this->assertMatchesRegularExpression( '/^<div [^>]*style="[^"]*padding-top:10px/', $html );
+		// The style island is inside the wrapper, the wrapper is the first tag.
+		$this->assertMatchesRegularExpression( '/^<div [^>]*id="category-posts-block-9501"[^>]*><style>/', $html );
+	}
+
+	public function testExcludesThePostOfTheQueryLoopEntry() {
+		$this->go_to( '/' );
+		$markup = '<!-- wp:query {"queryId":1,"query":{"perPage":1,"postType":"post","inherit":false}} -->' .
+			'<div class="wp-block-query"><!-- wp:post-template -->' .
+			'<!-- wp:tiptip/category-posts-block {"instanceId":9502,"template":"%title%","excludeCurrentPost":true,"hideTitle":true} /-->' .
+			'<!-- /wp:post-template --></div><!-- /wp:query -->';
+		$html = do_blocks( $markup );
+
+		preg_match_all( '/>(p\d)</', $html, $m );
+		// The entry of the loop is p1, the list leaves it out.
+		$this->assertSame( array( 'p2', 'p3' ), $m[1] );
+
+		// Outside the loop no post is current on the home page.
+		$html = do_blocks( '<!-- wp:tiptip/category-posts-block {"instanceId":9503,"template":"%title%","excludeCurrentPost":true,"hideTitle":true} /-->' );
+		preg_match_all( '/>(p\d)</', $html, $m );
+		$this->assertSame( array( 'p1', 'p2', 'p3' ), $m[1] );
+	}
+}
