@@ -282,6 +282,52 @@ class testWidgetFront extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Regression test for #31: the entries of "load more" got 'loading="lazy"' and
+	 * 'sizes="auto, ..."', which those of the first page, rendered inside
+	 * 'the_content', do not get.
+	 */
+	public function testLoadmoreThumbnailsNotLazyAutoSized() {
+		$GLOBALS['before_title'] = '';
+		$GLOBALS['after_title']  = '';
+
+		for ( $i = 0; $i < 3; $i++ ) {
+			$pid = $this->factory->post->create( array( 'post_status' => 'publish' ) );
+			set_post_thumbnail( $pid, _make_attachment( DIR_TESTDATA . '/images/33772.jpg' ) );
+		}
+
+		$attributes = array(
+			'instanceId'     => 9401,
+			'template'       => "%title%\n%thumb%",
+			'thumbW'         => 0,
+			'thumbH'         => 0,
+			'num'            => 1,
+			'enableLoadmore' => true,
+		);
+		\categoryPosts\render_category_posts_block( $attributes );
+
+		$request = new \WP_REST_Request( 'GET', '/categoryPosts/loadmore/block-9401/2/2/0' );
+		$request->set_url_params(
+			array(
+				'id'      => 'block-9401',
+				'start'   => '2',
+				'number'  => '2',
+				'context' => '0',
+			)
+		);
+		$items = \categoryPosts\get_next_elements( $request )->get_data();
+
+		$this->assertCount( 2, $items );
+		foreach ( $items as $item ) {
+			$this->assertStringContainsString( 'wp-post-image', $item );
+			$this->assertStringNotContainsString( 'loading="lazy"', $item );
+			$this->assertStringNotContainsString( 'sizes="auto', $item );
+		}
+
+		// Only for the request, images rendered afterwards are optimized again.
+		$this->assertFalse( has_filter( 'pre_wp_get_loading_optimization_attributes', '__return_empty_array' ) );
+	}
+
+	/**
 	 *  Test the titleHTML method of the widget
 	 */
 	function testtitleHTML() {

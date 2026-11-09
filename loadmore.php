@@ -61,6 +61,17 @@ function get_next_elements( \WP_REST_Request $request ) {
 
 	$ret = array();
 
+	// The first page of a block or a shortcode is rendered while the 'the_content'
+	// filter runs, and wp_get_loading_optimization_attributes() leaves images built
+	// there alone: the thumbnails get neither 'loading' nor 'sizes="auto"'. No such
+	// filter runs for this REST request, so the very same thumbnails came back lazily
+	// loaded and auto-sized. With the thumbnail width and height at 0 nothing else
+	// gives such an image a size before it is loaded (core's contain-intrinsic-size
+	// fallback is 3000x1500). Take core's skip branch here as well, like
+	// render_category_posts_block() does for the editor preview, so the loaded
+	// entries match those of the first page.
+	add_filter( 'pre_wp_get_loading_optimization_attributes', '__return_empty_array' );
+
 	$id_components = explode( '-', $id );
 	if ( 2 <= count( $id_components ) ) {
 		switch ( $id_components[0] ) {
@@ -102,6 +113,8 @@ function get_next_elements( \WP_REST_Request $request ) {
 				break;
 		}
 	}
+
+	remove_filter( 'pre_wp_get_loading_optimization_attributes', '__return_empty_array' );
 
 	return new \WP_REST_Response( $ret );
 }
