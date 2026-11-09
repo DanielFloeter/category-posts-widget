@@ -71,6 +71,14 @@ class Widget extends \WP_Widget {
 	public $inherited_vars = null;
 
 	/**
+	 * What the page is about, for "load more" of a list with "Query type:
+	 * Matching" on a page without a current post, see page_context_vars().
+	 *
+	 * @var array|null
+	 */
+	public $page_context = null;
+
+	/**
 	 * Widget constructor.
 	 */
 	public function __construct() {
@@ -817,7 +825,8 @@ class Widget extends \WP_Widget {
 	}
 
 	/**
-	 * The query type of a list: 'custom' or 'default' (the query of the page).
+	 * The query type of a list: 'custom', 'default' (the query of the page) or
+	 * 'context' ("Matching": the category of the page, with the query of the list).
 	 *
 	 * @param array $instance Array which contains the various settings.
 	 *
@@ -826,11 +835,195 @@ class Widget extends \WP_Widget {
 	 * @since 5.1.3
 	 */
 	public function query_type( $instance ) {
-		if ( isset( $instance['query_type'] ) && in_array( $instance['query_type'], array( 'custom', 'default' ), true ) ) {
+		if ( isset( $instance['query_type'] ) && in_array( $instance['query_type'], array( 'custom', 'default', 'context' ), true ) ) {
 			return $instance['query_type'];
 		}
 
 		return empty( $instance['inherit_query'] ) ? 'custom' : 'default';
+	}
+
+	/**
+	 * What a list with "Query type: Matching" can take from the page it is on.
+	 *
+	 * With a current post (a single post page, an entry of a Query Loop, the
+	 * post of the editor preview) its categories, see post_context_vars().
+	 * Without, the category of a category archive, see page_context_vars().
+	 *
+	 * @param int|string $singular_id The current post, 0 or empty if none.
+	 *
+	 * @return array The context, see page_context_vars().
+	 *
+	 * @since 5.1.3
+	 */
+	public function context_vars( $singular_id = 0 ) {
+		$singular_id = (int) $singular_id;
+		if ( 0 < $singular_id ) {
+			$post = get_post( $singular_id );
+			// The ID may come from the client ("load more"), drafts only for those
+			// who may read them, like in the editor preview.
+			if ( $post && ( ( 'publish' === $post->post_status && is_post_type_viewable( $post->post_type ) )
+					|| current_user_can( 'read_post', $post->ID ) ) ) {
+				return $this->post_context_vars( $post );
+			}
+		}
+
+		if ( null !== $this->page_context ) {
+			return $this->page_context;
+		}
+
+		if ( $this->is_editor_preview() ) {
+			return $this->preview_page_context_vars();
+		}
+
+		return $this->page_context_vars();
+	}
+
+	/**
+	 * What a post has: its categories. The post itself is left out of the list.
+	 *
+	 * @param \WP_Post $post The post.
+	 *
+	 * @return array The context, see page_context_vars().
+	 *
+	 * @since 5.1.3
+	 */
+	public function post_context_vars( $post ) {
+		$cats = array();
+		if ( is_object_in_taxonomy( $post->post_type, 'category' ) ) {
+			$terms = wp_get_object_terms( $post->ID, 'category', array( 'fields' => 'ids' ) );
+			$cats  = is_wp_error( $terms ) ? array() : array_map( 'intval', $terms );
+		}
+
+		return array(
+			'singular' => true,
+			'cat'      => $cats,
+			'exclude'  => (int) $post->ID,
+		);
+	}
+
+	/**
+	 * What the page the list is shown on is about: the category of a category
+	 * archive. Tags, custom taxonomies, authors, dates and the search are left
+	 * to the Pro version.
+	 *
+	 * @return array Array with 'singular' (false), 'cat' (category IDs, empty
+	 *               if none) and, for a post, 'exclude'.
+	 *
+	 * @since 5.1.3
+	 */
+	public function page_context_vars() {
+		$vars = array(
+			'singular' => false,
+			'cat'      => array(),
+		);
+
+		if ( is_category() ) {
+			$term = get_queried_object();
+			if ( $term instanceof \WP_Term ) {
+				$vars['cat'] = array( (int) $term->term_id );
+			}
+		}
+
+		return $vars;
+	}
+
+	/**
+	 * What the page the edited template stands for is about, for the editor
+	 * preview, see preview_context(): the category of a template for one
+	 * category. Templates for all categories stand for nothing in particular.
+	 *
+	 * @return array The context, see page_context_vars().
+	 *
+	 * @since 5.1.3
+	 */
+	public function preview_page_context_vars() {
+		$context = $this->preview_context;
+		$vars    = array(
+			'singular' => false,
+			'cat'      => array(),
+		);
+
+		if ( $context && 'term' === $context['type'] && 'category' === $context['object']->taxonomy ) {
+			$vars['cat'] = array( (int) $context['object']->term_id );
+		}
+
+		return $vars;
+	}
+
+	/**
+	 * The fields chosen under "Match by": 'tax:category' or none. Without a
+	 * choice stored, the category.
+	 *
+	 * @param array $instance Array which contains the various settings.
+	 *
+	 * @return string[] The fields.
+	 *
+	 * @since 5.1.3
+	 */
+	public function context_fields( $instance ) {
+		if ( isset( $instance['context_same'] ) && is_array( $instance['context_same'] ) ) {
+			return array_values( array_map( 'strval', $instance['context_same'] ) );
+		}
+
+		return array( 'tax:category' );
+	}
+
+	/**
+	 * The settings of a list with "Query type: Matching" for its own query.
+	 *
+	 * The category is not a filter then, it comes from the page.
+	 *
+	 * @param array $instance Array which contains the various settings.
+	 *
+	 * @return array The settings.
+	 *
+	 * @since 5.1.3
+	 */
+	public function context_query_instance( $instance ) {
+		unset( $instance['cat'] );
+
+		return $instance;
+	}
+
+	/**
+	 * Limit the query of a list to what it takes from the page.
+	 *
+	 * The categories of the page count only with "Match by: Category", and only
+	 * when the page has any. Several categories of a post: one of them.
+	 * "Exclude child categories" holds for the categories from the page. On a
+	 * single post the post itself is left out.
+	 *
+	 * @param array       $args     The query arguments of the list, see queryArgs().
+	 * @param array|false $vars     The context, see page_context_vars(), false if
+	 *                              it is not known.
+	 * @param array       $instance Array which contains the various settings.
+	 *
+	 * @return array The query arguments.
+	 *
+	 * @since 5.1.3
+	 */
+	public function apply_context_vars( $args, $vars, $instance ) {
+		if ( false === $vars ) {
+			$args['post__in'] = array( 0 );
+			return $args;
+		}
+
+		if ( in_array( 'tax:category', $this->context_fields( $instance ), true ) && ! empty( $vars['cat'] ) ) {
+			$args['tax_query'] = array(
+				array(
+					'taxonomy'         => 'category',
+					'field'            => 'term_id',
+					'terms'            => array_map( 'intval', (array) $vars['cat'] ),
+					'include_children' => empty( $instance['no_cat_childs'] ),
+				),
+			);
+		}
+
+		if ( ! empty( $vars['exclude'] ) ) {
+			$args['post__not_in'] = array_values( array_unique( array_merge( isset( $args['post__not_in'] ) ? (array) $args['post__not_in'] : array(), array( (int) $vars['exclude'] ) ) ) );
+		}
+
+		return $args;
 	}
 
 	/**
@@ -1083,6 +1276,11 @@ class Widget extends \WP_Widget {
 		if ( ! empty( $instance['inherit_query'] ) ) {
 			global $wp_query;
 			$signed    = sign_inherited_query( (array) $wp_query->query );
+			$inherited = ' data-query="' . esc_attr( $signed['query'] ) . '" data-sig="' . esc_attr( $signed['sig'] ) . '"';
+		} elseif ( 'context' === $this->query_type( $instance ) && 0 === (int) $context ) {
+			// Without a current post the context is what the page is about, which
+			// the REST request of "load more" does not know.
+			$signed    = sign_inherited_query( $this->context_vars( 0 ), 'context' );
 			$inherited = ' data-query="' . esc_attr( $signed['query'] ) . '" data-sig="' . esc_attr( $signed['sig'] ) . '"';
 		}
 
@@ -1813,7 +2011,11 @@ class Widget extends \WP_Widget {
 				$post_count = (int) $cat_posts->found_posts;
 			}
 		} else {
-			$args = $this->queryArgs( $instance, $singular_id );
+			if ( 'context' === $this->query_type( $instance ) ) {
+				$args = $this->apply_context_vars( $this->queryArgs( $this->context_query_instance( $instance ), $singular_id ), $this->context_vars( $singular_id ), $instance );
+			} else {
+				$args = $this->queryArgs( $instance, $singular_id );
+			}
 
 			// Pagination: the page comes from the list's own URL parameter. The offset
 			// is set explicitly, WP_Query ignores 'paged' as soon as there is one.

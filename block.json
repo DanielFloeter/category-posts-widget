@@ -190,7 +190,10 @@
 		},
 		"queryType": {
 			"type": "string",
-			"enum": [ "custom", "default" ]
+			"enum": [ "custom", "default", "context" ]
+		},
+		"contextSame": {
+			"type": "array"
 		},
 		"paginationType": {
 			"type": "string",

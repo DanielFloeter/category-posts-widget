@@ -79,14 +79,18 @@ function build_block_instance( $attributes ) {
 		)
 	);
 	$instance['enable_loadmore']        = ( 'loadmore' === $instance['pagination_type'] );
-	// "Query type": 'custom', or 'default', which takes over the query of the page
-	// (see Widget::inherited_query()).
+	// "Query type": 'custom', 'default' takes over the query of the page (see
+	// Widget::inherited_query()), 'context' ("Matching") the category of the page
+	// (see Widget::context_vars()).
 	$query_type = isset( $attributes['queryType'] ) ? $attributes['queryType'] : '';
-	if ( ! in_array( $query_type, array( 'custom', 'default' ), true ) ) {
+	if ( ! in_array( $query_type, array( 'custom', 'default', 'context' ), true ) ) {
 		$query_type = 'custom';
 	}
 	$instance['query_type']             = $query_type;
 	$instance['inherit_query']          = ( 'default' === $query_type );
+	// "Match by" of "Query type: Matching", see Widget::context_fields(). Missing
+	// in blocks which never had the choice, the default holds then.
+	$instance['context_same']           = isset( $attributes['contextSame'] ) && is_array( $attributes['contextSame'] ) ? $attributes['contextSame'] : null;
 	$instance['loadmore_scrollTo']      = isset( $attributes['loadmoreScrollTo'] ) ? $attributes['loadmoreScrollTo'] : false;
 	$instance['loadmore_text']          = isset( $attributes['loadmoreText'] ) ? $attributes['loadmoreText'] : 'Load More (%step%/%all%)';
 	$instance['loading_text']           = isset( $attributes['loadingText'] ) ? $attributes['loadingText'] : 'Loading...';

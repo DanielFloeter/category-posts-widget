@@ -49,9 +49,10 @@ function normalize_block_loadmore_id( $id ) {
 
 /**
  * The query variables of a page, signed, for "load more" of a list which took
- * over the query of the page.
+ * over the query of the page, or the context of the page, for a list with
+ * "Query type: Matching" (Widget::page_context_vars()).
  *
- * @param array  $vars The query variables of the request of the page.
+ * @param array  $vars The query variables of the request of the page, or the context.
  * @param string $kind What the signature is for, a signature of one kind is
  *                     not valid for another.
  *
@@ -156,6 +157,14 @@ function get_next_elements( \WP_REST_Request $request ) {
 							// everywhere.
 							$widget->inherited_vars = verify_inherited_query( (string) $request['query'], (string) $request['sig'] );
 							if ( null === $widget->inherited_vars ) {
+								break;
+							}
+						}
+						if ( 'context' === $instance['query_type'] && 0 === (int) $context ) {
+							// What the page the list is on is about, signed by loadMoreHTML().
+							// With a current post the context comes from the post instead.
+							$widget->page_context = verify_inherited_query( (string) $request['query'], (string) $request['sig'], 'context' );
+							if ( null === $widget->page_context ) {
 								break;
 							}
 						}

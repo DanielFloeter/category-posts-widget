@@ -72,7 +72,7 @@ const END_DATE = [ 'endDate' ];
 const EXCLUDE_CURRENT_POST = [ 'excludeCurrentPost' ];
 const HIDE_NO_THUMB = [ 'hideNoThumb' ];
 const STICKY = [ 'sticky' ];
-const QUERY_TYPE = [ 'queryType' ];
+const QUERY_TYPE = [ 'queryType', 'contextSame', 'noCatChilds' ];
 // Templates of a single view: a post, a page. "Query type: Default" has no posts to take over there.
 const SINGULAR_TEMPLATE = /^(single|page)(-|$)/;
 const FILTER = [
@@ -218,7 +218,10 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, paginationType, loadmoreScrollTo, loadmoreText, loadingText,
 		footerLinkText, footerLink, footerLinkTarget, instanceId, shownTools
 	} = attributes;
-	const queryType = 'default' === attributes.queryType ? 'default' : 'custom';
+	const queryType = [ 'default', 'context' ].includes( attributes.queryType ) ? attributes.queryType : 'custom';
+	// "Match by" of "Query type: Matching" (internally 'context'): the category of
+	// the page, the default when nothing is stored.
+	const matchCategory = ! Array.isArray( attributes.contextSame ) || attributes.contextSame.includes( 'tax:category' );
 	// "More posts" replaced the "Enable Load More" toggle. Blocks saved before
 	// have no choice yet, it follows the old toggle then (see pagination_type()).
 	const morePosts = [ 'none', 'loadmore', 'pages' ].includes( paginationType )
@@ -630,10 +633,11 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 					<ToolsPanelItem
 						label={ __( 'Query type', 'category-posts' ) }
 						hasValue={ () => 'custom' !== queryType }
-						onDeselect={ () => setAttributes( { queryType: undefined } ) }
+						onDeselect={ () => setAttributes( { queryType: undefined, contextSame: undefined, noCatChilds: false } ) }
 						isShownByDefault
 					>
-						{ /* The choice of "Query type" of the core query loop block. */ }
+						{ /* "Default" and "Custom" are the choice of "Query type" of the core query
+						     loop block, "Matching" takes only the category of the page. */ }
 						<ToggleGroupControl
 							label={ __( 'Query type', 'category-posts' ) }
 							value={ queryType }
@@ -641,17 +645,40 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 							onChange={ ( value ) => setAttributes( { queryType: value } ) }
 							help={ {
 								default: __( 'Display exactly the posts of the page the list is on.', 'category-posts' ),
+								context: __( 'Display posts of the category of the page: on a category archive that category, on a post its categories, without the post itself.', 'category-posts' ),
 								custom: __( 'Display posts based on the settings below only.', 'category-posts' ),
 							}[ queryType ] }
 							__next40pxDefaultSize
 							__nextHasNoMarginBottom
 						>
 							<ToggleGroupControlOption value="default" label={ __( 'Default', 'category-posts' ) } />
+							<ToggleGroupControlOption value="context" label={ __( 'Matching', 'category-posts' ) } />
 							<ToggleGroupControlOption value="custom" label={ __( 'Custom', 'category-posts' ) } />
 						</ToggleGroupControl>
+						{ 'context' === queryType && (
+							<>
+								<ToggleControl
+									label={ __( 'Match by category', 'category-posts' ) }
+									help={ __( 'Off, the list follows only the settings below. Tags, custom taxonomies, post types, authors, dates and the search: Pro version.', 'category-posts' ) }
+									checked={ matchCategory }
+									onChange={ ( value ) => setAttributes( { contextSame: value ? [ 'tax:category' ] : [] } ) }
+									__nextHasNoMarginBottom
+								/>
+								{ matchCategory && (
+									<ToggleControl
+										label={ __( 'Exclude child categories', 'category-posts' ) }
+										checked={ !! attributes.noCatChilds }
+										onChange={ ( value ) => setAttributes( { noCatChilds: value } ) }
+										__nextHasNoMarginBottom
+									/>
+								) }
+							</>
+						) }
 					</ToolsPanelItem>
 					{ /* With the query of the page taken over, the filters have no effect. */ }
 					{ 'default' !== queryType && ( <>
+					{ /* With "Matching" the category comes from the page. */ }
+					{ 'context' !== queryType && (
 					<ToolsPanelItem
 						label={ __( 'Category', 'category-posts' ) }
 						hasValue={ () => differsFromDefault( attributes, CATEGORY ) }
@@ -672,6 +699,7 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 							__nextHasNoMarginBottom
 						/>
 					</ToolsPanelItem>
+					) }
 					<ToolsPanelItem
 						label={ __( 'Order', 'category-posts' ) }
 						{ ...optionalTool( 'order' ) }
@@ -1367,7 +1395,7 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 				  */}
 				{ defaultOnSingular && (
 					<Notice status="warning" isDismissible={ false } className="cpwp-block-notice">
-						{ __( 'Query type "Default" shows the posts of the page the list is on. A single view (e.g. post, page, 404) has no posts to take over, use "Custom" here, or place the list in an archive template.', 'category-posts' ) }
+						{ __( 'Query type "Default" shows the posts of the page the list is on. A single view (e.g. post, page, 404) has no posts to take over, use "Matching" or "Custom" here, or place the list in an archive template.', 'category-posts' ) }
 					</Notice>
 				) }
 				<div

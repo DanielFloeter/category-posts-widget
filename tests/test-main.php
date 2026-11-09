@@ -2757,3 +2757,154 @@ class testBlockSupportsAndQueryLoop extends WP_UnitTestCase {
 		$this->assertSame( array( 'p1', 'p2', 'p3' ), $m[1] );
 	}
 }
+
+/**
+ * "Query type: Matching": the category of the page, with the query of the list.
+ */
+class testContextQuery extends WP_UnitTestCase {
+
+	private $cats  = array();
+	private $posts = array();
+
+	public function setUp(): void {
+		parent::setUp();
+		$GLOBALS['before_title'] = '';
+		$GLOBALS['after_title']  = '';
+		$this->cats = array(
+			'News'  => $this->factory->category->create( array( 'name' => 'News' ) ),
+			'Other' => $this->factory->category->create( array( 'name' => 'Other' ) ),
+		);
+		$this->cats['Sub'] = $this->factory->category->create( array( 'name' => 'Sub', 'parent' => $this->cats['News'] ) );
+		foreach ( range( 1, 4 ) as $i ) {
+			$this->posts[ 'n' . $i ] = $this->factory->post->create( array( 'post_title' => 'n' . $i, 'post_date' => sprintf( '2024-01-%02d 00:00:00', 10 - $i ), 'post_category' => array( $this->cats['News'] ) ) );
+		}
+		$this->posts['s1'] = $this->factory->post->create( array( 'post_title' => 's1', 'post_date' => '2023-06-01 00:00:00', 'post_category' => array( $this->cats['Sub'] ) ) );
+		foreach ( range( 1, 2 ) as $i ) {
+			$this->posts[ 'o' . $i ] = $this->factory->post->create( array( 'post_title' => 'o' . $i, 'post_date' => sprintf( '2025-01-%02d 00:00:00', 10 - $i ), 'post_category' => array( $this->cats['Other'] ) ) );
+		}
+	}
+
+	private function render( $attributes = array() ) {
+		return \categoryPosts\render_category_posts_block(
+			array_merge(
+				array(
+					'num'        => 10,
+					'template'   => '%title%',
+					'instanceId' => 6,
+					'queryType'  => 'context',
+					'hideTitle'  => true,
+				),
+				$attributes
+			)
+		);
+	}
+
+	private function titles( $html ) {
+		preg_match_all( '/>([nos]\d)</', $html, $m );
+		return $m[1];
+	}
+
+	public function testCategoryArchive() {
+		$this->go_to( get_term_link( $this->cats['News'] ) );
+		$this->assertSame( array( 'n1', 'n2', 'n3', 'n4', 's1' ), $this->titles( $this->render() ) );
+
+		// The category of the block does not count, the number of posts does.
+		$this->assertSame( array( 'n1', 'n2' ), $this->titles( $this->render( array( 'categories' => (string) $this->cats['Other'], 'num' => 2 ) ) ) );
+
+		// Without child categories.
+		$this->assertSame( array( 'n1', 'n2', 'n3', 'n4' ), $this->titles( $this->render( array( 'noCatChilds' => true ) ) ) );
+
+		// "Match by" off: only the settings of the block.
+		$this->assertSame( array( 'o1', 'o2', 'n1' ), array_slice( $this->titles( $this->render( array( 'contextSame' => array() ) ) ), 0, 3 ) );
+	}
+
+	public function testPagesWithoutACategory() {
+		// The front page: no category, the settings of the block.
+		$this->go_to( '/' );
+		$this->assertSame( array( 'o1', 'o2', 'n1' ), array_slice( $this->titles( $this->render() ), 0, 3 ) );
+	}
+
+	public function testSinglePost() {
+		$this->go_to( get_permalink( $this->posts['n2'] ) );
+		// The categories of the post, without the post itself.
+		$this->assertSame( array( 'n1', 'n3', 'n4', 's1' ), $this->titles( $this->render() ) );
+	}
+
+	public function testQueryLoopEntry() {
+		$this->go_to( '/' );
+		$markup = '<!-- wp:query {"queryId":1,"query":{"perPage":1,"postType":"post","inherit":false}} -->' .
+			'<div class="wp-block-query"><!-- wp:post-template -->' .
+			'<!-- wp:tiptip/category-posts-block {"instanceId":61,"template":"%title%","queryType":"context","hideTitle":true} /-->' .
+			'<!-- /wp:post-template --></div><!-- /wp:query -->';
+		// The entry is o1, the list shows the other posts of its category.
+		$this->assertSame( array( 'o2' ), $this->titles( do_blocks( $markup ) ) );
+	}
+
+	public function testLoadMoreOnACategoryArchive() {
+		$this->go_to( get_term_link( $this->cats['News'] ) );
+		$html = $this->render( array( 'num' => 2, 'paginationType' => 'loadmore' ) );
+		$this->assertSame( 1, preg_match( '/data-query="([^"]*)" data-sig="([^"]*)"[^>]*data-start="(\d+)"[^>]*data-context="(\d+)"[^>]*data-number="(\d+)"/', $html, $m ) );
+		$query = html_entity_decode( $m[1], ENT_QUOTES );
+		$this->assertSame( '0', $m[4] );
+
+		$request = function ( $query, $sig ) use ( $m ) {
+			$r = new WP_REST_Request( 'GET', '/categoryPosts/loadmore' );
+			$r->set_url_params( array( 'id' => 'block-6', 'start' => $m[3], 'number' => $m[5], 'context' => '0' ) );
+			$r->set_query_params( array( 'query' => $query, 'sig' => $sig ) );
+			return \categoryPosts\get_next_elements( $r )->get_data();
+		};
+
+		$this->go_to( '/' );
+		$this->assertSame( array( 'n3', 'n4' ), $this->titles( implode( $request( $query, $m[2] ) ) ) );
+
+		// A changed context or signature loads nothing.
+		$forged = str_replace( (string) $this->cats['News'], (string) $this->cats['Other'], $query );
+		$this->assertSame( array(), $request( $forged, $m[2] ) );
+		$this->assertSame( array(), $request( '', '' ) );
+
+		// A signature of "Default" is not valid for "Matching".
+		$default = \categoryPosts\sign_inherited_query( json_decode( $query, true ) );
+		$this->assertSame( array(), $request( $query, $default['sig'] ) );
+	}
+
+	public function testLoadMoreOnASinglePost() {
+		$this->go_to( get_permalink( $this->posts['n2'] ) );
+		$html = $this->render( array( 'num' => 2, 'paginationType' => 'loadmore' ) );
+		$this->assertStringNotContainsString( 'data-sig', $html );
+		$this->assertSame( 1, preg_match( '/data-start="(\d+)"[^>]*data-context="(\d+)"[^>]*data-number="(\d+)"/', $html, $m ) );
+		$this->assertSame( (string) $this->posts['n2'], $m[2] );
+
+		$this->go_to( '/' );
+		$r = new WP_REST_Request( 'GET', '/categoryPosts/loadmore' );
+		$r->set_url_params( array( 'id' => 'block-6', 'start' => $m[1], 'number' => $m[3], 'context' => $m[2] ) );
+		$this->assertSame( array( 'n4', 's1' ), $this->titles( implode( \categoryPosts\get_next_elements( $r )->get_data() ) ) );
+	}
+
+	public function testPagination() {
+		$this->go_to( get_term_link( $this->cats['News'] ) );
+		$html = $this->render( array( 'num' => 2, 'paginationType' => 'pages' ) );
+		$this->assertStringContainsString( 'cpwp-block-6-page=3', $html );
+		$this->assertStringNotContainsString( 'cpwp-block-6-page=4', $html );
+
+		$_GET['cpwp-block-6-page'] = '3';
+		$this->assertSame( array( 's1' ), $this->titles( $this->render( array( 'num' => 2, 'paginationType' => 'pages' ) ) ) );
+		unset( $_GET['cpwp-block-6-page'] );
+	}
+
+	public function testPreview() {
+		$this->go_to( '/' );
+		$preview = new class() extends \categoryPosts\Widget {
+			protected function is_editor_preview() {
+				return true;
+			}
+		};
+		$instance = \categoryPosts\upgrade_settings( \categoryPosts\build_block_instance( array( 'queryType' => 'context', 'template' => '%title%', 'num' => 2 ) ) );
+
+		$preview->preview_template_slug = 'category-' . get_term( $this->cats['Other'] )->slug;
+		$preview->preview_context       = $preview->preview_context( $preview->preview_template_slug );
+		$this->assertSame( array( 'o1', 'o2' ), $this->titles( implode( $preview->get_elements_HTML( $instance, 0, 0, 0 ) ) ) );
+
+		// A post in the post editor: its categories, without it.
+		$this->assertSame( array( 'n2', 'n3' ), $this->titles( implode( $preview->get_elements_HTML( $instance, $this->posts['n1'], 0, 0 ) ) ) );
+	}
+}
