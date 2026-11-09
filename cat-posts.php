@@ -42,6 +42,7 @@ require_once __DIR__ . '/class-widget.php';
 require_once __DIR__ . '/loadmore.php';
 require_once __DIR__ . '/localizeddate.php';
 require_once __DIR__ . '/cat-posts-block.php';
+require_once __DIR__ . '/template-links.php';
 
 /**
  *  Adds the "Customize" link to the Toolbar on edit mode.
@@ -472,6 +473,11 @@ add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), __NAMESPACE__ 
  * @param array $links The current links about to be displayed.
  */
 function add_action_links( $links ) {
+
+	$links = array_merge(
+		array( '<a href="' . esc_url( admin_url( 'options-general.php?page=' . SETTINGS_PAGE ) ) . '">' . esc_html__( 'Settings', 'category-posts' ) . '</a>' ),
+		$links
+	);
 
 	if ( ! class_exists( '\\termcategoryPostsPro\\Widget' ) ) {
 		$pro_link = array(
@@ -1062,6 +1068,7 @@ add_action( 'customize_save_after', __NAMESPACE__ . '\customize_save_after', 100
  *  @since 4.7
  */
 function uninstall() {
+	delete_option( ADMIN_LINKS_OPTION );
 	delete_option( 'widget-' . WIDGET_BASE_ID ); // delete the option storing the widget options.
 	delete_post_meta_by_key( SHORTCODE_META ); // delete the meta storing the shortcode.
 	// delete_metadata( 'user', 0, __NAMESPACE__, '', true );  // delete all user metadata.	// df 2024-03-26 Deletion failed: https://wordpress.org/support/topic/deletion-failed-there-has-been-a-critical-error-on-this-website-5/
