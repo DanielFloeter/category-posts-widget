@@ -52,7 +52,8 @@ const CREATE_TEMPLATE_ACTION = 'cat_posts_create_template';
  *
  * @return array {
  *     @type string[] $links      The links to show: 'edit' and/or 'create'. Without a stored
- *                                value only 'edit', as before there was a choice.
+ *                                option both; a stored option without the key only 'edit',
+ *                                as before there was a choice.
  *     @type string[] $taxonomies Taxonomies whose term rows get the link.
  *     @type string[] $post_types Post types whose rows get the link.
  *     @type string[] $archives   Post types that get the archive template link above the list.
@@ -62,8 +63,18 @@ const CREATE_TEMPLATE_ACTION = 'cat_posts_create_template';
  * @since 5.1.3
  */
 function admin_links_settings() {
-	$settings = get_option( ADMIN_LINKS_OPTION, array() );
-	if ( ! is_array( $settings ) ) {
+	$settings = get_option( ADMIN_LINKS_OPTION, null );
+
+	// Every link is on until the settings are saved for the first time.
+	if ( null === $settings ) {
+		$settings = array(
+			'links'      => array_keys( template_link_kinds() ),
+			'taxonomies' => array_keys( template_link_taxonomies() ),
+			'post_types' => array_keys( template_link_post_types() ),
+			'archives'   => array_keys( template_link_archive_post_types() ),
+			'singles'    => array_keys( template_link_post_types() ),
+		);
+	} elseif ( ! is_array( $settings ) ) {
 		$settings = array();
 	}
 

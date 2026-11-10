@@ -183,7 +183,8 @@ class testTemplateLinks extends WP_UnitTestCase {
 	 */
 	public function testNoLink() {
 		$term = get_term( self::factory()->category->create() );
-		$this->assertSame( array(), $this->call( 'template_row_action', array(), $term ), 'off by default' );
+		$this->enable( array( 'taxonomies' => array() ) );
+		$this->assertSame( array(), $this->call( 'template_row_action', array(), $term ), 'list off' );
 
 		$this->enable( array( 'taxonomies' => array( 'category' ) ) );
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'editor' ) ) );
@@ -218,6 +219,27 @@ class testTemplateLinks extends WP_UnitTestCase {
 			)
 		);
 		$this->assertSame( array( 'taxonomies' => array(), 'post_types' => array(), 'archives' => array(), 'singles' => array(), 'links' => array() ), $this->call( 'sanitize_admin_links', null ) );
+	}
+
+	/**
+	 * Without a stored option every link is on; a stored option without links keeps only "Edit template".
+	 */
+	public function testDefaults() {
+		delete_option( 'cat_posts_admin_links' );
+		$this->assertSame(
+			array(
+				'taxonomies' => array( 'category' ),
+				'post_types' => array( 'post' ),
+				'archives'   => array( 'post' ),
+				'singles'    => array( 'post' ),
+				'links'      => array( 'edit', 'create' ),
+			),
+			$this->call( 'admin_links_settings' )
+		);
+
+		$this->enable( array( 'taxonomies' => array( 'category' ) ) );
+		$this->assertSame( array( 'edit' ), $this->call( 'admin_links_settings' )['links'] );
+		$this->assertSame( array(), $this->call( 'admin_links_settings' )['post_types'] );
 	}
 
 	/**
