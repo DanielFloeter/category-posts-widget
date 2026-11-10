@@ -1,0 +1,50 @@
+{
+ "images/title.png": {
+  "id": 20261,
+  "url": "https://tiptoppress.com/wp-content/uploads/2026/11/category-posts-block-title.png",
+  "alt": "Title settings",
+  "width": 280
+ },
+ "images/filter.png": {
+  "id": 20262,
+  "url": "https://tiptoppress.com/wp-content/uploads/2026/11/category-posts-block-filter.png",
+  "alt": "Filter settings",
+  "width": 280
+ },
+ "images/query-type-matching.png": {
+  "id": 20263,
+  "url": "https://tiptoppress.com/wp-content/uploads/2026/11/category-posts-block-query-type-matching.png",
+  "alt": "Query type Matching",
+  "width": 248
+ },
+ "images/more-posts.png": {
+  "id": 20264,
+  "url": "https://tiptoppress.com/wp-content/uploads/2026/11/category-posts-block-more-posts.png",
+  "alt": "More posts",
+  "width": 280
+ },
+ "images/footer.png": {
+  "id": 20265,
+  "url": "https://tiptoppress.com/wp-content/uploads/2026/11/category-posts-block-footer.png",
+  "alt": "Footer settings",
+  "width": 280
+ },
+ "images/template.png": {
+  "id": 20266,
+  "url": "https://tiptoppress.com/wp-content/uploads/2026/11/category-posts-block-template.png",
+  "alt": "Template",
+  "width": 280
+ },
+ "images/thumbnail.png": {
+  "id": 20267,
+  "url": "https://tiptoppress.com/wp-content/uploads/2026/11/category-posts-block-thumbnail.png",
+  "alt": "Thumbnail settings",
+  "width": 280
+ },
+ "images/template-links.png": {
+  "id": 20268,
+  "url": "https://tiptoppress.com/wp-content/uploads/2026/11/category-posts-block-template-links.png",
+  "alt": "Template links in the list of categories",
+  "width": null
+ }
+}
