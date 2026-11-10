@@ -207,5 +207,3 @@ The list of posts gets **Default single template** and **Archive template (Posts
 Which links are shown is set under *Settings → Category Posts*. Tags, custom taxonomies, pages and custom post types: [Pro version](https://tiptoppress.com/term-and-category-based-posts-widget/).
 
 ![Template links in the list of categories](images/template-links.png)
-
-**Did you not find what you were looking for?** Please use the [support forum](https://wordpress.org/support/plugin/category-posts/).
