@@ -108,11 +108,10 @@ Is 'All categories' selected in the Filter panel: Use the text field 'Title link
 
 == Screenshots ==
 1. Front end of the block with SVG font-icon support for post formats, hover effects and post tags.
-2. Block behaviour settings for each user.
-3. The Template text-area with the placeholder buttons to arrange the post details.
-4. The Category Posts block in the editor: Template, item title heading level and excerpt settings.
-5. The Category Posts block in the editor: filter by category, status, date range, sort order and offset.
-6. The Category Posts block used in the Site Editor.
+2. The Template text-area with the placeholder buttons to arrange the post details.
+3. The Category Posts block in the editor: Template, item title heading level and excerpt settings.
+4. The Category Posts block in the editor: filter by query type, category, status, date range, sort order and offset.
+5. The Category Posts block used in the Site Editor, with the query type "Matching".
 
 == Changelog ==
 [Read more on our blog ...](https://tiptoppress.com/blog/)
