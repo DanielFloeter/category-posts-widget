@@ -4,7 +4,7 @@ Donate link: https://wordpress.org/support/plugin/category-posts/reviews/
 Tags: recent posts, latest posts, post list, post thumbnails, load more
 Requires at least: 6.6
 Tested up to: 7.1
-Stable tag: 5.1.2
+Stable tag: 5.2.0
 Requires PHP: 7.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -21,42 +21,48 @@ Use the "Category Posts" block in the Gutenberg editor to place the post list an
 A premium version of that free block available at [tiptoppress.com](https://tiptoppress.com/) created for big Wordpress sites.
 
 = Premium features =
+* Custom Post Types, Events, Products support
+* Tags, custom taxonomies and authors as filters, with ANY, NOT and AND
 * Auto-sizing Grid layout
+* Image-Slider and News-Ticker (horizontal or vertical)
+* Masonry responsive grid layout
+* Query type "Matching" for tags, custom taxonomies, post type archives, author, date and search
 * Custom field support in the Template
-* Shortcode support in the Template
-* Image-Slider (or News-Ticker)
 * Asymmetrical list layouts
 * Full background images
-* Masonry responsive grid layout
-* More complex filter (ANY, NOT, AND, ...)
-* Custom Post Types, Events, Products support
+* Shortcode support in the Template
+* Pagination with your own link text and number of links
+* Search term in the title
 * All free features
 * E-Mail support
 * More examples on the [demo pages](https://demo.tiptoppress.com/)
 
 = Features =
 * Block for the block editor and Site Editor.
+* Query types: "Default" takes over the query of the page (e.g. archive templates), "Matching" shows posts from the category of the current archive or post, "Custom" uses the block's own filter
 * [Template](https://tiptoppress.com/template-arrange-post-details/) to arrange the post details.
 * The Template text can be a post details placeholder, plain text, HTML or a font-icons.
-* Font-icon support
-* 'Load more' button / Ajax API
-* Item Title heading level buttons
+* 'Load more' button / Ajax API or pagination
+* Set thumbnail width & height / image crop with CSS (object-fit)
+* Option show post author, comment's count, post date
 * Excerpt length and item title in lines (line-clamp)
+* Option exclude current post, also inside a Query Loop
 * Date range filter
-* New date format: Time since plublished
 * Filter by post status: Published, scheduled, private
 * Add option for post offset (use two or more blocks after another)
-* Admin UI: Buttons in the editor toolbar to insert shortcode
-* Option to touch device friendly "everything is a link"
-* Set thumbnail width & height / image crop with CSS (object-fit)
+* Show the archive title as the block title
+* "Edit template" links in the category and post lists
+* Item Title heading level buttons
+* Option to hide posts which have no thumbnail
+* Set a default thumbnail
+* Option to set mouse hover effects for post thumbnail
 * Fluid images (max-width in %)
 * One thumb dimension can be left empty
-* Option to set mouse hover effects for post thumbnail
-* Set a default thumbnail
+* Font-icon support
+* New date format: Time since published
+* Option to touch device friendly "everything is a link"
 * Hide the block text, if there is no post
-* Option to hide posts which have no thumbnail
-* Option exclude current post
-* Option show post author, comment's count, post date
+* Classic editor: toolbar button to insert the shortcode
 
 = Documentation =
 * Full [documentation](https://tiptoppress.com/category-posts-widget/documentation/)
@@ -109,7 +115,17 @@ Is 'All categories' selected in the Filter panel: Use the text field 'Title link
 6. The Category Posts block used in the Site Editor.
 
 == Changelog ==
-[Read more on our blog ...](https://tiptoppress.com/category/category-posts-widget)
+[Read more on our blog ...](https://tiptoppress.com/blog/)
+
+= 5.2.0 - November 10th 2026 =
+* Pagination
+* Query types: "Default", "Matching" and "Custom". Take over the query of the page, e.g. on archive templates
+* Show the archive title in the title
+* Transform a Query Loop block into this block
+* Block supports for color, spacing, typography and border
+* "Content" tab in the block sidebar (WordPress 7.0+)
+* "Edit template" links in the category and post lists
+* Bugfixes
 
 = 5.1.2 - October 19th 2026 =
 * Block settings split into Settings and Styles
@@ -231,7 +247,7 @@ Is 'All categories' selected in the Filter panel: Use the text field 'Title link
 * SVG font-icon support for post formats
 * Template to arrange the post details
 * Premade Templates
-* Date format: Time since plublished
+* Date format: Time since published
 * Filter by post status: Published, scheduled, private
 * Hover effect: SVG font-icon
 

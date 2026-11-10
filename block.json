@@ -245,7 +245,7 @@
 		},
 		"ver": {
 			"type": "string",
-			"default": "5.1.2"
+			"default": "5.2.0"
 		},
 		"instanceId": {
 			"type": "number"
