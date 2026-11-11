@@ -232,7 +232,7 @@ class testTemplateLinks extends WP_UnitTestCase {
 				'post_types' => array( 'post' ),
 				'archives'   => array( 'post' ),
 				'singles'    => array( 'post' ),
-				'links'      => array( 'edit', 'create' ),
+				'links'      => array( 'edit', 'create', 'view' ),
 			),
 			$this->call( 'admin_links_settings' )
 		);
@@ -370,6 +370,15 @@ class testTemplateLinks extends WP_UnitTestCase {
 		$views = $this->call( 'archive_template_view', array() );
 		$this->assertStringContainsString( '//home&', $views['cpwp_archive_edit_template'] );
 		$this->assertArrayNotHasKey( 'cpwp_archive_create_template', $views, 'the theme has home' );
+		$this->assertArrayNotHasKey( 'cpwp_archive_view', $views, '"View in the front end" off' );
+
+		$this->enable( array( 'archives' => array( 'post' ), 'links' => array( 'view', 'edit' ) ) );
+		$views = $this->call( 'archive_template_view', array() );
+		$this->assertSame( array( 'cpwp_archive_view', 'cpwp_archive_edit_template' ), array_keys( $views ) );
+		$this->assertSame( '<a href="' . esc_url( get_permalink( get_option( 'page_for_posts' ) ) ) . '">View archive (Blog Home)</a>', $views['cpwp_archive_view'], 'the blog page, named like the template "Edit" opens' );
+
+		update_option( 'page_for_posts', 0 );
+		$this->assertSame( array(), $this->call( 'archive_template_view', array() ), 'no blog page' );
 		set_current_screen( 'front' );
 	}
 
@@ -385,6 +394,49 @@ class testTemplateLinks extends WP_UnitTestCase {
 		$views = $this->call( 'archive_template_view', array() );
 		$this->assertSame( array( 'cpwp_single_edit_template' ), array_keys( $views ), 'single is the single template of posts' );
 		$this->assertStringContainsString( 'Edit default single template (', $views['cpwp_single_edit_template'] );
+
+		// "View single item": the newest post the default single template renders.
+		$this->enable( array( 'singles' => array( 'post' ), 'links' => array( 'view', 'edit' ) ) );
+		$this->assertSame( array( 'cpwp_single_edit_template' ), array_keys( $this->call( 'archive_template_view', array() ) ), 'no post yet' );
+		$older = self::factory()->post->create( array( 'post_name' => 'oberwaldlauf', 'post_date' => '2026-01-01 10:00:00' ) );
+		$newer = self::factory()->post->create( array( 'post_name' => 'stadtwerkelauf', 'post_date' => '2026-02-01 10:00:00' ) );
+		$views = $this->call( 'archive_template_view', array() );
+		$this->assertSame( array( 'cpwp_single_view', 'cpwp_single_edit_template' ), array_keys( $views ) );
+		$this->assertSame( '<a href="' . esc_url( get_permalink( $newer ) ) . '">View single item (Single Posts)</a>', $views['cpwp_single_view'] );
+		$this->add_db_template( 'single-post-stadtwerkelauf', 'Post: Stadtwerkelauf' );
+		$this->assertStringContainsString( esc_url( get_permalink( $older ) ), $this->call( 'archive_template_view', array() )['cpwp_single_view'], 'skips one with its own template' );
+		set_current_screen( 'front' );
+	}
+
+	/**
+	 * Above the list of categories: the template of all categories, and a category it renders.
+	 */
+	public function testTaxonomyView() {
+		set_current_screen( 'edit-category' );
+		$this->enable( array( 'taxonomies' => array(), 'links' => array( 'edit', 'create', 'view' ) ) );
+		$this->assertSame( array(), $this->call( 'taxonomy_template_view', array() ), 'list off' );
+
+		$this->enable( array( 'taxonomies' => array( 'category' ), 'links' => array( 'edit', 'create' ) ) );
+		$views = $this->call( 'taxonomy_template_view', array() );
+		$this->assertStringContainsString( '>Edit taxonomy template (All Archives)</a>', $views['cpwp_taxonomy_edit_template'] );
+		$this->assertStringContainsString( '>Create taxonomy template (Category Archives)</a>', $views['cpwp_taxonomy_create_template'] );
+		$this->assertSame( array(), $this->call( 'archive_template_view', array() ), 'not the links of the post list' );
+
+		$this->assertSame( 'category', $this->call( 'create_own_template', 'taxonomy', 'category' )->slug );
+		$views = $this->call( 'taxonomy_template_view', array() );
+		$this->assertStringContainsString( 'Edit taxonomy template (Category Archives)', $views['cpwp_taxonomy_edit_template'] );
+		$this->assertArrayNotHasKey( 'cpwp_taxonomy_create_template', $views, 'has its own now' );
+		$this->assertNull( $this->call( 'template_target', 'taxonomy', 'post_tag' ), 'tags are left to Pro' );
+
+		$this->enable( array( 'taxonomies' => array( 'category' ), 'links' => array( 'view' ) ) );
+		$news = self::factory()->category->create( array( 'slug' => 'news' ) );
+		$more = self::factory()->category->create( array( 'slug' => 'more' ) );
+		foreach ( array( $news, $more ) as $term_id ) {
+			wp_set_post_categories( self::factory()->post->create(), array( $term_id ) );
+		}
+		$this->assertSame( '<a href="' . esc_url( get_term_link( $more ) ) . '">View term archive (Category Archives)</a>', $this->call( 'taxonomy_template_view', array() )['cpwp_taxonomy_view'] );
+		$this->add_db_template( 'category-more', 'Category: More' );
+		$this->assertStringContainsString( esc_url( get_term_link( $news ) ), $this->call( 'taxonomy_template_view', array() )['cpwp_taxonomy_view'], 'skips one with its own template' );
 		set_current_screen( 'front' );
 	}
 }

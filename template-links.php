@@ -149,6 +149,7 @@ function template_link_kinds() {
 	return array(
 		'edit'   => __( 'Edit template', 'category-posts' ),
 		'create' => __( 'Create own template', 'category-posts' ),
+		'view'   => __( 'View in the front end', 'category-posts' ),
 	);
 }
 
@@ -265,6 +266,7 @@ function register_template_links() {
 
 	foreach ( $settings['taxonomies'] as $taxonomy ) {
 		add_filter( "{$taxonomy}_row_actions", __NAMESPACE__ . '\template_row_action', 10, 2 );
+		add_filter( "views_edit-{$taxonomy}", __NAMESPACE__ . '\taxonomy_template_view' );
 	}
 
 	if ( $settings['post_types'] ) {
@@ -350,14 +352,29 @@ function term_template_hierarchy( $term ) {
  * @since 5.1.3
  */
 function term_template_prefix( $term ) {
-	if ( 'category' === $term->taxonomy ) {
+	return taxonomy_template_prefix( $term->taxonomy );
+}
+
+/**
+ * The template prefix of a taxonomy: 'category', 'tag' or 'taxonomy-{taxonomy}'.
+ *
+ * Also the slug of the template for all its terms.
+ *
+ * @param string $taxonomy The taxonomy name.
+ *
+ * @return string The prefix.
+ *
+ * @since 5.2.1
+ */
+function taxonomy_template_prefix( $taxonomy ) {
+	if ( 'category' === $taxonomy ) {
 		return 'category';
 	}
-	if ( 'post_tag' === $term->taxonomy ) {
+	if ( 'post_tag' === $taxonomy ) {
 		return 'tag';
 	}
 
-	return 'taxonomy-' . $term->taxonomy;
+	return 'taxonomy-' . $taxonomy;
 }
 
 /**
@@ -551,8 +568,8 @@ function edit_template_url( $template ) {
  * What the links of a row need: the templates that can render the term, post or
  * archive, and the template of its own that "Create own template" would add.
  *
- * @param string     $kind 'term', 'post', 'single' or 'archive'.
- * @param int|string $id   The term id, the post id or the post type.
+ * @param string     $kind 'term', 'taxonomy', 'post', 'single' or 'archive'.
+ * @param int|string $id   The term id, the taxonomy, the post id or the post type.
  *
  * @return array|null {
  *     @type string[]    $hierarchy Template slugs, most specific first.
@@ -576,6 +593,26 @@ function template_target( $kind, $id ) {
 			'own'       => term_specific_template_slugs( $term ),
 			'slug'      => term_template_prefix( $term ) . '-' . $term->slug,
 			'title'     => sprintf( '%1$s: %2$s', $taxonomy ? $taxonomy->labels->singular_name : $term->taxonomy, $term->name ),
+		);
+	}
+
+	if ( 'taxonomy' === $kind ) {
+		$taxonomy = get_taxonomy( (string) $id );
+		if ( ! $taxonomy || ! isset( template_link_taxonomies()[ $taxonomy->name ] ) ) {
+			return null;
+		}
+		$prefix = taxonomy_template_prefix( $taxonomy->name );
+		$titles = array(
+			'category' => __( 'Category Archives', 'category-posts' ),
+			'tag'      => __( 'Tag Archives', 'category-posts' ),
+		);
+
+		return array(
+			'hierarchy' => get_template_hierarchy( $prefix, false, $prefix ),
+			'own'       => array( $prefix ),
+			'slug'      => $prefix,
+			/* translators: %s: taxonomy name, singular */
+			'title'     => isset( $titles[ $prefix ] ) ? $titles[ $prefix ] : sprintf( __( 'Taxonomy: %s', 'category-posts' ), $taxonomy->labels->singular_name ),
 		);
 	}
 
@@ -711,8 +748,8 @@ function single_template_target( $type ) {
  * general one like "All Archives". "Create own template" is there only for a
  * general one.
  *
- * @param string     $kind 'term', 'post', 'single' or 'archive'.
- * @param int|string $id   The term id, the post id or the post type.
+ * @param string     $kind 'term', 'taxonomy', 'post', 'single' or 'archive'.
+ * @param int|string $id   The term id, the taxonomy, the post id or the post type.
  *
  * @return string[] The HTML of the links, keyed 'cpwp_edit_template' and 'cpwp_create_template'.
  *
@@ -744,6 +781,12 @@ function template_links( $kind, $id ) {
 		$edit_label   = __( 'Edit default single template (%s)', 'category-posts' );
 		/* translators: %s: title of the template to create */
 		$create_label = __( 'Create default single template (%s)', 'category-posts' );
+	} elseif ( 'taxonomy' === $kind ) {
+		$prefix = 'cpwp_taxonomy_';
+		/* translators: %s: template title */
+		$edit_label   = __( 'Edit taxonomy template (%s)', 'category-posts' );
+		/* translators: %s: title of the template to create */
+		$create_label = __( 'Create taxonomy template (%s)', 'category-posts' );
 	} elseif ( 'archive' === $kind ) {
 		$prefix = 'cpwp_archive_';
 		/* translators: %s: template title */
@@ -783,8 +826,8 @@ function template_links( $kind, $id ) {
 /**
  * The URL that creates a template of its own for a term, post or archive.
  *
- * @param string     $kind 'term', 'post', 'single' or 'archive'.
- * @param int|string $id   The term id, the post id or the post type.
+ * @param string     $kind 'term', 'taxonomy', 'post', 'single' or 'archive'.
+ * @param int|string $id   The term id, the taxonomy, the post id or the post type.
  *
  * @return string The URL, not escaped.
  *
@@ -810,8 +853,8 @@ function create_template_url( $kind, $id ) {
  * Stored in the database for the active theme, as the site editor does. When the
  * template exists already, that one is returned.
  *
- * @param string     $kind 'term', 'post', 'single' or 'archive'.
- * @param int|string $id   The term id, the post id or the post type.
+ * @param string     $kind 'term', 'taxonomy', 'post', 'single' or 'archive'.
+ * @param int|string $id   The term id, the taxonomy, the post id or the post type.
  *
  * @return \WP_Block_Template|\WP_Error The template.
  *
@@ -937,21 +980,190 @@ function single_template_row_action( $actions, $post ) {
  * @since 5.1.3
  */
 function archive_template_view( $views ) {
-	$screen    = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
-	$post_type = $screen && $screen->post_type ? $screen->post_type : '';
+	$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+	// The term list of a taxonomy with the post type's name has the same filter.
+	$post_type = $screen && 'edit' === $screen->base && $screen->post_type ? $screen->post_type : '';
 	if ( '' === $post_type ) {
 		return $views;
 	}
 
 	$settings = admin_links_settings();
+	$view     = in_array( 'view', $settings['links'], true );
 	if ( in_array( $post_type, $settings['singles'], true ) ) {
+		if ( $view ) {
+			/* translators: %s: title of the template that renders the item */
+			$views = array_merge( $views, view_link( 'cpwp_single_view', __( 'View single item (%s)', 'category-posts' ), 'single', $post_type, 'single_view_url' ) );
+		}
 		$views = array_merge( $views, template_links( 'single', $post_type ) );
 	}
 	if ( in_array( $post_type, $settings['archives'], true ) ) {
+		if ( $view ) {
+			/* translators: %s: title of the template that renders the archive */
+			$views = array_merge( $views, view_link( 'cpwp_archive_view', __( 'View archive (%s)', 'category-posts' ), 'archive', $post_type, 'archive_url' ) );
+		}
 		$views = array_merge( $views, template_links( 'archive', $post_type ) );
 	}
 
 	return $views;
+}
+
+/**
+ * A "View" link above the post list: a page in the front end that the template renders.
+ *
+ * Named after the template, the one the "Edit" link next to it opens, like "View" in the rows.
+ *
+ * @param string   $key       The key of the view.
+ * @param string   $label     The label with %s for the template title.
+ * @param string   $kind      'single' or 'archive', see template_target().
+ * @param string   $post_type The post type.
+ * @param callable $url       Gets the post type and the template, returns the URL or ''.
+ *
+ * @return string[] The link keyed by $key, empty without a page to show.
+ *
+ * @since 5.2.1
+ */
+function view_link( $key, $label, $kind, $post_type, $url ) {
+	$target   = template_target( $kind, $post_type );
+	$template = $target ? find_block_template( $target['hierarchy'] ) : null;
+	if ( ! $template ) {
+		return array();
+	}
+
+	$address = call_user_func( __NAMESPACE__ . '\\' . $url, $post_type, $template );
+	if ( '' === $address ) {
+		return array();
+	}
+
+	$title = '' !== (string) $template->title ? $template->title : $template->slug;
+
+	return array( $key => sprintf( '<a href="%s">%s</a>', esc_url( $address ), esc_html( sprintf( $label, $title ) ) ) );
+}
+
+/**
+ * The address of the newest published item that the default single template renders.
+ *
+ * Items with a template of their own or an assigned one are skipped, so are the
+ * front page and the page for posts. Looks at the 20 newest.
+ *
+ * @param string             $post_type The post type.
+ * @param \WP_Block_Template $template  The default single template.
+ *
+ * @return string The URL, not escaped. Empty without such an item.
+ *
+ * @since 5.2.1
+ */
+function single_view_url( $post_type, $template ) {
+	$ids = get_posts(
+		array(
+			'post_type'        => $post_type,
+			'post_status'      => 'publish',
+			'numberposts'      => 20,
+			'orderby'          => 'date',
+			'order'            => 'DESC',
+			'fields'           => 'ids',
+			'suppress_filters' => false,
+		)
+	);
+	foreach ( $ids as $id ) {
+		$post = get_post( $id );
+		if ( ! $post || is_front_or_posts_page( $post ) ) {
+			continue;
+		}
+		$renders = find_block_template( post_template_hierarchy( $post ) );
+		if ( $renders && $renders->slug === $template->slug ) {
+			return (string) get_permalink( $post );
+		}
+	}
+
+	return '';
+}
+
+/**
+ * The address of a post type's archive in the front end.
+ *
+ * For posts the page for posts, or the front page when it shows the latest posts.
+ * Other post types have the address of has_archive, e.g. /bildergalerien/.
+ *
+ * @param string $post_type The post type.
+ *
+ * @return string The URL, not escaped. Empty without an archive.
+ *
+ * @since 5.2.1
+ */
+function archive_url( $post_type ) {
+	if ( ! archive_template_hierarchy( $post_type ) ) {
+		return '';
+	}
+	$url = get_post_type_archive_link( $post_type );
+
+	return $url ? $url : '';
+}
+
+/**
+ * Add the links for the template of all terms of the taxonomy above the term list.
+ *
+ * Filter of 'views_edit-{$taxonomy}', edit-tags.php shows the views above the table.
+ * E.g. "taxonomy-galerie_kategorie" for all /galerie_kategorie/.../ archives, the
+ * links in the rows are for the template of one term.
+ *
+ * @param string[] $views The views, none in core.
+ *
+ * @return string[] The views.
+ *
+ * @since 5.2.1
+ */
+function taxonomy_template_view( $views ) {
+	$screen   = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+	$settings = admin_links_settings();
+	if ( ! $screen || 'edit-tags' !== $screen->base || ! $screen->taxonomy
+		|| ! in_array( $screen->taxonomy, $settings['taxonomies'], true ) ) {
+		return $views;
+	}
+
+	$views = (array) $views;
+	if ( in_array( 'view', $settings['links'], true ) ) {
+		/* translators: %s: title of the template that renders the term archive */
+		$views = array_merge( $views, view_link( 'cpwp_taxonomy_view', __( 'View term archive (%s)', 'category-posts' ), 'taxonomy', $screen->taxonomy, 'taxonomy_view_url' ) );
+	}
+
+	return array_merge( $views, template_links( 'taxonomy', $screen->taxonomy ) );
+}
+
+/**
+ * The address of a term archive that the template for all terms of the taxonomy renders.
+ *
+ * The taxonomy has no page of its own, its template renders the archive of every
+ * term without one of its own. The newest such term with posts, among the 20 newest.
+ *
+ * @param string              $taxonomy The taxonomy.
+ * @param \WP_Block_Template $template The template of the taxonomy that applies.
+ *
+ * @return string The URL, not escaped. Empty without such a term.
+ *
+ * @since 5.2.1
+ */
+function taxonomy_view_url( $taxonomy, $template ) {
+	$terms = get_terms(
+		array(
+			'taxonomy'   => $taxonomy,
+			'hide_empty' => true,
+			'orderby'    => 'term_id',
+			'order'      => 'DESC',
+			'number'     => 20,
+		)
+	);
+	if ( is_wp_error( $terms ) ) {
+		return '';
+	}
+	foreach ( $terms as $term ) {
+		$renders = find_block_template( term_template_hierarchy( $term ) );
+		if ( $renders && $renders->slug === $template->slug ) {
+			$link = get_term_link( $term );
+			return is_wp_error( $link ) ? '' : $link;
+		}
+	}
+
+	return '';
 }
 
 /**
@@ -981,6 +1193,7 @@ function admin_links_form() {
 		),
 		'taxonomies' => array(
 			'label' => __( 'Archive template in term lists', 'category-posts' ),
+			'help'  => __( 'In the rows for the term, above the list for all terms of the taxonomy.', 'category-posts' ),
 			'items' => template_link_taxonomies(),
 		),
 		'post_types' => array(
