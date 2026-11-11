@@ -57,9 +57,12 @@ const CREATE_TEMPLATE_ACTION = 'cat_posts_create_template';
  *                                as before there was a choice.
  *     @type string[] $taxonomies Taxonomies whose term rows get the link.
  *     @type string[] $post_types Post types whose rows get the link.
- *     @type string[] $archives   Post types that get the archive template link above the list.
- *     @type string[] $singles    Post types that get the single template link above the list.
+ *     @type string[] $archives   Of the chosen post types those with an archive, for its link above the list.
+ *     @type string[] $singles    The same as $post_types, for the single template link above the list.
  * }
+ *
+ * One choice per list: $archives and $singles follow $post_types. Stored before,
+ * when they were choices of their own, a post type chosen in any of the three counts.
  *
  * @since 5.1.3
  */
@@ -93,6 +96,9 @@ function admin_links_settings() {
 		$values         = isset( $settings[ $key ] ) && is_array( $settings[ $key ] ) ? array_map( 'strval', $settings[ $key ] ) : array();
 		$result[ $key ] = array_values( array_intersect( $values, $names ) );
 	}
+	$result['post_types'] = array_values( array_unique( array_merge( $result['post_types'], $result['singles'], $result['archives'] ) ) );
+	$result['singles']    = $result['post_types'];
+	$result['archives']   = array_values( array_intersect( $result['post_types'], $allowed['archives'] ) );
 	$result['links'] = isset( $settings['links'] ) && is_array( $settings['links'] ) ? array_values( array_map( 'strval', $settings['links'] ) ) : array( 'edit' );
 
 	return $result;
@@ -178,8 +184,6 @@ function sanitize_admin_links( $input ) {
 	$allowed = array(
 		'taxonomies' => array_keys( template_link_taxonomies() ),
 		'post_types' => array_keys( template_link_post_types() ),
-		'archives'   => array_keys( template_link_archive_post_types() ),
-		'singles'    => array_keys( template_link_post_types() ),
 	);
 
 	$allowed['links'] = array_keys( template_link_kinds() );
@@ -1178,7 +1182,7 @@ function admin_links_form() {
 	// Notes next to single checkboxes, keyed '{group}:{name}'.
 	$notes = array();
 	if ( ! archive_template_hierarchy( 'post' ) ) {
-		$notes['archives:post'] = sprintf(
+		$notes['post_types:post'] = sprintf(
 			/* translators: %s: link to Settings > Reading */
 			__( 'No page for posts is set (%s), so posts have no archive.', 'category-posts' ),
 			'<a href="' . esc_url( admin_url( 'options-reading.php' ) ) . '">' . esc_html__( 'Settings → Reading', 'category-posts' ) . '</a>'
@@ -1192,24 +1196,14 @@ function admin_links_form() {
 			'items' => template_link_kinds(),
 		),
 		'taxonomies' => array(
-			'label' => __( 'Archive template in term lists', 'category-posts' ),
-			'help'  => __( 'In the rows for the term, above the list for all terms of the taxonomy.', 'category-posts' ),
+			'label' => __( 'Term lists', 'category-posts' ),
+			'help'  => __( 'In the rows the template of the category, above the list the template of all categories, "Category Archives".', 'category-posts' ),
 			'items' => template_link_taxonomies(),
 		),
 		'post_types' => array(
-			'label' => __( 'Single template in post lists', 'category-posts' ),
-			'help'  => __( 'Only published posts.', 'category-posts' ),
+			'label' => __( 'Post lists', 'category-posts' ),
+			'help'  => __( 'In the rows the template of the post (published ones), above the list the default single template and the archive template. The archive of posts is the page for posts.', 'category-posts' ),
 			'items' => template_link_post_types(),
-		),
-		'singles'    => array(
-			'label' => __( 'Default single template next to "All | Published"', 'category-posts' ),
-			'help'  => __( 'Above the post list, e.g. "Single Posts".', 'category-posts' ),
-			'items' => template_link_post_types(),
-		),
-		'archives'   => array(
-			'label' => __( 'Archive template (Posts page) next to "All | Published"', 'category-posts' ),
-			'help'  => __( 'Above the post list.', 'category-posts' ),
-			'items' => template_link_archive_post_types(),
 		),
 	);
 	?>

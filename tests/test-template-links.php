@@ -203,8 +203,6 @@ class testTemplateLinks extends WP_UnitTestCase {
 			array(
 				'taxonomies' => array( 'category' ),
 				'post_types' => array( 'post' ),
-				'archives'   => array( 'post' ),
-				'singles'    => array( 'post' ),
 				'links'      => array( 'create' ),
 			),
 			$this->call(
@@ -218,7 +216,19 @@ class testTemplateLinks extends WP_UnitTestCase {
 				)
 			)
 		);
-		$this->assertSame( array( 'taxonomies' => array(), 'post_types' => array(), 'archives' => array(), 'singles' => array(), 'links' => array() ), $this->call( 'sanitize_admin_links', null ) );
+		$this->assertSame( array( 'taxonomies' => array(), 'post_types' => array(), 'links' => array() ), $this->call( 'sanitize_admin_links', null ) );
+	}
+
+	/**
+	 * The links above the post list follow the one choice; stored before, posts chosen in any of the three count.
+	 */
+	public function testOneChoicePerPostList() {
+		$this->enable( array( 'post_types' => array( 'post' ) ) );
+		$this->assertSame( array( 'post' ), $this->call( 'admin_links_settings' )['singles'] );
+		$this->assertSame( array( 'post' ), $this->call( 'admin_links_settings' )['archives'] );
+
+		$this->enable( array( 'archives' => array( 'post' ) ) );
+		$this->assertSame( array( 'post' ), $this->call( 'admin_links_settings' )['post_types'] );
 	}
 
 	/**
@@ -374,11 +384,11 @@ class testTemplateLinks extends WP_UnitTestCase {
 
 		$this->enable( array( 'archives' => array( 'post' ), 'links' => array( 'view', 'edit' ) ) );
 		$views = $this->call( 'archive_template_view', array() );
-		$this->assertSame( array( 'cpwp_archive_view', 'cpwp_archive_edit_template' ), array_keys( $views ) );
+		$this->assertSame( array( 'cpwp_single_edit_template', 'cpwp_archive_view', 'cpwp_archive_edit_template' ), array_keys( $views ) );
 		$this->assertSame( '<a href="' . esc_url( get_permalink( get_option( 'page_for_posts' ) ) ) . '">View archive (Blog Home)</a>', $views['cpwp_archive_view'], 'the blog page, named like the template "Edit" opens' );
 
 		update_option( 'page_for_posts', 0 );
-		$this->assertSame( array(), $this->call( 'archive_template_view', array() ), 'no blog page' );
+		$this->assertSame( array( 'cpwp_single_edit_template' ), array_keys( $this->call( 'archive_template_view', array() ) ), 'no blog page, no archive' );
 		set_current_screen( 'front' );
 	}
 
@@ -392,16 +402,16 @@ class testTemplateLinks extends WP_UnitTestCase {
 		$this->enable( array( 'singles' => array( 'post' ), 'links' => array( 'edit', 'create' ) ) );
 		set_current_screen( 'edit' );
 		$views = $this->call( 'archive_template_view', array() );
-		$this->assertSame( array( 'cpwp_single_edit_template' ), array_keys( $views ), 'single is the single template of posts' );
+		$this->assertSame( array( 'cpwp_single_edit_template', 'cpwp_archive_edit_template' ), array_keys( $views ), 'single is the single template of posts' );
 		$this->assertStringContainsString( 'Edit default single template (', $views['cpwp_single_edit_template'] );
 
 		// "View single item": the newest post the default single template renders.
 		$this->enable( array( 'singles' => array( 'post' ), 'links' => array( 'view', 'edit' ) ) );
-		$this->assertSame( array( 'cpwp_single_edit_template' ), array_keys( $this->call( 'archive_template_view', array() ) ), 'no post yet' );
+		$this->assertArrayNotHasKey( 'cpwp_single_view', $this->call( 'archive_template_view', array() ), 'no post yet' );
 		$older = self::factory()->post->create( array( 'post_name' => 'oberwaldlauf', 'post_date' => '2026-01-01 10:00:00' ) );
 		$newer = self::factory()->post->create( array( 'post_name' => 'stadtwerkelauf', 'post_date' => '2026-02-01 10:00:00' ) );
 		$views = $this->call( 'archive_template_view', array() );
-		$this->assertSame( array( 'cpwp_single_view', 'cpwp_single_edit_template' ), array_keys( $views ) );
+		$this->assertSame( array( 'cpwp_single_view', 'cpwp_single_edit_template' ), array_slice( array_keys( $views ), 0, 2 ) );
 		$this->assertSame( '<a href="' . esc_url( get_permalink( $newer ) ) . '">View single item (Single Posts)</a>', $views['cpwp_single_view'] );
 		$this->add_db_template( 'single-post-stadtwerkelauf', 'Post: Stadtwerkelauf' );
 		$this->assertStringContainsString( esc_url( get_permalink( $older ) ), $this->call( 'archive_template_view', array() )['cpwp_single_view'], 'skips one with its own template' );
