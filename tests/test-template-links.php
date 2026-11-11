@@ -317,6 +317,7 @@ class testTemplateLinks extends WP_UnitTestCase {
 		$actions = $this->call( 'template_row_action', array(), $other );
 		$this->assertStringContainsString( 'admin-post.php?action=cat_posts_create_template&#038;kind=term&#038;id=' . $other->term_id, $actions['cpwp_create_template'] );
 		$this->assertStringContainsString( '_wpnonce=', $actions['cpwp_create_template'] );
+		$this->assertStringContainsString( '>Create own template (Category: ' . esc_html( $other->name ) . ')</a>', $actions['cpwp_create_template'], 'names the template it creates' );
 
 		$this->add_db_template( 'category-' . $other->term_id, 'By id' );
 		$this->assertSame( array(), $this->call( 'template_row_action', array(), $other ), 'own template by id' );
@@ -383,7 +384,7 @@ class testTemplateLinks extends WP_UnitTestCase {
 		set_current_screen( 'edit' );
 		$views = $this->call( 'archive_template_view', array() );
 		$this->assertSame( array( 'cpwp_single_edit_template' ), array_keys( $views ), 'single is the single template of posts' );
-		$this->assertStringContainsString( 'Default single template (', $views['cpwp_single_edit_template'] );
+		$this->assertStringContainsString( 'Edit default single template (', $views['cpwp_single_edit_template'] );
 		set_current_screen( 'front' );
 	}
 }

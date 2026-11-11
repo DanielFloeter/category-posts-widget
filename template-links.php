@@ -14,7 +14,8 @@
  * (e.g. category-news) and opens that in the site editor.
  *
  * Which links are shown and which lists get them is chosen on the plugin's
- * settings page (option cat_posts_admin_links). The lists are off by default.
+ * settings page (option cat_posts_admin_links). Until the settings are saved,
+ * every link is shown in every list.
  *
  * The option, the settings group and the action have names of their own, not
  * those of the Pro version, so both can be active at the same time. The keys of
@@ -740,18 +741,21 @@ function template_links( $kind, $id ) {
 	if ( 'single' === $kind ) {
 		$prefix = 'cpwp_single_';
 		/* translators: %s: template title */
-		$edit_label   = __( 'Default single template (%s)', 'category-posts' );
-		$create_label = __( 'Create default single template', 'category-posts' );
+		$edit_label   = __( 'Edit default single template (%s)', 'category-posts' );
+		/* translators: %s: title of the template to create */
+		$create_label = __( 'Create default single template (%s)', 'category-posts' );
 	} elseif ( 'archive' === $kind ) {
 		$prefix = 'cpwp_archive_';
 		/* translators: %s: template title */
-		$edit_label   = __( 'Archive template (%s)', 'category-posts' );
-		$create_label = __( 'Create archive template', 'category-posts' );
+		$edit_label   = __( 'Edit archive template (%s)', 'category-posts' );
+		/* translators: %s: title of the template to create */
+		$create_label = __( 'Create archive template (%s)', 'category-posts' );
 	} else {
 		$prefix = 'cpwp_';
 		/* translators: %s: template title */
 		$edit_label   = __( 'Edit template (%s)', 'category-posts' );
-		$create_label = __( 'Create own template', 'category-posts' );
+		/* translators: %s: title of the template to create */
+		$create_label = __( 'Create own template (%s)', 'category-posts' );
 	}
 
 	if ( in_array( 'edit', $show, true ) ) {
@@ -768,7 +772,8 @@ function template_links( $kind, $id ) {
 		$links[ $prefix . 'create_template' ] = sprintf(
 			'<a href="%s">%s</a>',
 			esc_url( create_template_url( $kind, $id ) ),
-			esc_html( $create_label )
+			// The title the new template gets, see create_own_template().
+			esc_html( sprintf( $create_label, $target['title'] ) )
 		);
 	}
 
