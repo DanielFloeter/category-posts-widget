@@ -1202,7 +1202,7 @@ function admin_links_form() {
 		),
 		'post_types' => array(
 			'label' => __( 'Post lists', 'category-posts' ),
-			'help'  => __( 'In the rows the template of the post (published ones), above the list the default single template and the archive template. The archive of posts is the page for posts.', 'category-posts' ),
+			'help'  => __( 'In the rows the template of the post, above the list the default single template and the archive template.', 'category-posts' ),
 			'items' => template_link_post_types(),
 		),
 	);
