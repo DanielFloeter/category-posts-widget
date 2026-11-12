@@ -60,7 +60,6 @@ const TITLE_LEVEL = [ 'titleLevel' ];
 const TITLE_LINK = [ 'titleLink', 'titleLinkUrl', 'titleLinkTarget' ];
 const NO_RESULTS = [ 'noMatchHandling', 'noMatchText' ];
 const LOAD_MORE = [ 'paginationType', 'enableLoadmore', 'loadmoreScrollTo', 'loadmoreText', 'loadingText' ];
-const FOOTER_LINK = [ 'footerLinkText', 'footerLink', 'footerLinkTarget' ];
 const CATEGORY = [ 'categories' ];
 const ORDER = [ 'orderBy', 'order' ];
 const STATUS = [ 'status' ];
@@ -216,7 +215,7 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 		template, itemTitleLevel, itemTitleLines, excerptRadio, excerptLines, excerptMoreText,
 		thumbW, thumbH, thumbHover, thumbSymbols, showPostFormat, textDoNotWrapThumb, everythingIsLink, presetDateFormat, dateFormat, datePastTime,
 		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, paginationType, loadmoreScrollTo, loadmoreText, loadingText,
-		footerLinkText, footerLink, footerLinkTarget, instanceId, shownTools
+		instanceId, shownTools
 	} = attributes;
 	const queryType = [ 'default', 'context' ].includes( attributes.queryType ) ? attributes.queryType : 'custom';
 	// "Match by" of "Query type: Matching" (internally 'context'): the category of
@@ -999,57 +998,6 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 								/>
 							</>
 						)}
-					</ToolsPanelItem>
-				</ToolsPanel>
-				<ToolsPanel
-					className="cpwp-tools-panel"
-					label={ __( 'Footer', 'category-posts' ) }
-					resetAll={ () => setAttributes( defaultsOf( FOOTER_LINK ) ) }
-				>
-					<ToolsPanelItem
-						label={ __( 'Footer link', 'category-posts' ) }
-						hasValue={ () => differsFromDefault( attributes, FOOTER_LINK ) }
-						onDeselect={ () => setAttributes( defaultsOf( FOOTER_LINK ) ) }
-						isShownByDefault
-					>
-						<TextControl
-							label={__('Footer link text', 'category-posts')}
-							value={footerLinkText}
-							onChange={(footerLinkText) =>
-								setAttributes({
-									footerLinkText,
-								})}
-							__next40pxDefaultSize
-							__nextHasNoMarginBottom
-						/>
-						{/*
-						  * footerHTML() shows a URL without a text as its own text, so a
-						  * block saved that way keeps its URL field.
-						  */}
-						{ ( footerLinkText || footerLink ) && (
-							<>
-								<TextControl
-									label={__('Footer link URL', 'category-posts')}
-									value={footerLink}
-									onChange={(footerLink) =>
-										setAttributes({
-											footerLink,
-										})}
-									__next40pxDefaultSize
-									__nextHasNoMarginBottom
-								/>
-								<ToggleControl
-									label={__('Open footer link in new tab', 'category-posts')}
-									checked={footerLinkTarget}
-									onChange={() =>
-										setAttributes({
-											footerLinkTarget: !footerLinkTarget,
-										})
-									}
-									__nextHasNoMarginBottom
-								/>
-							</>
-						) }
 					</ToolsPanelItem>
 				</ToolsPanel>
 			</InspectorControls>

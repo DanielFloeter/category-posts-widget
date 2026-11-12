@@ -7,7 +7,7 @@ import './style.scss';
 import Edit from './edit';
 import Save from './save';
 import transformToPro from './transform';
-import widgetToBlockAttributes from './widget-transform';
+import widgetToBlockAttributes, { footerLinkContent } from './widget-transform';
 import queryToBlockAttributes, { isRepresentable } from './query-transform';
 import metadata from './../block.json';
 import { hasContentTab } from './editor-features';
@@ -73,7 +73,10 @@ registerBlockType(name, {
 					return idBase === 'category-posts';
 				},
 				transform: ({ instance }) => {
-					return createBlock('tiptip/category-posts-block', widgetToBlockAttributes(instance.raw));
+					const block = createBlock('tiptip/category-posts-block', widgetToBlockAttributes(instance.raw));
+					// The footer link becomes a paragraph below the block (#9).
+					const footer = footerLinkContent( instance.raw );
+					return footer ? [ block, createBlock( 'core/paragraph', { content: footer } ) ] : block;
 				},
 
 			},

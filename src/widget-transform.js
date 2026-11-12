@@ -1,3 +1,4 @@
+import { escapeAttribute, escapeHTML } from '@wordpress/escape-html';
 import metadata from './../block.json';
 
 /**
@@ -5,7 +6,9 @@ import metadata from './../block.json';
  *
  * The reverse of build_block_instance() in cat-posts-block.php, keep both in
  * sync. 'cat' is not listed, the widget stores "All Categories" as 0 while the
- * block uses an empty string for it, see below.
+ * block uses an empty string for it, see below. The footer link is not listed
+ * either, it becomes a paragraph of its own below the block, see
+ * footerLinkContent() (#9).
  */
 const WIDGET_TO_BLOCK = {
 	title: 'title',
@@ -22,9 +25,6 @@ const WIDGET_TO_BLOCK = {
 	exclude_current_post: 'excludeCurrentPost',
 	hideNoThumb: 'hideNoThumb',
 	sticky: 'sticky',
-	footer_link_text: 'footerLinkText',
-	footer_link: 'footerLink',
-	footer_link_target: 'footerLinkTarget',
 	item_title_level: 'itemTitleLevel',
 	item_title_lines: 'itemTitleLines',
 	thumb_w: 'thumbW',
@@ -114,9 +114,57 @@ export default function widgetToBlockAttributes( raw ) {
 		}
 	} );
 
+	// A footer text without a URL stays with the block, see footerLinkContent().
+	if ( raw.footer_link_text && ! raw.footer_link ) {
+		attributes.footerLinkText = String( raw.footer_link_text );
+		attributes.footerLinkTarget = isTruthy( raw.footer_link_target );
+	}
+
 	if ( parseInt( raw.cat, 10 ) ) {
 		attributes.categories = String( raw.cat );
 	}
 
 	return attributes;
+}
+
+/**
+ * Protocols esc_url() lets through, the footer link is dropped for any other.
+ */
+const ALLOWED_PROTOCOLS = [ 'http', 'https', 'ftp', 'ftps', 'mailto', 'news', 'irc', 'irc6', 'ircs', 'gopher', 'nntp', 'feed', 'telnet', 'mms', 'rtsp', 'sms', 'svn', 'tel', 'fax', 'xmpp', 'webcal', 'urn' ];
+
+/**
+ * The link of a widget's footer as the content of a paragraph block, the way
+ * footerHTML() in class-widget.php prints it: a URL without a text is its own
+ * text. The block has no footer settings in the editor any more (#9), so the
+ * widget's footer link turns into a paragraph below the block.
+ *
+ * A text without a URL is not handled here: footerHTML() links it to the
+ * archive of the selected category or the blog page, which only the server knows.
+ * The widget keeps it in the block's footer attributes, see
+ * widgetToBlockAttributes().
+ *
+ * @param {Object} raw The widget instance as stored in the database.
+ * @return {string|null} The paragraph content, null for no paragraph.
+ */
+export function footerLinkContent( raw ) {
+	let url = raw.footer_link ? String( raw.footer_link ).trim() : '';
+	if ( ! url ) {
+		return null;
+	}
+
+	// Like esc_url(): a URL without a protocol that is no relative link gets
+	// http:// in front, one with an unknown protocol is dropped.
+	const protocol = url.match( /^([a-z][a-z0-9+.-]*):/i );
+	if ( protocol ) {
+		if ( ! ALLOWED_PROTOCOLS.includes( protocol[ 1 ].toLowerCase() ) ) {
+			return null;
+		}
+	} else if ( ! /^[\/#?]/.test( url ) && ! /\.php/i.test( url ) ) {
+		url = 'http://' + url;
+	}
+
+	const text = raw.footer_link_text ? String( raw.footer_link_text ) : url;
+	const target = isTruthy( raw.footer_link_target ) ? ' target="_blank" rel="noreferrer noopener"' : '';
+
+	return '<a href="' + escapeAttribute( url ) + '"' + target + '>' + escapeHTML( text ) + '</a>';
 }
