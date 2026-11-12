@@ -1118,110 +1118,6 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 							</div>
 						</ToolsPanelItem>
 					) }
-					{ template && template.includes( '%excerpt%' ) && (
-						<ToolsPanelItem
-							label={ __( 'Excerpt', 'category-posts' ) }
-							hasValue={ () => differsFromDefault( attributes, EXCERPT ) }
-							onDeselect={ () => setAttributes( defaultsOf( EXCERPT ) ) }
-							isShownByDefault
-						>
-							<PanelRow>{__('Excerpt settings', 'category-posts')}</PanelRow>
-							<div className="cpwp-block-ident">
-								{/* The lines limit the full post as well, paragraph by paragraph. */}
-								<NumberControl
-									label={__('Excerpt lines', 'category-posts')}
-									value={excerptLines || ''}
-									placeholder={__('No limit', 'category-posts')}
-									onChange={(excerptLines) => setAttributes({ excerptLines: parseInt(excerptLines) || 0 })}
-									min={0}
-									suffix={ unit( __( 'lines', 'category-posts' ) ) }
-									allowReset={false}
-									__next40pxDefaultSize
-								/>
-								<RadioControl
-									label={ __( 'Content', 'category-posts' ) }
-									selected={ excerptRadio }
-									options={ [
-										{ label: __( 'Excerpt', 'category-posts' ), value: 'excerpt' },
-										{
-											label: __( 'Full post', 'category-posts' ),
-											value: 'full_post',
-										},
-									] }
-									onChange={ ( value ) =>
-										setAttributes( {
-											excerptRadio: value,
-										} )
-									}
-								/>
-							</div>
-						</ToolsPanelItem>
-					) }
-					{ template && template.includes( '%more-link%' ) && (
-						<ToolsPanelItem
-							label={ __( 'More link', 'category-posts' ) }
-							hasValue={ () => differsFromDefault( attributes, MORE_LINK ) }
-							onDeselect={ () => setAttributes( defaultsOf( MORE_LINK ) ) }
-							isShownByDefault
-						>
-							<PanelRow>{__('More Link settings', 'category-posts')}</PanelRow>
-							<div className="cpwp-block-ident">
-								<TextControl
-									label={__('Read more text', 'category-posts')}
-									value={excerptMoreText}
-									onChange={(excerptMoreText) => setAttributes({ excerptMoreText })}
-									__next40pxDefaultSize
-									__nextHasNoMarginBottom
-								/>
-							</div>
-						</ToolsPanelItem>
-					) }
-					{ template && template.includes( '%date%' ) && (
-						<ToolsPanelItem
-							label={ __( 'Date', 'category-posts' ) }
-							hasValue={ () => differsFromDefault( attributes, DATE_FORMAT ) }
-							onDeselect={ () => setAttributes( defaultsOf( DATE_FORMAT ) ) }
-							isShownByDefault
-						>
-							<PanelRow>{__('Date format settings', 'category-posts')}</PanelRow>
-							<div className="cpwp-block-ident">
-								<SelectControl
-									label={__('Date format', 'category-posts')}
-									value={presetDateFormat}
-									onChange={(presetDateFormat) => setAttributes({ presetDateFormat })}
-									options={[
-										{ label: __( 'Site date and time', 'category-posts' ), value: 'sitedateandtime' },
-										{ label: __( 'Site date', 'category-posts' ), value: 'sitedate' },
-										{ label: __( 'Reader\'s local date and time', 'category-posts' ), value: 'localsitedateandtime' },
-										{ label: __( 'Reader\'s local date', 'category-posts' ), value: 'localsitedate' },
-										{ label: __( 'PHP style format', 'category-posts' ), value: 'other' },
-									]}
-									__next40pxDefaultSize
-									__nextHasNoMarginBottom
-								/>
-								{ 'other' === presetDateFormat && (
-									<TextControl
-										label={__('PHP style date format', 'category-posts')}
-										value={dateFormat}
-										onChange={(dateFormat) => setAttributes({ dateFormat })}
-										__next40pxDefaultSize
-										__nextHasNoMarginBottom
-									/>
-								) }
-								<NumberControl
-									label={__('Relative date up to', 'category-posts')}
-									help={__( 'Shows the age of a post, e.g. "3 days", instead of its date while it is not older than this.', 'category-posts' )}
-									value={parseInt(datePastTime) || ''}
-									placeholder={__('Off', 'category-posts')}
-									onChange={(datePastTime) => setAttributes({ datePastTime: String(parseInt(datePastTime) || 0) })}
-									min={0}
-									suffix={ unit( __( 'days', 'category-posts' ) ) }
-									allowReset={false}
-									__next40pxDefaultSize
-								/>
-							</div>
-						</ToolsPanelItem>
-					) }
 					{ template && template.includes( '%thumb%' ) && (
 						<ToolsPanelItem
 							label={ __( 'Thumbnail', 'category-posts' ) }
@@ -1329,6 +1225,110 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 										__nextHasNoMarginBottom
 									/>
 								</ToolsPanelItem>
+							</div>
+						</ToolsPanelItem>
+					) }
+					{ template && template.includes( '%excerpt%' ) && (
+						<ToolsPanelItem
+							label={ __( 'Excerpt', 'category-posts' ) }
+							hasValue={ () => differsFromDefault( attributes, EXCERPT ) }
+							onDeselect={ () => setAttributes( defaultsOf( EXCERPT ) ) }
+							isShownByDefault
+						>
+							<PanelRow>{__('Excerpt settings', 'category-posts')}</PanelRow>
+							<div className="cpwp-block-ident">
+								{/* The lines limit the full post as well, paragraph by paragraph. */}
+								<NumberControl
+									label={__('Excerpt lines', 'category-posts')}
+									value={excerptLines || ''}
+									placeholder={__('No limit', 'category-posts')}
+									onChange={(excerptLines) => setAttributes({ excerptLines: parseInt(excerptLines) || 0 })}
+									min={0}
+									suffix={ unit( __( 'lines', 'category-posts' ) ) }
+									allowReset={false}
+									__next40pxDefaultSize
+								/>
+								<RadioControl
+									label={ __( 'Content', 'category-posts' ) }
+									selected={ excerptRadio }
+									options={ [
+										{ label: __( 'Excerpt', 'category-posts' ), value: 'excerpt' },
+										{
+											label: __( 'Full post', 'category-posts' ),
+											value: 'full_post',
+										},
+									] }
+									onChange={ ( value ) =>
+										setAttributes( {
+											excerptRadio: value,
+										} )
+									}
+								/>
+							</div>
+						</ToolsPanelItem>
+					) }
+					{ template && template.includes( '%more-link%' ) && (
+						<ToolsPanelItem
+							label={ __( 'More link', 'category-posts' ) }
+							hasValue={ () => differsFromDefault( attributes, MORE_LINK ) }
+							onDeselect={ () => setAttributes( defaultsOf( MORE_LINK ) ) }
+							isShownByDefault
+						>
+							<PanelRow>{__('More Link settings', 'category-posts')}</PanelRow>
+							<div className="cpwp-block-ident">
+								<TextControl
+									label={__('Read more text', 'category-posts')}
+									value={excerptMoreText}
+									onChange={(excerptMoreText) => setAttributes({ excerptMoreText })}
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+								/>
+							</div>
+						</ToolsPanelItem>
+					) }
+					{ template && template.includes( '%date%' ) && (
+						<ToolsPanelItem
+							label={ __( 'Date', 'category-posts' ) }
+							hasValue={ () => differsFromDefault( attributes, DATE_FORMAT ) }
+							onDeselect={ () => setAttributes( defaultsOf( DATE_FORMAT ) ) }
+							isShownByDefault
+						>
+							<PanelRow>{__('Date format settings', 'category-posts')}</PanelRow>
+							<div className="cpwp-block-ident">
+								<SelectControl
+									label={__('Date format', 'category-posts')}
+									value={presetDateFormat}
+									onChange={(presetDateFormat) => setAttributes({ presetDateFormat })}
+									options={[
+										{ label: __( 'Site date and time', 'category-posts' ), value: 'sitedateandtime' },
+										{ label: __( 'Site date', 'category-posts' ), value: 'sitedate' },
+										{ label: __( 'Reader\'s local date and time', 'category-posts' ), value: 'localsitedateandtime' },
+										{ label: __( 'Reader\'s local date', 'category-posts' ), value: 'localsitedate' },
+										{ label: __( 'PHP style format', 'category-posts' ), value: 'other' },
+									]}
+									__next40pxDefaultSize
+									__nextHasNoMarginBottom
+								/>
+								{ 'other' === presetDateFormat && (
+									<TextControl
+										label={__('PHP style date format', 'category-posts')}
+										value={dateFormat}
+										onChange={(dateFormat) => setAttributes({ dateFormat })}
+										__next40pxDefaultSize
+										__nextHasNoMarginBottom
+									/>
+								) }
+								<NumberControl
+									label={__('Relative date up to', 'category-posts')}
+									help={__( 'Shows the age of a post, e.g. "3 days", instead of its date while it is not older than this.', 'category-posts' )}
+									value={parseInt(datePastTime) || ''}
+									placeholder={__('Off', 'category-posts')}
+									onChange={(datePastTime) => setAttributes({ datePastTime: String(parseInt(datePastTime) || 0) })}
+									min={0}
+									suffix={ unit( __( 'days', 'category-posts' ) ) }
+									allowReset={false}
+									__next40pxDefaultSize
+								/>
 							</div>
 						</ToolsPanelItem>
 					) }
