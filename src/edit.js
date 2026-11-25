@@ -550,116 +550,226 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 		} ),
 	} );
 
-	return (
-		<>
-			{/*
-			  * What is shown goes to the "Content" tab, how it looks to "Settings", so
-			  * the "Styles" tab is left to the styles of the placeholders. Without the "Content" tab
-			  * the arrangement stays the one before: "Settings" and "Styles".
-			  */}
-			<InspectorControls group={ hasContentTab ? 'content' : 'default' }>
-				<ToolsPanel
-					className="cpwp-tools-panel"
-					label={ __( 'Title', 'category-posts' ) }
-					resetAll={ () => resetPanel( [ ...TITLE, ...TITLE_LEVEL, ...TITLE_LINK ] ) }
-				>
-					<ToolsPanelItem
+	// The panels "Title" and "General": under "Settings" around "Post details" when the
+	// "Content" tab exists, else under "Settings" around "Filter" as before.
+	const titlePanel = (
+		<ToolsPanel
+			className="cpwp-tools-panel"
+			label={ __( 'Title', 'category-posts' ) }
+			resetAll={ () => resetPanel( [ ...TITLE, ...TITLE_LEVEL, ...TITLE_LINK ] ) }
+		>
+			<ToolsPanelItem
+				label={ __( 'Title', 'category-posts' ) }
+				hasValue={ () => differsFromDefault( attributes, TITLE ) }
+				onDeselect={ () => setAttributes( defaultsOf( TITLE ) ) }
+				isShownByDefault
+			>
+				<ToggleControl
+					label={__('Hide title', 'category-posts')}
+					checked={hideTitle}
+					onChange={() =>
+						setAttributes({
+							hideTitle: !hideTitle,
+						})
+					}
+					__nextHasNoMarginBottom
+				/>
+				{ !hideTitle && (
+					<TemplateControl
 						label={ __( 'Title', 'category-posts' ) }
-						hasValue={ () => differsFromDefault( attributes, TITLE ) }
-						onDeselect={ () => setAttributes( defaultsOf( TITLE ) ) }
-						isShownByDefault
+						help={ __( 'Without an archive the placeholders stay empty.', 'category-posts' ) }
+						value={ title }
+						placeholders={ ARCHIVE_PLACEHOLDERS }
+						singleLine
+						onChange={ ( title ) => setAttributes( { title } ) }
+					/>
+				) }
+			</ToolsPanelItem>
+			{/* A hidden title has neither a heading level nor a link. */}
+			{ !hideTitle && (
+				<ToolsPanelItem
+					label={ __( 'Heading level', 'category-posts' ) }
+					{ ...optionalTool( 'titleLevel' ) }
+				>
+					<ToggleGroupControl
+						label={__('Heading level', 'category-posts')}
+						value={titleLevel}
+						isBlock
+						isAdaptiveWidth
+						onChange={(titleLevel) =>
+							setAttributes({
+								titleLevel,
+							})}
+						__next40pxDefaultSize
+						__nextHasNoMarginBottom
 					>
-						<ToggleControl
-							label={__('Hide title', 'category-posts')}
-							checked={hideTitle}
-							onChange={() =>
-								setAttributes({
-									hideTitle: !hideTitle,
-								})
-							}
-							__nextHasNoMarginBottom
-						/>
-						{ !hideTitle && (
-							<TemplateControl
-								label={ __( 'Title', 'category-posts' ) }
-								help={ __( 'Without an archive the placeholders stay empty.', 'category-posts' ) }
-								value={ title }
-								placeholders={ ARCHIVE_PLACEHOLDERS }
-								singleLine
-								onChange={ ( title ) => setAttributes( { title } ) }
-							/>
-						) }
-					</ToolsPanelItem>
-					{/* A hidden title has neither a heading level nor a link. */}
-					{ !hideTitle && (
-						<ToolsPanelItem
-							label={ __( 'Heading level', 'category-posts' ) }
-							{ ...optionalTool( 'titleLevel' ) }
-						>
-							<ToggleGroupControl
-								label={__('Heading level', 'category-posts')}
-								value={titleLevel}
-								isBlock
-								isAdaptiveWidth
-								onChange={(titleLevel) =>
+						<ToggleGroupControlOption value="Initial" label={__('Text', 'category-posts')} />
+						<ToggleGroupControlOption value="H1" label="H1" />
+						<ToggleGroupControlOption value="H2" label="H2" />
+						<ToggleGroupControlOption value="H3" label="H3" />
+						<ToggleGroupControlOption value="H4" label="H4" />
+						<ToggleGroupControlOption value="H5" label="H5" />
+						<ToggleGroupControlOption value="H6" label="H6" />
+					</ToggleGroupControl>
+				</ToolsPanelItem>
+			) }
+			{ !hideTitle && (
+				<ToolsPanelItem
+					label={ __( 'Link the title', 'category-posts' ) }
+					{ ...optionalTool( 'titleLink' ) }
+				>
+					<ToggleControl
+						label={__('Link the title', 'category-posts')}
+						checked={titleLink}
+						onChange={() =>
+							setAttributes({
+								titleLink: !titleLink,
+							})
+						}
+						__nextHasNoMarginBottom
+					/>
+					{ titleLink && (
+						<>
+							<TextControl
+								label={__('Title link URL', 'category-posts')}
+								value={titleLinkUrl}
+								onChange={(titleLinkUrl) =>
 									setAttributes({
-										titleLevel,
+										titleLinkUrl,
 									})}
 								__next40pxDefaultSize
 								__nextHasNoMarginBottom
-							>
-								<ToggleGroupControlOption value="Initial" label={__('Text', 'category-posts')} />
-								<ToggleGroupControlOption value="H1" label="H1" />
-								<ToggleGroupControlOption value="H2" label="H2" />
-								<ToggleGroupControlOption value="H3" label="H3" />
-								<ToggleGroupControlOption value="H4" label="H4" />
-								<ToggleGroupControlOption value="H5" label="H5" />
-								<ToggleGroupControlOption value="H6" label="H6" />
-							</ToggleGroupControl>
-						</ToolsPanelItem>
-					) }
-					{ !hideTitle && (
-						<ToolsPanelItem
-							label={ __( 'Link the title', 'category-posts' ) }
-							{ ...optionalTool( 'titleLink' ) }
-						>
+							/>
 							<ToggleControl
-								label={__('Link the title', 'category-posts')}
-								checked={titleLink}
+								label={__('Open title link in new tab', 'category-posts')}
+								checked={titleLinkTarget}
 								onChange={() =>
 									setAttributes({
-										titleLink: !titleLink,
+										titleLinkTarget: !titleLinkTarget,
 									})
 								}
 								__nextHasNoMarginBottom
 							/>
-							{ titleLink && (
-								<>
-									<TextControl
-										label={__('Title link URL', 'category-posts')}
-										value={titleLinkUrl}
-										onChange={(titleLinkUrl) =>
-											setAttributes({
-												titleLinkUrl,
-											})}
-										__next40pxDefaultSize
-										__nextHasNoMarginBottom
-									/>
-									<ToggleControl
-										label={__('Open title link in new tab', 'category-posts')}
-										checked={titleLinkTarget}
-										onChange={() =>
-											setAttributes({
-												titleLinkTarget: !titleLinkTarget,
-											})
-										}
-										__nextHasNoMarginBottom
-									/>
-								</>
-							) }
-						</ToolsPanelItem>
+						</>
 					) }
-				</ToolsPanel>
+				</ToolsPanelItem>
+			) }
+		</ToolsPanel>
+	);
+	const generalPanel = (
+		<ToolsPanel
+			className="cpwp-tools-panel"
+			label={ __( 'General', 'category-posts' ) }
+			resetAll={ () => resetPanel( [ ...NO_RESULTS, ...LOAD_MORE ] ) }
+		>
+			<ToolsPanelItem
+				label={ __( 'No results', 'category-posts' ) }
+				{ ...optionalTool( 'noResults' ) }
+			>
+				<SelectControl
+					label={ __( 'When there are no matches:', 'category-posts' ) }
+					value={ noMatchHandling }
+					onChange={( noMatchHandling ) =>
+						setAttributes( {
+							noMatchHandling
+						} )}
+					options={ [
+						{ value: 'nothing', label: __( 'Show an empty block', 'category-posts' ) },
+						{ value: 'hide', label: __( 'Hide the block', 'category-posts' ) },
+						{ value: 'text', label: __( 'Show text', 'category-posts' ) },
+					] }
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
+				/>
+				{noMatchHandling === 'text' && (
+					<TextareaControl
+						__nextHasNoMarginBottom
+						label={ __( 'Text', 'category-posts' ) }
+						value={ noMatchText }
+						onChange={( noMatchText ) =>
+							setAttributes( {
+								noMatchText
+							})}
+						rows={ 4 }
+					/>
+				)}
+			</ToolsPanelItem>
+			<ToolsPanelItem
+				label={ __( 'More posts', 'category-posts' ) }
+				hasValue={ () => differsFromDefault( attributes, LOAD_MORE ) }
+				onDeselect={ () => setAttributes( defaultsOf( LOAD_MORE ) ) }
+				isShownByDefault
+			>
+				<ToggleGroupControl
+					label={ __( 'More posts', 'category-posts' ) }
+					value={ morePosts }
+					isBlock
+					onChange={ ( value ) =>
+						setAttributes( {
+							paginationType: value,
+							// Kept in sync, the load more code reads it.
+							enableLoadmore: 'loadmore' === value,
+						} ) }
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
+				>
+					<ToggleGroupControlOption value="none" label={ __( 'None', 'category-posts' ) } />
+					<ToggleGroupControlOption value="loadmore" label={ __( 'Load more', 'category-posts' ) } />
+					<ToggleGroupControlOption value="pages" label={ __( 'Pagination', 'category-posts' ) } />
+				</ToggleGroupControl>
+				{'loadmore' === morePosts && (
+					<>
+						<ToggleControl
+							label={__('Scroll to the loaded items', 'category-posts')}
+							checked={loadmoreScrollTo}
+							onChange={() =>
+								setAttributes({
+									loadmoreScrollTo: !loadmoreScrollTo,
+								})
+							}
+							__nextHasNoMarginBottom
+						/>
+						<TextControl
+							label={__('Button text', 'category-posts')}
+							help={[
+								__('The following placeholders will be replaced with the relevant information: (%step% - Loaded items, %all% - All possible items for the set filter query)', 'category-posts'),
+							]}
+							value={loadmoreText}
+							onChange={(loadmoreText) =>
+								setAttributes({
+									loadmoreText,
+								})}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+						<TextControl
+							label={__('Loading text', 'category-posts')}
+							value={loadingText}
+							onChange={(loadingText) =>
+								setAttributes({
+									loadingText,
+								})}
+							__next40pxDefaultSize
+							__nextHasNoMarginBottom
+						/>
+					</>
+				)}
+			</ToolsPanelItem>
+		</ToolsPanel>
+	);
+
+	return (
+		<>
+			{/*
+			  * Which posts are shown ("Filter") goes to the "Content" tab, the title,
+			  * the post details and the general settings to "Settings": Title, Post
+			  * details, General. The "Styles" tab is left to the styles of the
+			  * placeholders, with the built-in CSS ("Styles") at the bottom. Without the
+			  * "Content" tab the arrangement stays the one before: "Settings" (Title,
+			  * Filter, General) and "Styles".
+			  */}
+			<InspectorControls group={ hasContentTab ? 'content' : 'default' }>
+				{ ! hasContentTab && titlePanel }
 				<ToolsPanel
 					className="cpwp-tools-panel"
 					label={ __( 'Filter', 'category-posts' ) }
@@ -937,107 +1047,10 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 					</ToolsPanelItem>
 					</> ) }
 				</ToolsPanel>
-				<ToolsPanel
-					className="cpwp-tools-panel"
-					label={ __( 'General', 'category-posts' ) }
-					resetAll={ () => resetPanel( [ ...NO_RESULTS, ...LOAD_MORE ] ) }
-				>
-					<ToolsPanelItem
-						label={ __( 'No results', 'category-posts' ) }
-						{ ...optionalTool( 'noResults' ) }
-					>
-						<SelectControl
-							label={ __( 'When there are no matches:', 'category-posts' ) }
-							value={ noMatchHandling }
-							onChange={( noMatchHandling ) =>
-								setAttributes( {
-									noMatchHandling
-								} )}
-							options={ [
-								{ value: 'nothing', label: __( 'Show an empty block', 'category-posts' ) },
-								{ value: 'hide', label: __( 'Hide the block', 'category-posts' ) },
-								{ value: 'text', label: __( 'Show text', 'category-posts' ) },
-							] }
-							__next40pxDefaultSize
-							__nextHasNoMarginBottom
-						/>
-						{noMatchHandling === 'text' && (
-							<TextareaControl
-								__nextHasNoMarginBottom
-								label={ __( 'Text', 'category-posts' ) }
-								value={ noMatchText }
-								onChange={( noMatchText ) =>
-									setAttributes( {
-										noMatchText
-									})}
-								rows={ 4 }
-							/>
-						)}
-					</ToolsPanelItem>
-					<ToolsPanelItem
-						label={ __( 'More posts', 'category-posts' ) }
-						hasValue={ () => differsFromDefault( attributes, LOAD_MORE ) }
-						onDeselect={ () => setAttributes( defaultsOf( LOAD_MORE ) ) }
-						isShownByDefault
-					>
-						<ToggleGroupControl
-							label={ __( 'More posts', 'category-posts' ) }
-							value={ morePosts }
-							isBlock
-							onChange={ ( value ) =>
-								setAttributes( {
-									paginationType: value,
-									// Kept in sync, the load more code reads it.
-									enableLoadmore: 'loadmore' === value,
-								} ) }
-							__next40pxDefaultSize
-							__nextHasNoMarginBottom
-						>
-							<ToggleGroupControlOption value="none" label={ __( 'None', 'category-posts' ) } />
-							<ToggleGroupControlOption value="loadmore" label={ __( 'Load more', 'category-posts' ) } />
-							<ToggleGroupControlOption value="pages" label={ __( 'Pagination', 'category-posts' ) } />
-						</ToggleGroupControl>
-						{'loadmore' === morePosts && (
-							<>
-								<ToggleControl
-									label={__('Scroll to the loaded items', 'category-posts')}
-									checked={loadmoreScrollTo}
-									onChange={() =>
-										setAttributes({
-											loadmoreScrollTo: !loadmoreScrollTo,
-										})
-									}
-									__nextHasNoMarginBottom
-								/>
-								<TextControl
-									label={__('Button text', 'category-posts')}
-									help={[
-										__('The following placeholders will be replaced with the relevant information: (%step% - Loaded items, %all% - All possible items for the set filter query)', 'category-posts'),
-									]}
-									value={loadmoreText}
-									onChange={(loadmoreText) =>
-										setAttributes({
-											loadmoreText,
-										})}
-									__next40pxDefaultSize
-									__nextHasNoMarginBottom
-								/>
-								<TextControl
-									label={__('Loading text', 'category-posts')}
-									value={loadingText}
-									onChange={(loadingText) =>
-										setAttributes({
-											loadingText,
-										})}
-									__next40pxDefaultSize
-									__nextHasNoMarginBottom
-								/>
-							</>
-						)}
-					</ToolsPanelItem>
-				</ToolsPanel>
+				{ ! hasContentTab && generalPanel }
 			</InspectorControls>
 			<InspectorControls group={ hasContentTab ? 'default' : 'styles' }>
+				{ hasContentTab && titlePanel }
 				<ToolsPanel
 					className="cpwp-tools-panel"
 					label={ __( 'Post details', 'category-posts' ) }
@@ -1317,6 +1330,16 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 						</ToolsPanelItem>
 					) }
 				</ToolsPanel>
+				{ hasContentTab && generalPanel }
+			</InspectorControls>
+			<InspectorControls group="styles">
+				<PlaceholderStylePanels
+					attributes={ attributes }
+					setAttributes={ setAttributes }
+					selection={ styleSelection }
+					onActiveChange={ setStylesTabOpen }
+				/>
+				{/* The built-in CSS, below the styles of the placeholders. */}
 				<ToolsPanel
 					className="cpwp-tools-panel"
 					label={ __( 'Styles', 'category-posts' ) }
@@ -1367,14 +1390,6 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 						/>
 					</ToolsPanelItem>
 				</ToolsPanel>
-			</InspectorControls>
-			<InspectorControls group="styles">
-				<PlaceholderStylePanels
-					attributes={ attributes }
-					setAttributes={ setAttributes }
-					selection={ styleSelection }
-					onActiveChange={ setStylesTabOpen }
-				/>
 			</InspectorControls>
 			<div
 				{...blockProps}
