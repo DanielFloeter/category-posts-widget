@@ -28,7 +28,6 @@ import {
 	Modal,
 	SelectControl,
 	ToolbarButton,
-	ToolbarGroup,
 	SVG,
 	Path,
 } from '@wordpress/components';
@@ -294,18 +293,17 @@ export function CropToolbar( { buttons, open, onOpen, onClose } ) {
 	const opened = open && buttons.find( ( button ) => button.id === open.id );
 	return (
 		<>
+			{/* Straight in the group, a group of its own inside it adds a second line. */}
 			<BlockControls group="other">
-				<ToolbarGroup className="cpwp-crop-toolbar">
-					{ buttons.map( ( button ) => (
-						<ToolbarButton
-							key={ button.id }
-							icon={ aspectRatioIcon }
-							label={ button.label }
-							className={ button.className }
-							onClick={ () => onOpen( button.id ) }
-						/>
-					) ) }
-				</ToolbarGroup>
+				{ buttons.map( ( button ) => (
+					<ToolbarButton
+						key={ button.id }
+						icon={ aspectRatioIcon }
+						label={ button.label }
+						className={ button.className }
+						onClick={ () => onOpen( button.id ) }
+					/>
+				) ) }
 			</BlockControls>
 			{ opened && (
 				<CropModal
