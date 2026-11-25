@@ -23,6 +23,8 @@ import { __, _x, sprintf } from '@wordpress/i18n';
 import {
 	Button,
 	Flex,
+	FlexBlock,
+	FlexItem,
 	Modal,
 	SelectControl,
 	ToolbarButton,
@@ -39,7 +41,7 @@ import {
 /**
  * Internal dependencies
  */
-import { ORIGINAL, parseRatio, ratioOptions } from './thumb-size';
+import { ORIGINAL, parseRatio, ratioChoice, ratioOptions } from './thumb-size';
 
 export { ORIGINAL, parseRatio, ratioChoice, ratioOptions, thumbSize } from './thumb-size';
 
@@ -135,23 +137,19 @@ function centeredCrop( ratio, media ) {
  * @param {Object}   props
  * @param {string}   props.title       The title of the dialog.
  * @param {string}   props.image       The URL of the sample image, empty for none.
- * @param {boolean}  props.startFree   Whether to open with "Free" chosen.
  * @param {string}   props.aspectRatio The stored aspect ratio.
  * @param {number}   props.width       The width of the thumbnails (thumbW).
  * @param {number}   props.height      The height of the thumbnails (thumbH).
  * @param {Function} props.onApply     Called with the new aspect ratio.
  * @param {Function} props.onClose     Called when the dialog closes.
  */
-function CropModal( { title, image, startFree, aspectRatio, width, height, onApply, onClose } ) {
+function CropModal( { title, image, aspectRatio, width, height, onApply, onClose } ) {
 	const presets = useAspectRatioOptions();
 
 	// What the select shows: a stored ratio which is no preset is a free one, and
 	// without one the ratio of the pixels so far (none with a height of 0).
 	const isPreset = presets.some( ( option ) => option.value === aspectRatio );
 	const initialChoice = ( () => {
-		if ( startFree ) {
-			return '';
-		}
 		if ( ORIGINAL === aspectRatio || ( ! aspectRatio && ! height ) ) {
 			return ORIGINAL;
 		}
@@ -277,15 +275,15 @@ function cropRatio( crop, media ) {
 
 /**
  * The "Crop" button in the block toolbar and its dialog.
- * The dialog is opened from outside as well, by "Free" of the aspect ratio in
- * the panel, so which one is open is kept by the block.
+ * The dialog is opened from the "Aspect ratio" in the panel as well, so which one
+ * is open is kept by the block.
  *
  * @param {Object}      props
  * @param {Array}       props.buttons Each with an id, a label (the text of the
  *                                    button and the title of the dialog), an
  *                                    optional className and the props of the
  *                                    dialog: aspectRatio, width, height, onApply.
- * @param {Object|null} props.open    The open dialog, { id, image, free }.
+ * @param {Object|null} props.open    The open dialog, { id, image }.
  * @param {Function}    props.onOpen  Called with the id of a button clicked.
  * @param {Function}    props.onClose Called when the dialog closes.
  */
@@ -313,7 +311,6 @@ export function CropToolbar( { buttons, open, onOpen, onClose } ) {
 				<CropModal
 					title={ opened.label }
 					image={ open.image }
-					startFree={ open.free }
 					aspectRatio={ opened.aspectRatio }
 					width={ opened.width }
 					height={ opened.height }
@@ -322,5 +319,46 @@ export function CropToolbar( { buttons, open, onOpen, onClose } ) {
 				/>
 			) }
 		</>
+	);
+}
+
+/**
+ * The aspect ratio in the "Thumbnail" panel: a select of the ratios and, beside
+ * it, a button which opens the "Crop" dialog, where a frame can be drawn freely.
+ * "Free" in the select only leaves the height as it is. A free ratio, e.g. 1.62,
+ * shows as "Free".
+ *
+ * @param {Object}   props
+ * @param {string}   props.label       The label.
+ * @param {string}   props.buttonLabel The label of the button, e.g. "Crop".
+ * @param {Array}    props.presets     The presets, see useAspectRatioOptions().
+ * @param {string}   props.value       The stored aspect ratio.
+ * @param {Function} props.onChange    Called with a new aspect ratio.
+ * @param {Function} props.onOpen      Called when the button is clicked.
+ */
+export function AspectRatioControl( { label, buttonLabel, presets, value, onChange, onOpen } ) {
+	const ratios = ratioOptions( presets );
+	return (
+		<Flex align="flex-end" gap={ 2 } className="cpwp-aspect-ratio-control">
+			<FlexBlock>
+				<SelectControl
+					label={ label }
+					value={ ratioChoice( ratios, value ) }
+					options={ ratios }
+					onChange={ onChange }
+					__next40pxDefaultSize
+					__nextHasNoMarginBottom
+				/>
+			</FlexBlock>
+			<FlexItem>
+				<Button
+					icon={ aspectRatioIcon }
+					label={ buttonLabel }
+					onClick={ onOpen }
+					variant="secondary"
+					__next40pxDefaultSize
+				/>
+			</FlexItem>
+		</Flex>
 	);
 }

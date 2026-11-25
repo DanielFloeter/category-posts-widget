@@ -42,7 +42,7 @@ import { dateI18n, getSettings as getDateSettings } from '@wordpress/date';
  */
 import TemplateControl, { ARCHIVE_PLACEHOLDERS } from './template-control';
 import { PlaceholderStylePanels, findStyleTarget, selectionCSS } from './placeholder-styles';
-import { CropToolbar, ratioChoice, ratioOptions, thumbSize, useAspectRatioOptions, useImageSizes } from './thumb-crop';
+import { AspectRatioControl, CropToolbar, thumbSize, useAspectRatioOptions, useImageSizes } from './thumb-crop';
 import metadata from './../block.json';
 import './editor.scss';
 
@@ -550,13 +550,6 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 		...imageSizes.options,
 		...( imageSize && ! imageSizes.options.some( ( option ) => option.value === imageSize ) ? [ { label: imageSize, value: imageSize } ] : [] ),
 	];
-	/*
-	 * "Free" opens the "Crop" dialog, also while it is already the choice. A select
-	 * only reports a change, so a free ratio shows as a hidden copy of "Free" and
-	 * picking the visible one is still a change.
-	 */
-	const FREE_SHOWN = 'free-shown';
-	const aspectRatioOptions = ratioOptions( ratioPresets );
 	// The sample image of the "Crop" dialog: the first thumbnail of the preview, in
 	// the widest size of its srcset, the thumbnail itself may be small.
 	const sampleImage = () => {
@@ -572,7 +565,7 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 	};
 	// The open "Crop" dialog, by the toolbar button or by "Free" in the panel.
 	const [ cropDialog, setCropDialog ] = useState( null );
-	const openCrop = ( free = false ) => setCropDialog( { id: 'thumb', free, image: sampleImage() } );
+	const openCrop = () => setCropDialog( { id: 'thumb', image: sampleImage() } );
 	const cropButtons = template && template.includes( '%thumb%' ) ? [ {
 		id: 'thumb',
 		label: __( 'Crop', 'category-posts' ),
@@ -1248,16 +1241,13 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 									label={ __( 'Aspect ratio', 'category-posts' ) }
 									{ ...optionalTool( 'aspectRatio' ) }
 								>
-									<SelectControl
+									<AspectRatioControl
 										label={__('Aspect ratio', 'category-posts')}
-										value={ ratioChoice( aspectRatioOptions, aspectRatio ) || FREE_SHOWN }
-										onChange={ ( value ) => ( '' === value ? openCrop( true ) : setThumbFormat( { aspectRatio: value } ) ) }
-										options={ [
-											{ label: aspectRatioOptions[ 0 ].label, value: FREE_SHOWN, hidden: true, disabled: true },
-											...aspectRatioOptions,
-										] }
-										__next40pxDefaultSize
-										__nextHasNoMarginBottom
+										presets={ ratioPresets }
+										value={ aspectRatio }
+										buttonLabel={ __( 'Crop', 'category-posts' ) }
+										onChange={ ( value ) => setThumbFormat( { aspectRatio: value } ) }
+										onOpen={ openCrop }
 									/>
 								</ToolsPanelItem>
 								<ToolsPanelItem
