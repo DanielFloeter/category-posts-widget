@@ -761,9 +761,9 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 	return (
 		<>
 			{/*
-			  * Which posts are shown ("Filter") goes to the "Content" tab, the title,
-			  * the post details and the general settings to "Settings": Title, Post
-			  * details, General. The "Styles" tab is left to the styles of the
+			  * Which posts are shown ("Filter") and the general settings ("General") go
+			  * to the "Content" tab, the title and the post details to "Settings". The
+			  * "Styles" tab is left to the styles of the
 			  * placeholders, with the built-in CSS ("Styles") at the bottom. Without the
 			  * "Content" tab the arrangement stays the one before: "Settings" (Title,
 			  * Filter, General) and "Styles".
@@ -1047,7 +1047,7 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 					</ToolsPanelItem>
 					</> ) }
 				</ToolsPanel>
-				{ ! hasContentTab && generalPanel }
+				{ generalPanel }
 			</InspectorControls>
 			<InspectorControls group={ hasContentTab ? 'default' : 'styles' }>
 				{ hasContentTab && titlePanel }
@@ -1330,7 +1330,6 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 						</ToolsPanelItem>
 					) }
 				</ToolsPanel>
-				{ hasContentTab && generalPanel }
 			</InspectorControls>
 			<InspectorControls group="styles">
 				<PlaceholderStylePanels
