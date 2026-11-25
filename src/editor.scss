@@ -240,3 +240,69 @@
 	outline: none !important;
 	box-shadow: none !important;
 }
+
+/*
+ * The "Crop" dialog of the thumbnails, built like "Edit media" → "Crop":
+ * the sample image with its frame on the left, the aspect ratio on the right.
+ */
+.cpwp-crop-modal__body {
+	display: flex;
+	gap: 24px;
+	align-items: flex-start;
+
+	@media (max-width: 600px) {
+		flex-direction: column;
+	}
+}
+
+.cpwp-crop-modal__canvas {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	justify-content: center;
+	background: #f0f0f0;
+
+	.ReactCrop,
+	> img {
+		max-width: 100%;
+	}
+
+	// The title and the buttons of the dialog have to fit beside a tall image.
+	.cpwp-crop-modal & img {
+		display: block;
+		max-width: 100%;
+		// The dialog is at most 70% of the window high on large screens.
+		max-height: max(160px, min(calc(100vh - 360px), calc(70vh - 210px)));
+		object-fit: contain;
+	}
+}
+
+.cpwp-crop-modal__placeholder {
+	width: 480px;
+	max-width: 100%;
+	background: #ccc;
+}
+
+.cpwp-crop-modal__sidebar {
+	flex: 0 0 240px;
+
+	@media (max-width: 600px) {
+		flex-basis: auto;
+		width: 100%;
+	}
+}
+
+.cpwp-crop-modal__help {
+	margin-top: 8px;
+	color: #757575;
+	font-size: 12px;
+}
+
+// The buttons stay in view, should the dialog still have to scroll.
+.cpwp-crop-modal__footer {
+	position: sticky;
+	bottom: 0;
+	margin-top: 8px;
+	padding-block: 16px;
+	background: #fff;
+}

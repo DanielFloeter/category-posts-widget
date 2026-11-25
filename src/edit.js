@@ -8,7 +8,7 @@
 import { Children, useEffect, useRef, useState } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
 import { useInstanceId } from '@wordpress/compose';
-import { __, sprintf } from '@wordpress/i18n';
+import { __, _x, sprintf } from '@wordpress/i18n';
 import {
 	ComboboxControl,
 	TextControl,
@@ -42,6 +42,7 @@ import { dateI18n, getSettings as getDateSettings } from '@wordpress/date';
  */
 import TemplateControl, { ARCHIVE_PLACEHOLDERS } from './template-control';
 import { PlaceholderStylePanels, findStyleTarget, selectionCSS } from './placeholder-styles';
+import { CropToolbar, ratioChoice, ratioOptions, thumbSize, useAspectRatioOptions, useImageSizes } from './thumb-crop';
 import metadata from './../block.json';
 import './editor.scss';
 
@@ -86,7 +87,8 @@ const EXCERPT = [ 'excerptLines', 'excerptRadio' ];
 const MORE_LINK = [ 'excerptMoreText' ];
 const DATE_FORMAT = [ 'presetDateFormat', 'dateFormat', 'datePastTime' ];
 const THUMBNAIL = [ 'thumbW', 'thumbH', 'textDoNotWrapThumb' ];
-const THUMBNAIL_TOOLS = [ 'thumbHover', 'showPostFormat', 'everythingIsLink', 'thumbSymbols' ];
+// The image size and the aspect ratio only feed thumbW/thumbH, see thumb-crop.js.
+const THUMBNAIL_TOOLS = [ 'imageSize', 'aspectRatio', 'thumbHover', 'showPostFormat', 'everythingIsLink', 'thumbSymbols' ];
 const POST_DETAILS = [ ...TEMPLATE, ...ITEM_TITLE, ...EXCERPT, ...MORE_LINK, ...DATE_FORMAT, ...THUMBNAIL, ...THUMBNAIL_TOOLS ];
 
 // Entries shown from the start which can still be hidden under "Tools", unlike
@@ -221,7 +223,7 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 		hideTitle, title, titleLink, titleLinkUrl, titleLinkTarget, titleLevel,
 		order, orderBy, categories, status, num, offset, dateRange, startDate, endDate, daysAgo, excludeCurrentPost, hideNoThumb, sticky,
 		template, itemTitleLevel, itemTitleLines, excerptRadio, excerptLines, excerptMoreText,
-		thumbW, thumbH, thumbHover, thumbSymbols, showPostFormat, textDoNotWrapThumb, everythingIsLink, presetDateFormat, dateFormat, datePastTime,
+		thumbW, thumbH, imageSize, aspectRatio, thumbHover, thumbSymbols, showPostFormat, textDoNotWrapThumb, everythingIsLink, presetDateFormat, dateFormat, datePastTime,
 		disableCss, disableFontStyles, disableThemeStyles, noMatchHandling, noMatchText, enableLoadmore, paginationType, loadmoreScrollTo, loadmoreText, loadingText,
 		instanceId, shownTools
 	} = attributes;
@@ -508,6 +510,76 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 		} ),
 	} );
 
+	/*
+	 * The image size and the aspect ratio of the thumbnails. Both only work out
+	 * thumbW/thumbH, which stay what the output is made of. See thumbSize() for
+	 * the rules.
+	 */
+	const imageSizes = useImageSizes();
+	const ratioPresets = useAspectRatioOptions();
+	// An entry set back by typing pixels stays in the panel, the choice is just undone.
+	const keepShown = ( id ) => ( ! shownTools.includes( id ) && differsFromDefault( attributes, OPTIONAL_TOOLS[ id ] )
+		? { shownTools: [ ...shownTools, id ] }
+		: {} );
+	// A new image size or aspect ratio, e.g. { imageSize: 'medium' }.
+	const setThumbFormat = ( changes ) => {
+		const { width, height } = thumbSize( {
+			imageSize,
+			aspectRatio,
+			...changes,
+			width: thumbW,
+			height: thumbH,
+			dimensions: imageSizes.dimensions,
+		} );
+		setAttributes( { ...changes, thumbW: width, thumbH: height } );
+	};
+	// A width typed in is no image size any more; with an aspect ratio the height follows.
+	const setThumbWidth = ( value ) => {
+		const width = parseInt( value ) || 0;
+		const { height } = thumbSize( { aspectRatio, width, height: thumbH } );
+		setAttributes( { thumbW: width, thumbH: height, imageSize: '', ...keepShown( 'imageSize' ) } );
+	};
+	// A height typed in leaves the aspect ratio free again.
+	const setThumbHeight = ( value ) => setAttributes( {
+		thumbH: parseInt( value ) || 0,
+		aspectRatio: '',
+		...keepShown( 'aspectRatio' ),
+	} );
+	const imageSizeOptions = [
+		{ label: _x( 'Custom', 'Image size option', 'category-posts' ), value: '' },
+		...imageSizes.options,
+		...( imageSize && ! imageSizes.options.some( ( option ) => option.value === imageSize ) ? [ { label: imageSize, value: imageSize } ] : [] ),
+	];
+	/*
+	 * "Free" opens the "Crop" dialog, also while it is already the choice. A select
+	 * only reports a change, so a free ratio shows as a hidden copy of "Free" and
+	 * picking the visible one is still a change.
+	 */
+	const FREE_SHOWN = 'free-shown';
+	const aspectRatioOptions = ratioOptions( ratioPresets );
+	// The sample image of the "Crop" dialog: the first thumbnail of the preview, in
+	// the widest size of its srcset, the thumbnail itself may be small.
+	const sampleImage = () => {
+		const img = previewRef.current?.querySelector( 'img' );
+		if ( ! img ) {
+			return '';
+		}
+		const widest = ( img.getAttribute( 'srcset' ) || '' ).split( ',' )
+			.map( ( candidate ) => candidate.trim().split( /\s+/ ) )
+			.filter( ( [ url, width ] ) => url && /^\d+w$/.test( width || '' ) )
+			.sort( ( a, b ) => parseInt( b[ 1 ] ) - parseInt( a[ 1 ] ) )[ 0 ];
+		return widest ? widest[ 0 ] : img.currentSrc || img.src;
+	};
+	// The open "Crop" dialog, by the toolbar button or by "Free" in the panel.
+	const [ cropDialog, setCropDialog ] = useState( null );
+	const openCrop = ( free = false ) => setCropDialog( { id: 'thumb', free, image: sampleImage() } );
+	const cropButtons = template && template.includes( '%thumb%' ) ? [ {
+		id: 'thumb',
+		label: __( 'Crop', 'category-posts' ),
+		aspectRatio, width: thumbW, height: thumbH,
+		onApply: ( value ) => setThumbFormat( { aspectRatio: value } ),
+	} ] : [];
+
 	// Which entries are shown does not change the preview, so it is not loaded again.
 	const { shownTools: omitted, ...previewAttributes } = attributes;
 
@@ -760,6 +832,12 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 
 	return (
 		<>
+			<CropToolbar
+				buttons={ cropButtons }
+				open={ cropDialog }
+				onOpen={ () => openCrop() }
+				onClose={ () => setCropDialog( null ) }
+			/>
 			{/*
 			  * Which posts are shown ("Filter") and the general settings ("General") go
 			  * to the "Content" tab, the title and the post details to "Settings". The
@@ -1136,7 +1214,7 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 										label={__('Width', 'category-posts')}
 										value={thumbW || ''}
 										placeholder={__('Auto', 'category-posts')}
-										onChange={(thumbW) => setAttributes({ thumbW: parseInt(thumbW) || 0 })}
+										onChange={ setThumbWidth }
 										min={0}
 										suffix={ unit( 'px' ) }
 										allowReset={false}
@@ -1146,13 +1224,42 @@ export default function Edit({ attributes, setAttributes, clientId, context, isS
 										label={__('Height', 'category-posts')}
 										value={thumbH || ''}
 										placeholder={__('Auto', 'category-posts')}
-										onChange={(thumbH) => setAttributes({ thumbH: parseInt(thumbH) || 0 })}
+										onChange={ setThumbHeight }
 										min={0}
 										suffix={ unit( 'px' ) }
 										allowReset={false}
 										__next40pxDefaultSize
 									/>
 								</ControlPair>
+								<ToolsPanelItem
+									label={ __( 'Image size', 'category-posts' ) }
+									{ ...optionalTool( 'imageSize' ) }
+								>
+									<SelectControl
+										label={__('Image size', 'category-posts')}
+										value={imageSize}
+										onChange={ ( value ) => setThumbFormat( { imageSize: value } ) }
+										options={ imageSizeOptions }
+										__next40pxDefaultSize
+										__nextHasNoMarginBottom
+									/>
+								</ToolsPanelItem>
+								<ToolsPanelItem
+									label={ __( 'Aspect ratio', 'category-posts' ) }
+									{ ...optionalTool( 'aspectRatio' ) }
+								>
+									<SelectControl
+										label={__('Aspect ratio', 'category-posts')}
+										value={ ratioChoice( aspectRatioOptions, aspectRatio ) || FREE_SHOWN }
+										onChange={ ( value ) => ( '' === value ? openCrop( true ) : setThumbFormat( { aspectRatio: value } ) ) }
+										options={ [
+											{ label: aspectRatioOptions[ 0 ].label, value: FREE_SHOWN, hidden: true, disabled: true },
+											...aspectRatioOptions,
+										] }
+										__next40pxDefaultSize
+										__nextHasNoMarginBottom
+									/>
+								</ToolsPanelItem>
 								<ToolsPanelItem
 									label={ __( 'Hover effect', 'category-posts' ) }
 									{ ...optionalTool( 'thumbHover' ) }

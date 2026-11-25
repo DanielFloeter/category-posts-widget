@@ -112,6 +112,14 @@
 			"type": "integer",
 			"default": 150
 		},
+		"imageSize": {
+			"type": "string",
+			"default": ""
+		},
+		"aspectRatio": {
+			"type": "string",
+			"default": ""
+		},
 		"thumbHover": {
 			"type": "string",
 			"default": "none"
