@@ -393,6 +393,13 @@ class Virtual_Widget {
 		if ( isset( $settings['pagination_type'] ) && 'pages' === $settings['pagination_type'] ) {
 			$ret['pagination'] = '#' . $this->id . ' .' . __NAMESPACE__ . '-pagination {display:flex;flex-wrap:wrap;justify-content:center;gap:0.5em;margin-top:10px}';
 		}
+
+		// Styles of single placeholders, only the block has them. They are set on
+		// purpose, so they apply even with the built-in CSS turned off.
+		if ( CONTEXT_BLOCK === $context && function_exists( __NAMESPACE__ . '\\placeholder_style_rules' ) ) {
+			$ret = array_merge( $ret, placeholder_style_rules( $this->id, $settings ) );
+		}
+
 		$rules[] = $ret;
 	}
 

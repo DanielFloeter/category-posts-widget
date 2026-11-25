@@ -104,7 +104,435 @@ function build_block_instance( $attributes ) {
 	$instance['ver']                    = isset( $attributes['ver'] ) ? $attributes['ver'] : '5.2.0';
 	$instance['context']                = CONTEXT_BLOCK;
 
+	// Color, typography and boxes of single placeholders and of the elements
+	// around the list, see placeholder_style_rules().
+	$instance['placeholder_styles']     = isset( $attributes['placeholderStyles'] ) && is_array( $attributes['placeholderStyles'] ) ? $attributes['placeholderStyles'] : array();
+
 	return $instance;
+}
+
+/**
+ * The placeholders whose color and typography can be set in the block, with the
+ * element each one puts out (the item*() functions of Widget). Same keys as in
+ * src/placeholder-styles.js.
+ */
+const PLACEHOLDER_STYLE_SELECTORS = array(
+	'title'      => '.cat-post-title',
+	'date'       => '.cat-post-date',
+	'excerpt'    => '.cpwp-excerpt-text',
+	'moreLink'   => '.cat-post-excerpt-more',
+	'author'     => '.cat-post-author',
+	'commentNum' => '.cat-post-comment-num',
+	// Categories and tags, span.cat-post-tax-category and span.cat-post-tax-tag
+	// (itemCategories(), itemTags()).
+	'terms'      => '[class*="cat-post-tax-"]',
+);
+
+/**
+ * The placeholders which can look like a button or badges: background,
+ * padding, margin and border go to the element itself (the more link) or to
+ * each term (.cat-post-term within the span of the categories or tags, see
+ * itemCategories()). Same as 'box' of the targets in
+ * src/placeholder-style-targets.js.
+ */
+const PLACEHOLDER_STYLE_BOXES = array(
+	'moreLink' => '',
+	'terms'    => ' .cat-post-term',
+);
+
+/**
+ * "Load more" and the pagination below the list, see Widget::loadMoreHTML()
+ * and the pagination of Widget. The current page comes after the other page
+ * numbers, so it wins. Same selectors as the targets in
+ * src/placeholder-style-targets.js.
+ */
+const BLOCK_STYLE_SELECTORS = array(
+	'loadMore'          => '.' . __NAMESPACE__ . '-loadmore button',
+	'pagination'        => '.' . __NAMESPACE__ . '-pagination .page-numbers',
+	'paginationCurrent' => '.' . __NAMESPACE__ . '-pagination .page-numbers.current',
+);
+
+/**
+ * Where the hover colors of a placeholder or element go: the selector of the
+ * element plus this. Text color for all of them, background for those which
+ * can be a box. A placeholder with an inner link hovers on the link.
+ */
+const PLACEHOLDER_STYLE_HOVER = array(
+	'title'      => ':hover',
+	'moreLink'   => ':hover',
+	'author'     => ' a:hover',
+	'commentNum' => ' a:hover',
+	'terms'      => ' .cat-post-term:hover',
+);
+
+/**
+ * The hover rule of one placeholder or element.
+ *
+ * @param array|null $style    The styles, with 'hoverColor' and 'hoverBackground'.
+ * @param string     $selector The selector of the rule.
+ *
+ * @return string The rule, empty without hover colors.
+ */
+function placeholder_hover_css( $style, $selector ) {
+	if ( ! is_array( $style ) ) {
+		return '';
+	}
+	return placeholder_style_css(
+		array(
+			'color'      => isset( $style['hoverColor'] ) ? $style['hoverColor'] : '',
+			'background' => isset( $style['hoverBackground'] ) ? $style['hoverBackground'] : '',
+		),
+		$selector
+	);
+}
+
+/**
+ * The keys of the styles of a box, see placeholder_style_css().
+ */
+const PLACEHOLDER_STYLE_BOX_KEYS = array( 'background', 'padding', 'margin', 'border' );
+
+/**
+ * The placeholders which put out their text as an inner link. The theme colors
+ * links directly, so the color has to go to the link as well.
+ */
+const PLACEHOLDER_STYLE_INNER_LINKS = array( 'author', 'commentNum', 'terms' );
+
+/**
+ * The class the title of the block always carries, see block_title_html().
+ */
+const BLOCK_TITLE_CLASS = 'cpwp-block-title';
+
+/**
+ * Where the hover colors of the title of the block, "Load more" and the page
+ * numbers go, see PLACEHOLDER_STYLE_HOVER.
+ */
+const BLOCK_STYLE_HOVER = array(
+	'title'      => '.' . BLOCK_TITLE_CLASS . ' a:hover',
+	'loadMore'   => '.' . __NAMESPACE__ . '-loadmore button:hover',
+	'pagination' => '.' . __NAMESPACE__ . '-pagination a.page-numbers:hover',
+);
+
+/**
+ * Give the title of the block an element with a class of its own, for its
+ * styles (#34). A heading (H1-H6) gets the class, the level "Text" puts out bare
+ * text and gets wrapped. 'widget-title' is not enough, it is left out with
+ * "Disable theme styles".
+ *
+ * @param string $html The title from Widget::titleHTML().
+ *
+ * @return string The title with the class.
+ */
+function block_title_html( $html ) {
+	if ( '' === trim( $html ) ) {
+		return $html;
+	}
+
+	if ( preg_match( '/^\s*<h[1-6]\b[^>]*>/i', $html, $tag ) ) {
+		if ( preg_match( '/\sclass="/i', $tag[0] ) ) {
+			$new_tag = preg_replace( '/\sclass="/i', ' class="' . BLOCK_TITLE_CLASS . ' ', $tag[0], 1 );
+		} else {
+			$new_tag = preg_replace( '/^(\s*<h[1-6])/i', '$1 class="' . BLOCK_TITLE_CLASS . '"', $tag[0], 1 );
+		}
+		return $new_tag . substr( $html, strlen( $tag[0] ) );
+	}
+
+	return '<div class="' . BLOCK_TITLE_CLASS . '">' . $html . '</div>';
+}
+
+/**
+ * The items, see Widget::itemHTML(). One template, its styles under 'default'.
+ */
+const PLACEHOLDER_STYLE_TEMPLATES = array(
+	'default' => '.cat-post-item',
+);
+
+/**
+ * CSS rules for the styles of single placeholders set in the block.
+ *
+ * The values come as the block editor stores them, a preset as
+ * 'var:preset|color|<slug>' or 'var:preset|font-size|<slug>'. The style engine
+ * turns them into CSS custom properties and filters the declarations
+ * (safecss_filter_attr()).
+ *
+ * @param string $id       Id of the block's wrapper element.
+ * @param array  $settings The widget instance, with 'placeholder_styles' as
+ *                         array( <template> => array( <placeholder> => array( 'color', 'fontSize', 'fontWeight' ) ) ),
+ *                         the title of the block under array( 'block' => array( 'title' => … ) ).
+ *
+ * @return string[] The rules, keyed like the other rules of getCSSRules().
+ */
+function placeholder_style_rules( $id, $settings ) {
+	$rules = array();
+
+	if ( empty( $settings['placeholder_styles'] ) || ! is_array( $settings['placeholder_styles'] ) || ! function_exists( 'wp_style_engine_get_styles' ) ) {
+		return $rules;
+	}
+
+	foreach ( PLACEHOLDER_STYLE_TEMPLATES as $template => $item_selector ) {
+		$styles = isset( $settings['placeholder_styles'][ $template ] ) ? $settings['placeholder_styles'][ $template ] : null;
+		if ( ! is_array( $styles ) ) {
+			continue;
+		}
+
+		// The item itself: background, padding, margin, border. The item
+		// width count without padding and border, the box keeps them inside.
+		$css = placeholder_style_css(
+			isset( $styles['item'] ) ? $styles['item'] : null,
+			'#' . $id . ' ' . $item_selector,
+			'box-sizing:border-box;'
+		);
+		if ( '' !== $css ) {
+			$rules[ 'placeholder_' . $template . '_item' ] = $css;
+		}
+
+		foreach ( PLACEHOLDER_STYLE_SELECTORS as $placeholder => $selector ) {
+			$style = isset( $styles[ $placeholder ] ) && is_array( $styles[ $placeholder ] ) ? $styles[ $placeholder ] : null;
+			if ( null === $style ) {
+				continue;
+			}
+			$box_keys = array_flip( PLACEHOLDER_STYLE_BOX_KEYS );
+
+			if ( isset( PLACEHOLDER_STYLE_HOVER[ $placeholder ] ) ) {
+				$css = placeholder_hover_css( $style, '#' . $id . ' ' . $item_selector . ' ' . $selector . PLACEHOLDER_STYLE_HOVER[ $placeholder ] );
+				if ( '' !== $css ) {
+					$rules[ 'placeholder_' . $template . '_' . $placeholder . '_hover' ] = $css;
+				}
+			}
+
+			// A button or badges: background, padding, margin, border.
+			if ( isset( PLACEHOLDER_STYLE_BOXES[ $placeholder ] ) ) {
+				$css = placeholder_style_css(
+					array_intersect_key( $style, $box_keys ),
+					'#' . $id . ' ' . $item_selector . ' ' . $selector . PLACEHOLDER_STYLE_BOXES[ $placeholder ]
+				);
+				if ( '' !== $css ) {
+					$rules[ 'placeholder_' . $template . '_' . $placeholder . '_box' ] = $css;
+				}
+			}
+
+			$style = array_diff_key( $style, $box_keys );
+			$css   = placeholder_style_css( $style, '#' . $id . ' ' . $item_selector . ' ' . $selector );
+			if ( '' === $css ) {
+				continue;
+			}
+			$rules[ 'placeholder_' . $template . '_' . $placeholder ] = $css;
+
+			if ( in_array( $placeholder, PLACEHOLDER_STYLE_INNER_LINKS, true ) ) {
+				$link_css = placeholder_style_css(
+					array( 'color' => isset( $style['color'] ) ? $style['color'] : '' ),
+					'#' . $id . ' ' . $item_selector . ' ' . $selector . ' a'
+				);
+				if ( '' !== $link_css ) {
+					$rules[ 'placeholder_' . $template . '_' . $placeholder . '_link' ] = $link_css;
+				}
+			}
+		}
+	}
+
+	// "Load more" and the pagination: text and box on the same element.
+	foreach ( BLOCK_STYLE_SELECTORS as $key => $selector ) {
+		$css = placeholder_style_css(
+			isset( $settings['placeholder_styles']['block'][ $key ] ) ? $settings['placeholder_styles']['block'][ $key ] : null,
+			'#' . $id . ' ' . $selector
+		);
+		if ( '' !== $css ) {
+			$rules[ 'placeholder_block_' . $key ] = $css;
+		}
+	}
+
+	// Hover colors of the title of the block, "Load more" and the page numbers.
+	foreach ( BLOCK_STYLE_HOVER as $key => $selector ) {
+		$css = placeholder_hover_css(
+			isset( $settings['placeholder_styles']['block'][ $key ] ) ? $settings['placeholder_styles']['block'][ $key ] : null,
+			'#' . $id . ' ' . $selector
+		);
+		if ( '' !== $css ) {
+			$rules[ 'placeholder_block_' . $key . '_hover' ] = $css;
+		}
+	}
+
+	// Their alignment, and the gap between the page numbers. Built-in they
+	// are centered, the page numbers 0.5em apart (getCSSRules()).
+	$block   = isset( $settings['placeholder_styles']['block'] ) && is_array( $settings['placeholder_styles']['block'] ) ? $settings['placeholder_styles']['block'] : array();
+	$justify = function ( $key ) use ( $block ) {
+		$value = isset( $block[ $key ]['justify'] ) && is_string( $block[ $key ]['justify'] ) ? $block[ $key ]['justify'] : '';
+		return in_array( $value, array( 'left', 'center', 'right', 'space-between' ), true ) ? $value : '';
+	};
+	if ( in_array( $justify( 'loadMore' ), array( 'left', 'center', 'right' ), true ) ) {
+		$rules['placeholder_block_loadMore_justify'] = '#' . $id . ' .' . __NAMESPACE__ . '-loadmore{text-align:' . $justify( 'loadMore' ) . ';}';
+	}
+	$declarations = '';
+	if ( '' !== $justify( 'pagination' ) ) {
+		$map           = array( 'left' => 'flex-start', 'center' => 'center', 'right' => 'flex-end', 'space-between' => 'space-between' );
+		$declarations .= 'justify-content:' . $map[ $justify( 'pagination' ) ] . ';';
+	}
+	$gap = css_length( isset( $block['pagination']['gap'] ) ? $block['pagination']['gap'] : '', '' );
+	if ( '' !== $gap ) {
+		$declarations .= 'gap:' . $gap . ';';
+	}
+	if ( '' !== $declarations ) {
+		$rules['placeholder_block_pagination_nav'] = '#' . $id . ' .' . __NAMESPACE__ . '-pagination{' . $declarations . '}';
+	}
+
+	// The title of the block. A linked title is an inner link, which would keep
+	// the link color of the theme, so the color goes to it as well.
+	$title = isset( $settings['placeholder_styles']['block']['title'] ) ? $settings['placeholder_styles']['block']['title'] : null;
+	$css   = placeholder_style_css( $title, '#' . $id . ' .' . BLOCK_TITLE_CLASS );
+	if ( '' !== $css ) {
+		$rules['placeholder_block_title'] = $css;
+		$link_css = placeholder_style_css(
+			array( 'color' => isset( $title['color'] ) ? $title['color'] : '' ),
+			'#' . $id . ' .' . BLOCK_TITLE_CLASS . ' a'
+		);
+		if ( '' !== $link_css ) {
+			$rules['placeholder_block_title_link'] = $link_css;
+		}
+	}
+
+	return $rules;
+}
+
+/**
+ * One rule for the styles of one placeholder or element.
+ *
+ * @param array|null $style    As the block stores them: 'color', 'fontSize',
+ *                             'fontWeight', 'fontStyle', 'textTransform',
+ *                             'lineHeight' for text, 'background',
+ *                             'padding', 'margin', 'border' for boxes. 'padding'
+ *                             and 'margin' are a value or one per side, 'border' is array( 'color',
+ *                             'style', 'width' ) or one of those per side.
+ * @param string     $selector The selector of the rule.
+ * @param string     $extra    Declarations added to a rule which is not empty.
+ *
+ * @return string The rule, empty without styles.
+ */
+function placeholder_style_css( $style, $selector, $extra = '' ) {
+	if ( ! is_array( $style ) ) {
+		return '';
+	}
+
+	// Only strings, also one level down for the sides and corners.
+	$value = function ( $key, $source = null ) use ( $style ) {
+		$source = null === $source ? $style : $source;
+		if ( ! isset( $source[ $key ] ) ) {
+			return '';
+		}
+		if ( is_scalar( $source[ $key ] ) ) {
+			return (string) $source[ $key ];
+		}
+		if ( ! is_array( $source[ $key ] ) ) {
+			return '';
+		}
+		// '0' is a value, e.g. a padding of 0 instead of the built-in one.
+		return array_filter(
+			array_map( 'strval', array_filter( $source[ $key ], 'is_scalar' ) ),
+			function ( $side ) {
+				return '' !== $side;
+			}
+		);
+	};
+
+	// A length without unit, like a bare number some controls store, is no
+	// valid CSS. It means px.
+	$length = function ( $length ) {
+		if ( is_array( $length ) ) {
+			return array_map(
+				function ( $side ) {
+					return is_numeric( $side ) && 0.0 !== (float) $side ? $side . 'px' : $side;
+				},
+				$length
+			);
+		}
+		return is_numeric( $length ) && 0.0 !== (float) $length ? $length . 'px' : $length;
+	};
+
+	// A border with a width or color but no style would not show, its style is
+	// 'none'. Like WordPress' own border support it is solid then.
+	$border_side = function ( $source ) use ( $value, $length ) {
+		$side = array_filter(
+			array(
+				'color' => $value( 'color', $source ),
+				'style' => $value( 'style', $source ),
+				'width' => $length( $value( 'width', $source ) ),
+			)
+		);
+		if ( ! empty( $side ) && empty( $side['style'] ) ) {
+			$side['style'] = 'solid';
+		}
+		return $side;
+	};
+
+	$border = isset( $style['border'] ) && is_array( $style['border'] ) ? $style['border'] : array();
+	$sides  = array();
+	foreach ( array( 'top', 'right', 'bottom', 'left' ) as $side ) {
+		if ( isset( $border[ $side ] ) && is_array( $border[ $side ] ) ) {
+			$sides[ $side ] = $border_side( $border[ $side ] );
+		}
+	}
+
+	$block_styles = array_filter(
+		array(
+			'color'      => array_filter(
+				array(
+					'text'       => $value( 'color' ),
+					'background' => $value( 'background' ),
+				)
+			),
+			'typography' => array_filter(
+				array(
+					'fontSize'      => $value( 'fontSize' ),
+					'fontWeight'    => $value( 'fontWeight' ),
+					'fontStyle'     => $value( 'fontStyle' ),
+					'textTransform' => $value( 'textTransform' ),
+					'lineHeight'    => $value( 'lineHeight' ),
+				)
+			),
+			'spacing'    => array_filter(
+				array(
+					'padding' => $length( $value( 'padding' ) ),
+					'margin'  => $length( $value( 'margin' ) ),
+				)
+			),
+			'border'     => array_filter(
+				array_merge(
+					$border_side( $border ),
+					array_filter( $sides )
+				)
+			),
+		)
+	);
+	if ( empty( $block_styles ) ) {
+		return '';
+	}
+
+	$css = wp_style_engine_get_styles( $block_styles, array( 'selector' => $selector ) );
+	if ( empty( $css['css'] ) ) {
+		return '';
+	}
+
+	return '' === $extra ? $css['css'] : substr( $css['css'], 0, -1 ) . $extra . '}';
+}
+
+/**
+ * A length as set in the block, for CSS: a number with or without unit (px
+ * then) or a spacing preset of the theme ('var:preset|spacing|<slug>').
+ *
+ * @param mixed  $value    The value.
+ * @param string $fallback What to use when the value is empty or not valid.
+ *
+ * @return string The CSS value.
+ */
+function css_length( $value, $fallback ) {
+	$value = is_scalar( $value ) ? trim( (string) $value ) : '';
+
+	if ( preg_match( '/^var:preset\|spacing\|([a-z0-9-]+)$/i', $value, $preset ) ) {
+		return 'var(--wp--preset--spacing--' . $preset[1] . ')';
+	}
+	if ( preg_match( '/^\d*\.?\d+(px|em|rem|%|vw|vh)?$/', $value, $length ) ) {
+		return empty( $length[1] ) && 0.0 !== (float) $value ? $value . 'px' : $value;
+	}
+
+	return $fallback;
 }
 
 /**
@@ -348,7 +776,7 @@ function render_category_posts_block( $attributes, $content = '', $block = null 
 	$dom_id = WIDGET_BASE_ID . '-' . $block_id;
 
 	if ( ( 'nothing' === $instance['no_match_handling'] ) || ! empty( $items ) ) {
-		$ret = $widget->titleHTML( $before_title, $after_title, $instance );
+		$ret = block_title_html( $widget->titleHTML( $before_title, $after_title, $instance ) );
 
 		$ret .= '<ul>' . implode( $items ) . '</ul>';
 
@@ -395,7 +823,7 @@ function render_category_posts_block( $attributes, $content = '', $block = null 
 				'</script>';
 		}
 	} elseif ( 'text' === $instance['no_match_handling'] ) {
-		$ret = $widget->titleHTML( $before_title, $after_title, $instance );
+		$ret = block_title_html( $widget->titleHTML( $before_title, $after_title, $instance ) );
 		$ret .= '<span class="cat-post-no-match">' . wp_kses_post( $instance['no_match_text'] ) . '</span>';
 		$ret .= $widget->footerHTML( $instance );
 	}

@@ -5,7 +5,7 @@
 /**
  * WordPress dependencies
  */
-import { Children, useEffect, useRef } from '@wordpress/element';
+import { Children, useEffect, useRef, useState } from '@wordpress/element';
 import { useSelect } from '@wordpress/data';
 import { useInstanceId } from '@wordpress/compose';
 import { __, sprintf } from '@wordpress/i18n';
@@ -41,6 +41,7 @@ import { dateI18n, getSettings as getDateSettings } from '@wordpress/date';
  * Internal dependencies
  */
 import TemplateControl, { ARCHIVE_PLACEHOLDERS } from './template-control';
+import { PlaceholderStylePanels, findStyleTarget, selectionCSS } from './placeholder-styles';
 import metadata from './../block.json';
 import './editor.scss';
 
@@ -88,6 +89,14 @@ const THUMBNAIL = [ 'thumbW', 'thumbH', 'textDoNotWrapThumb' ];
 const THUMBNAIL_TOOLS = [ 'thumbHover', 'showPostFormat', 'everythingIsLink', 'thumbSymbols' ];
 const POST_DETAILS = [ ...TEMPLATE, ...ITEM_TITLE, ...EXCERPT, ...MORE_LINK, ...DATE_FORMAT, ...THUMBNAIL, ...THUMBNAIL_TOOLS ];
 
+// Entries shown from the start which can still be hidden under "Tools", unlike
+// those shown by default, which WordPress always shows. A hidden one is stored in
+// shownTools as 'hidden:<id>'. The attributes behind each, for "Reset all".
+const hiddenTool = ( id ) => `hidden:${ id }`;
+const hiddenToolKeys = ( id ) => (
+	id.startsWith( 'hidden:' ) ? ( { numberOfPosts: NUMBER_OF_POSTS }[ id.slice( 'hidden:'.length ) ] || [] ) : []
+);
+
 // The entries a ToolsPanel shows only when chosen under "Tools", by the id they are
 // stored with in the shownTools attribute.
 const OPTIONAL_TOOLS = {
@@ -95,7 +104,6 @@ const OPTIONAL_TOOLS = {
 	titleLink: TITLE_LINK,
 	order: ORDER,
 	status: STATUS,
-	numberOfPosts: NUMBER_OF_POSTS,
 	dateRange: DATE_RANGE,
 	excludeCurrentPost: EXCLUDE_CURRENT_POST,
 	hideNoThumb: HIDE_NO_THUMB,
@@ -208,7 +216,7 @@ function DateControl( { id, label, buttonLabel, value, onChange } ) {
 	);
 }
 
-export default function Edit({ attributes, setAttributes, clientId, context }) {
+export default function Edit({ attributes, setAttributes, clientId, context, isSelected }) {
 	const {
 		hideTitle, title, titleLink, titleLinkUrl, titleLinkTarget, titleLevel,
 		order, orderBy, categories, status, num, offset, dateRange, startDate, endDate, daysAgo, excludeCurrentPost, hideNoThumb, sticky,
@@ -226,8 +234,13 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 	const morePosts = [ 'none', 'loadmore', 'pages' ].includes( paginationType )
 		? paginationType
 		: ( enableLoadmore ? 'loadmore' : 'none' );
+	const [ pickingStyles, setPickingStyles ] = useState( false );
 	const blockProps = useBlockProps({
-		className: disableThemeStyles ? 'widget-title' : '',
+		className: [
+			disableThemeStyles ? 'widget-title' : '',
+			// Picking placeholders: no focus frame around the whole block, see editor.scss.
+			pickingStyles ? 'cpwp-is-picking-styles' : '',
+		].filter( Boolean ).join( ' ' ),
 	});
 
 	// Give every instance of this block a stable ID that is persisted into the
@@ -254,6 +267,17 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 	// render_category_posts_block() hands the same flags to the preview as inert
 	// JSON (the '.cpwp-block-preview-config' node), and this effect applies them.
 	const previewRef = useRef( null );
+
+	// Styles of single placeholders: while the "Styles" tab is open (its panels
+	// are mounted only then), a click in the preview picks a placeholder.
+	const [ stylesTabOpen, setStylesTabOpen ] = useState( false );
+	const [ styleSelection, setStyleSelection ] = useState( null );
+	useEffect( () => {
+		setPickingStyles( isSelected && stylesTabOpen );
+		if ( ! ( isSelected && stylesTabOpen ) ) {
+			setStyleSelection( null );
+		}
+	}, [ isSelected, stylesTabOpen ] );
 	useEffect( () => {
 		const host = previewRef.current;
 		if ( ! host ) {
@@ -510,15 +534,27 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 	// "Reset all" of a ToolsPanel, which hides its entries from "Tools" as well.
 	const resetPanel = ( keys ) => setAttributes( {
 		...defaultsOf( keys ),
-		shownTools: shownTools.filter( ( id ) => ! ( OPTIONAL_TOOLS[ id ] || [] ).some( ( key ) => keys.includes( key ) ) ),
+		shownTools: shownTools.filter( ( id ) => ! ( OPTIONAL_TOOLS[ id ] || hiddenToolKeys( id ) ).some( ( key ) => keys.includes( key ) ) ),
+	} );
+
+	/*
+	 * An entry shown from the start which can be hidden, see hiddenTool(): shown
+	 * while it has a value or was not hidden. Hiding it sets its values back.
+	 */
+	const hideableTool = ( id, isSet, defaults ) => ( {
+		hasValue: () => isSet() || ! shownTools.includes( hiddenTool( id ) ),
+		onSelect: () => setAttributes( { shownTools: shownTools.filter( ( shown ) => shown !== hiddenTool( id ) ) } ),
+		onDeselect: () => setAttributes( {
+			...defaults(),
+			shownTools: [ ...shownTools.filter( ( shown ) => shown !== hiddenTool( id ) ), hiddenTool( id ) ],
+		} ),
 	} );
 
 	return (
 		<>
 			{/*
 			  * What is shown goes to the "Content" tab, how it looks to "Settings", so
-			  * the "Styles" tab is left to the color, typography, dimensions and border
-			  * panels of WordPress, which it always puts first. Without the "Content" tab
+			  * the "Styles" tab is left to the styles of the placeholders. Without the "Content" tab
 			  * the arrangement stays the one before: "Settings" and "Styles".
 			  */}
 			<InspectorControls group={ hasContentTab ? 'content' : 'default' }>
@@ -750,7 +786,7 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 					</ToolsPanelItem>
 					<ToolsPanelItem
 						label={ __( 'Number of posts / Start with post', 'category-posts' ) }
-						{ ...optionalTool( 'numberOfPosts' ) }
+						{ ...hideableTool( 'numberOfPosts', () => differsFromDefault( attributes, NUMBER_OF_POSTS ), () => defaultsOf( NUMBER_OF_POSTS ) ) }
 					>
 						<ControlPair>
 							<NumberControl
@@ -1332,6 +1368,14 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 					</ToolsPanelItem>
 				</ToolsPanel>
 			</InspectorControls>
+			<InspectorControls group="styles">
+				<PlaceholderStylePanels
+					attributes={ attributes }
+					setAttributes={ setAttributes }
+					selection={ styleSelection }
+					onActiveChange={ setStylesTabOpen }
+				/>
+			</InspectorControls>
 			<div
 				{...blockProps}
 			>
@@ -1347,15 +1391,24 @@ export default function Edit({ attributes, setAttributes, clientId, context }) {
 					</Notice>
 				) }
 				<div
-					className="cpwp-block-preview"
+					className={ 'cpwp-block-preview' + ( pickingStyles ? ' is-picking-styles' : '' ) }
+					data-cpwp-preview={ clientId }
 					ref={ previewRef }
-					onClickCapture={(event) => event.preventDefault()}
+					onClickCapture={ ( event ) => {
+						event.preventDefault();
+						if ( pickingStyles ) {
+							setStyleSelection( findStyleTarget( event.target, attributes ) );
+						}
+					} }
 				>
+					{ styleSelection && (
+						<style>{ selectionCSS( `[data-cpwp-preview="${ clientId }"]`, styleSelection ) }</style>
+					) }
 					<ServerSideRender
 						block="tiptip/category-posts-block"
 						attributes={ previewAttributes }
-						// Colors, spacing, typography and border already sit on the wrapper
-						// above (useBlockProps), the preview would apply them a second time.
+						// Block supports (only the alignment) sit on the wrapper above
+						// (useBlockProps), the preview must not apply them a second time.
 						skipBlockSupportAttributes
 						urlQueryArgs={ previewQueryArgs }
 					/>

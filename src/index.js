@@ -10,22 +10,10 @@ import transformToPro from './transform';
 import widgetToBlockAttributes, { footerLinkContent } from './widget-transform';
 import queryToBlockAttributes, { isRepresentable } from './query-transform';
 import metadata from './../block.json';
-import { hasContentTab } from './editor-features';
 const { name } = metadata;
 
-// block.json shows some fields of the color and typography panels right away,
-// as "Latest Posts" does: the "Styles" tab holds only these panels, ours are
-// under "Content" and "Settings". Without the "Content" tab ours are in the
-// "Styles" tab as well, below these panels, which WordPress puts first. Only
-// their headers then, to leave room for ours. The empty color defaults close
-// the "Elements" panel (link color) as well.
-const supports = hasContentTab
-	? metadata.supports
-	: {
-		...metadata.supports,
-		color: { ...metadata.supports.color, __experimentalDefaultControls: {} },
-		typography: { ...metadata.supports.typography, __experimentalDefaultControls: {} },
-	};
+// Of the supports of WordPress the block has only the alignment (block.json):
+// color and typography are set per placeholder (src/placeholder-styles.js).
 
 /**
  * Every block starts by registering a new block type definition.
@@ -34,7 +22,6 @@ const supports = hasContentTab
  */
 registerBlockType(name, {
 	...metadata,
-	supports,
 	keywords: [
 		__('category'),
 		__('categories'),

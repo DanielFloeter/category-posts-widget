@@ -80,6 +80,236 @@ function _make_attachment( $filename ) {
 class testWidgetFront extends WP_UnitTestCase {
 
 	/**
+	 * Styles of single placeholders: one rule per
+	 * placeholder, presets as CSS custom properties, empty values left out.
+	 */
+	public function testPlaceholderStyleRules() {
+		$rules = \categoryPosts\placeholder_style_rules(
+			'block-x',
+			array(
+				'placeholder_styles' => array(
+					'default'     => array(
+						'title' => array(
+							'color'      => 'var:preset|color|vivid-red',
+							'fontSize'   => 'var:preset|font-size|large',
+							'fontWeight' => '700',
+						),
+						'date'  => array( 'color' => '' ),
+						'moreLink' => array( 'fontSize' => '18px' ),
+						'unknown'  => array( 'color' => '#000' ),
+					),
+					// Not in the free version, left out.
+					'alternating' => array(
+						'title' => array( 'color' => '#000' ),
+					),
+				),
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'placeholder_default_title'        => '#block-x .cat-post-item .cat-post-title{color:var(--wp--preset--color--vivid-red);font-size:var(--wp--preset--font-size--large);font-weight:700;}',
+				'placeholder_default_moreLink'     => '#block-x .cat-post-item .cat-post-excerpt-more{font-size:18px;}',
+			),
+			$rules
+		);
+
+		$this->assertSame( array(), \categoryPosts\placeholder_style_rules( 'block-x', array() ) );
+
+		// The more link as a button, each term as a badge.
+		$this->assertSame(
+			array(
+				'placeholder_default_moreLink_box' => '#b .cat-post-item .cat-post-excerpt-more{background-color:#3858e9;padding-top:4px;padding-bottom:4px;}',
+				'placeholder_default_moreLink'     => '#b .cat-post-item .cat-post-excerpt-more{color:#fff;}',
+				'placeholder_default_terms_box'       => '#b .cat-post-item [class*="cat-post-tax-"] .cat-post-term{background-color:#eee;margin-right:4px;}',
+			),
+			\categoryPosts\placeholder_style_rules(
+				'b',
+				array(
+					'placeholder_styles' => array(
+						'default' => array(
+							'moreLink' => array( 'color' => '#fff', 'background' => '#3858e9', 'padding' => array( 'top' => '4px', 'bottom' => '4px' ) ),
+							'terms'    => array( 'background' => '#eee', 'margin' => array( 'right' => '4px' ) ),
+						),
+					),
+				)
+			)
+		);
+
+		// Placeholders with an inner link get the color on the link as well.
+		$rules = \categoryPosts\placeholder_style_rules(
+			'block-x',
+			array(
+				'placeholder_styles' => array(
+					'default' => array(
+						'terms'   => array( 'color' => '#0b6e4f', 'fontWeight' => '600' ),
+						'excerpt' => array( 'lineHeight' => '1.8', 'fontStyle' => 'italic', 'textTransform' => 'uppercase' ),
+					),
+				),
+			)
+		);
+		$this->assertSame(
+			array(
+				'placeholder_default_excerpt'    => '#block-x .cat-post-item .cpwp-excerpt-text{font-style:italic;line-height:1.8;text-transform:uppercase;}',
+				'placeholder_default_terms'      => '#block-x .cat-post-item [class*="cat-post-tax-"]{color:#0b6e4f;font-weight:600;}',
+				'placeholder_default_terms_link' => '#block-x .cat-post-item [class*="cat-post-tax-"] a{color:#0b6e4f;}',
+			),
+			$rules
+		);
+	}
+
+	/**
+	 * The rules come with the block, in its style island.
+	 */
+	public function testBlockPlaceholderStyles() {
+		$GLOBALS['before_title'] = '';
+		$GLOBALS['after_title']  = '';
+
+		$html = \categoryPosts\render_category_posts_block(
+			array(
+				'instanceId'        => 9303,
+				'placeholderStyles' => array(
+					'default' => array( 'date' => array( 'color' => '#b3261e' ) ),
+				),
+			)
+		);
+		$this->assertMatchesRegularExpression( '/#[\w-]+ \.cat-post-item \.cat-post-date\{color:#b3261e;\}/', $html );
+	}
+
+	/**
+	 * The item gets background, padding and border with border-box.
+	 */
+	public function testItemStyleRules() {
+		$rules = \categoryPosts\placeholder_style_rules(
+			'b',
+			array(
+				'placeholder_styles' => array(
+					'default'     => array(
+						'item'  => array(
+							'background'   => 'var:preset|color|base',
+							'padding'      => array( 'top' => '1em', 'left' => '16px', 'right' => array() ),
+							'margin'       => array( 'top' => '-8', 'bottom' => '2em' ),
+							'border'       => array( 'color' => '#ddd', 'style' => 'solid', 'width' => '1px' ),
+						),
+					),
+				),
+			)
+		);
+
+		// Bare numbers, as BoxControl stores them without units, are px.
+		$this->assertSame(
+			array( 'placeholder_default_item' => '#b .cat-post-item{border-top-width:1px;border-top-style:solid;padding-top:130px;padding-right:0;box-sizing:border-box;}' ),
+			\categoryPosts\placeholder_style_rules( 'b', array( 'placeholder_styles' => array( 'default' => array( 'item' => array( 'padding' => array( 'top' => '130', 'right' => '0' ), 'border' => array( 'top' => array( 'width' => '1' ) ) ) ) ) ) )
+		);
+
+		// Spacing presets of the theme become its custom properties.
+		$this->assertSame(
+			array( 'placeholder_default_item' => '#b .cat-post-item{padding-top:var(--wp--preset--spacing--40);padding-bottom:var(--wp--preset--spacing--40);margin-left:var(--wp--preset--spacing--20);box-sizing:border-box;}' ),
+			\categoryPosts\placeholder_style_rules( 'b', array( 'placeholder_styles' => array( 'default' => array( 'item' => array( 'padding' => array( 'top' => 'var:preset|spacing|40', 'bottom' => 'var:preset|spacing|40' ), 'margin' => array( 'left' => 'var:preset|spacing|20' ) ) ) ) ) )
+		);
+
+		// Without a style the border is solid, else it would not show.
+		$this->assertSame(
+			array( 'placeholder_default_item' => '#b .cat-post-item{border-color:#f00;border-style:solid;border-width:3px;box-sizing:border-box;}' ),
+			\categoryPosts\placeholder_style_rules( 'b', array( 'placeholder_styles' => array( 'default' => array( 'item' => array( 'border' => array( 'color' => '#f00', 'width' => '3px' ) ) ) ) ) )
+		);
+
+		$this->assertSame(
+			array(
+				'placeholder_default_item'      => '#b .cat-post-item{background-color:var(--wp--preset--color--base);border-color:#ddd;border-style:solid;border-width:1px;padding-top:1em;padding-left:16px;margin-top:-8px;margin-bottom:2em;box-sizing:border-box;}',
+			),
+			$rules
+		);
+	}
+
+	/**
+	 * The title of the block always has an element with its own class.
+	 */
+	public function testBlockTitleHtml() {
+		$this->assertSame( '<div class="cpwp-block-title">Posts</div>', \categoryPosts\block_title_html( 'Posts' ) );
+		$this->assertSame( '<h2 class="cpwp-block-title widget-title"><a href="#">Posts</a></h2>', \categoryPosts\block_title_html( '<h2 class="widget-title"><a href="#">Posts</a></h2>' ) );
+		$this->assertSame( '<h3 class="cpwp-block-title">Posts</h3>', \categoryPosts\block_title_html( '<h3>Posts</h3>' ) );
+		$this->assertSame( '', \categoryPosts\block_title_html( '' ) );
+
+		$rules = \categoryPosts\placeholder_style_rules(
+			'block-x',
+			array( 'placeholder_styles' => array( 'block' => array( 'title' => array( 'color' => '#b3261e', 'fontSize' => '2em' ) ) ) )
+		);
+		// Hover colors: on the element, its inner link or each term.
+		$this->assertSame(
+			array(
+				'placeholder_default_title_hover'      => '#block-x .cat-post-item .cat-post-title:hover{color:#b3261e;}',
+				'placeholder_default_author_hover'     => '#block-x .cat-post-item .cat-post-author a:hover{color:#0b6e4f;}',
+				'placeholder_default_terms_hover'      => '#block-x .cat-post-item [class*="cat-post-tax-"] .cat-post-term:hover{color:#fff;background-color:#000;}',
+				'placeholder_block_loadMore_hover'     => '#block-x .categoryPosts-loadmore button:hover{background-color:#222;}',
+				'placeholder_block_pagination_hover'   => '#block-x .categoryPosts-pagination a.page-numbers:hover{color:#3858e9;}',
+			),
+			\categoryPosts\placeholder_style_rules(
+				'block-x',
+				array(
+					'placeholder_styles' => array(
+						'default' => array(
+							'title'  => array( 'hoverColor' => '#b3261e' ),
+							'terms'  => array( 'hoverColor' => '#fff', 'hoverBackground' => '#000' ),
+							'author' => array( 'hoverColor' => '#0b6e4f' ),
+						),
+						'block'   => array(
+							'loadMore'   => array( 'hoverBackground' => '#222' ),
+							'pagination' => array( 'hoverColor' => '#3858e9' ),
+						),
+					),
+				)
+			)
+		);
+
+		// Their alignment and the gap between the page numbers.
+		$this->assertSame(
+			array(
+				'placeholder_block_loadMore_justify' => '#block-x .categoryPosts-loadmore{text-align:right;}',
+				'placeholder_block_pagination_nav'   => '#block-x .categoryPosts-pagination{justify-content:space-between;gap:12px;}',
+			),
+			\categoryPosts\placeholder_style_rules(
+				'block-x',
+				array(
+					'placeholder_styles' => array(
+						'block' => array(
+							'loadMore'   => array( 'justify' => 'right' ),
+							'pagination' => array( 'justify' => 'space-between', 'gap' => '12' ),
+						),
+					),
+				)
+			)
+		);
+
+		// "Load more" and the pagination, text and box on one element.
+		$this->assertSame(
+			array(
+				'placeholder_block_loadMore'          => '#block-x .categoryPosts-loadmore button{color:#fff;background-color:#3858e9;border-style:none;}',
+				'placeholder_block_paginationCurrent' => '#block-x .categoryPosts-pagination .page-numbers.current{font-weight:700;}',
+			),
+			\categoryPosts\placeholder_style_rules(
+				'block-x',
+				array(
+					'placeholder_styles' => array(
+						'block' => array(
+							'loadMore'          => array( 'color' => '#fff', 'background' => '#3858e9', 'border' => array( 'style' => 'none' ) ),
+							'paginationCurrent' => array( 'fontWeight' => '700' ),
+						),
+					),
+				)
+			)
+		);
+
+		$this->assertSame(
+			array(
+				'placeholder_block_title'      => '#block-x .cpwp-block-title{color:#b3261e;font-size:2em;}',
+				'placeholder_block_title_link' => '#block-x .cpwp-block-title a{color:#b3261e;}',
+			),
+			$rules
+		);
+	}
+
+	/**
 	 *  Check that there are no errors when instance is new
 	 */
 	public function testNoSetting() {
@@ -2729,12 +2959,15 @@ class testBlockSupportsAndQueryLoop extends WP_UnitTestCase {
 		}
 	}
 
-	public function testColorAndStyleIslandOnTheWrapper() {
+	public function testAlignmentAndStyleIslandOnTheWrapper() {
 		$this->go_to( '/' );
-		$html = do_blocks( '<!-- wp:tiptip/category-posts-block {"instanceId":9501,"backgroundColor":"black","style":{"spacing":{"padding":{"top":"10px"}}}} /-->' );
+		// Of the block supports only the alignment is left, color and spacing are
+		// set per placeholder.
+		$html = do_blocks( '<!-- wp:tiptip/category-posts-block {"instanceId":9501,"align":"wide","backgroundColor":"black","style":{"spacing":{"padding":{"top":"10px"}}}} /-->' );
 
-		$this->assertMatchesRegularExpression( '/^<div [^>]*class="[^"]*has-black-background-color/', $html );
-		$this->assertMatchesRegularExpression( '/^<div [^>]*style="[^"]*padding-top:10px/', $html );
+		$this->assertMatchesRegularExpression( '/^<div [^>]*class="[^"]*alignwide/', $html );
+		$this->assertDoesNotMatchRegularExpression( '/^<div [^>]*class="[^"]*has-black-background-color/', $html );
+		$this->assertDoesNotMatchRegularExpression( '/^<div [^>]*style="[^"]*padding-top:10px/', $html );
 		// The style island is inside the wrapper, the wrapper is the first tag.
 		$this->assertMatchesRegularExpression( '/^<div [^>]*id="category-posts-block-9501"[^>]*><style>/', $html );
 	}

@@ -1284,7 +1284,9 @@ class Widget extends \WP_Widget {
 			$inherited = ' data-query="' . esc_attr( $signed['query'] ) . '" data-sig="' . esc_attr( $signed['sig'] ) . '"';
 		}
 
-		$ret .= '<button type="button"' . $inherited . ' data-loading="' . esc_attr( $loading ) . '" data-id="' . esc_attr( $id ) .
+		// wp-element-button: the button styles of the theme (theme.json), which the
+		// styles set in the block overwrite where they are set.
+		$ret .= '<button type="button" class="wp-element-button"' . $inherited . ' data-loading="' . esc_attr( $loading ) . '" data-id="' . esc_attr( $id ) .
 					'" data-start="' . esc_attr( $start ) . '" data-context="' . esc_attr( $context ) . '" data-number="' . esc_attr( $number ) . 
 					'" data-post-count="' . esc_attr( $post_count ) . '" data-placeholder="' . esc_attr( $placeholder_text ) . '" data-scrollto="' . esc_html( $scrollTo ) . '">' . 
 					esc_html( $loadmore_text ) .
@@ -1469,10 +1471,11 @@ class Widget extends \WP_Widget {
 		$ret = '<span class="cat-post-tax-category' . $post_category_class . '">';
 		$cat_ids = wp_get_post_categories( get_the_ID(), array( 'number' => 0 ) );
 		foreach ( $cat_ids as $cat_id ) {
+			// Each with a class of its own, for categories styled as badges in the block.
 			if ( $everything_is_link ) {
-				$ret .= ' ' . get_cat_name( $cat_id );
+				$ret .= ' <span class="cat-post-term">' . get_cat_name( $cat_id ) . '</span>';
 			} else {
-				$ret .= " <a href='" . get_category_link( $cat_id ) . "'>" . get_cat_name( $cat_id ) . '</a>';
+				$ret .= " <a class='cat-post-term' href='" . get_category_link( $cat_id ) . "'>" . get_cat_name( $cat_id ) . '</a>';
 			}
 		}
 		$ret .= '</span>';
@@ -1494,10 +1497,11 @@ class Widget extends \WP_Widget {
 		$ret = '<span class="cat-post-tax-tag' . $post_tag_class . '">';
 		$tag_ids = wp_get_post_tags( get_the_ID(), array( 'number' => 0 ) );
 		foreach ( $tag_ids as $tag_id ) {
+			// Each with a class of its own, for tags styled as badges in the block.
 			if ( $everything_is_link ) {
-				$ret .= ' ' . $tag_id->name;
+				$ret .= ' <span class="cat-post-term">' . $tag_id->name . '</span>';
 			} else {
-				$ret .= " <a href='" . get_tag_link( $tag_id->term_id ) . "'>" . $tag_id->name . '</a>';
+				$ret .= " <a class='cat-post-term' href='" . get_tag_link( $tag_id->term_id ) . "'>" . $tag_id->name . '</a>';
 			}
 		}
 		$ret .= '</span>';

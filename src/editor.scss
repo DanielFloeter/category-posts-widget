@@ -4,15 +4,23 @@
  * Replace them with your own styles or remove the file completely.
  */
 
+// The look of highlighted settings: a light tint of the admin color with a bar
+// on the left, like the panel picked in the preview.
+@mixin cpwp-highlighted-band {
+	background: rgba(var(--wp-admin-theme-color--rgb, 56, 88, 233), 0.04);
+	box-shadow: inset 2px 0 0 var(--wp-admin-theme-color, #3858e9);
+}
+
 /**
  * Highlight of a group of related options in the inspector,
  * the block counterpart of the widget's .cpwp_ident.
  *
- * No sub grouping, no left edge, no change to the layout:
- * the background just extends 5px around the options.
+ * No sub grouping, no left edge, no change to the layout: the tint of the
+ * highlighted band, without its bar, just extends 5px around the options.
  */
 .cpwp-block-ident {
-	background: #f6f7f7;
+	@include cpwp-highlighted-band;
+	box-shadow: none;
 	margin: 0 -5px;
 	padding: 5px;
 }
@@ -183,4 +191,52 @@
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 	font-size: 13px;
 	line-height: 1.5;
+}
+
+// Styles of single placeholders: while the "Styles" tab is open, the
+// placeholders in the preview can be clicked, see src/placeholder-styles.js.
+.cpwp-block-preview.is-picking-styles {
+	.cpwp-block-title,
+	.cat-post-title,
+	.cat-post-date,
+	.cpwp-excerpt-text,
+	.cat-post-excerpt-more,
+	.cat-post-author,
+	.cat-post-comment-num,
+	[class*="cat-post-tax-"],
+	.categoryPosts-loadmore button,
+	.categoryPosts-pagination .page-numbers {
+		cursor: pointer;
+
+		&:hover {
+			outline: 1px dashed var(--wp-admin-theme-color, #3858e9);
+			outline-offset: 2px;
+		}
+	}
+}
+
+// The item beside its placeholders, see ITEM_TARGET. Only while no placeholder
+// within it is hovered, that one gets the frame then.
+.cpwp-block-preview.is-picking-styles .cat-post-item {
+	cursor: pointer;
+
+	&:hover:not(:has(.cpwp-block-title:hover, .cat-post-title:hover, .cat-post-date:hover, .cpwp-excerpt-text:hover, .cat-post-excerpt-more:hover, .cat-post-author:hover, .cat-post-comment-num:hover, [class*="cat-post-tax-"]:hover)) {
+		outline: 1px dashed var(--wp-admin-theme-color, #3858e9);
+		outline-offset: -1px;
+	}
+}
+
+// The panel of the placeholder picked in the preview.
+.cpwp-placeholder-style-panel.is-selected > .components-tools-panel {
+	@include cpwp-highlighted-band;
+}
+
+// The editor draws a frame around the whole block with the ::after of its
+// wrapper: when the block is focused (a click on a placeholder which is no
+// link, e.g. the excerpt), selected in the outline mode of the site editor, or
+// highlighted. While picking placeholders that frame is misleading, the picked
+// one is outlined. Its rules differ in specificity, hence !important.
+.block-editor-block-list__block.cpwp-is-picking-styles::after {
+	outline: none !important;
+	box-shadow: none !important;
 }
